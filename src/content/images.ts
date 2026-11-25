@@ -23,6 +23,7 @@ import im21 from "../assets/photos/im-21-womens-basketball.webp";
 import im14 from "../assets/photos/im-14-sponsorship-sprinter.webp";
 import im15 from "../assets/photos/im-15-facilities.webp";
 import im16 from "../assets/photos/im-16-coach-education.webp";
+import im19 from "../assets/photos/im-19-individual-sponsor.webp";
 import im20 from "../assets/photos/im-20-swimming-coaching.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
@@ -71,4 +72,6 @@ export const PHOTOS: Record<string, Photo> = {
   // Founder's photo "sunset boxing team training" (25 Nov 2026): a coach educator on the pads while other coaches
   // watch and take notes. Trimmed 10px at each edge (rounded corners); four shoe logos removed.
   "im-16-coach-education.png": { src: im16, w: 1650, h: 922, tone: "", note: "A coach educator demonstrates pad work to other coaches" },
+  // Founder's photo "sunrise rowing crew" (25 Nov 2026): a former rower helps an adult crew carry their boat. As supplied.
+  "im-19-individual-sponsor.png": { src: im19, w: 1672, h: 941, tone: "", note: "A former rower helps a crew carry their boat at sunrise" },
 };

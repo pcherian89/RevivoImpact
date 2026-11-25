@@ -27,6 +27,7 @@ sunset rather than morning daylight). Later images should follow the same look; 
 | im-14-sponsorship-sprinter (Corvane Sportswear profile, the sports-brand variant) | Pre-race team spirit at sunset: adult sprinters and their coach at an evening meet | 10 px trimmed at each edge (rounded corners) | (grade only) |
 | im-15-facilities (Facilities Small Grants header) | Community field renovation at sunset: volunteers painting seats, carrying a goal and laying turf | 10 px trimmed at each edge; one small shoe mark removed | (grade only) |
 | im-16-coach-education (Coach Education Bursary header) | Sunset boxing team training: a coach educator on the pads, other coaches watching and taking notes | 10 px trimmed at each edge; four shoe logos removed | (grade only) |
+| im-19-individual-sponsor (Marcus Halvorsen's public profile and his Overview) | Sunrise rowing crew: a former rower helps an adult crew carry their boat to the water | as supplied | (grade only) |
 | im-20-swimming-coaching (new slot: Competition Travel Grant header, swimming) | Sunset poolside coaching huddle: adult swimmers and their coach (close faces, so never used for young athletes such as Tiago) | 8 px trimmed at each edge (rounded corners) | (grade only) |
 
 **Founder direction, 25 Nov 2026 (after seeing the first screenshots):** the solved tones made the photos too dim and
@@ -45,7 +46,7 @@ guessing.
 
 Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
 `tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
-Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. Still to come: im-04, im-12 and im-19 (and im-10, no longer shown until a logo-free football photo arrives)
+Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. Still to come: im-04 and im-12 (and im-10, no longer shown until a logo-free football photo arrives)
 still show "Photograph to come". The founder's women's football photo (for im-10) is on hold: it carries many Nike marks (bibs, shorts, socks,
 shoes), too many to remove cleanly; a version without logos was requested. The judo photo would also suit im-12 (High Performance Camp Support) if the founder
 wants it reused there.
