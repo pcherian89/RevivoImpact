@@ -1,5 +1,6 @@
 import { useStore } from "./state/store";
-import { AppFrame, GuidePanel, PrototypeBar } from "./components/Shell";
+import { AppFrame, Banner, GuidePanel, PrototypeBar } from "./components/Shell";
+import { useEffect } from "react";
 import { Roles, Start } from "./screens/Start";
 import { Apply, FunderProfile, Join, MyFunding, MyProfile, OpportunityPage, Publish, SeekerApplications, SeekerDiscover, SeekerHome } from "./screens/Seeker";
 import { AthleteForFunder, FunderApplications, FunderDiscover, FunderOpportunities, FunderOverview, Portfolio, RequestPage, ReviewPage, SelectionPage } from "./screens/Funder";
@@ -12,6 +13,17 @@ import type { Person } from "./domain/model";
 export default function App() {
   const { route, world } = useStore();
   const [top, pid, screen, param] = route;
+  // After each navigation, move focus to the page heading so keyboard and screen-reader users start at the top.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const h = document.querySelector<HTMLElement>("main h1");
+      if (h && document.activeElement === document.body) {
+        h.tabIndex = -1;
+        h.focus({ preventScroll: true });
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [route]);
   let body;
   if (top === "roles") body = <Roles />;
   else if (top === "join") body = <Join />;
@@ -31,6 +43,7 @@ export default function App() {
         Skip to content
       </a>
       <PrototypeBar />
+      <Banner />
       {body}
       <GuidePanel />
     </>

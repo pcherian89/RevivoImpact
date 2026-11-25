@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { useStore } from "../state/store";
 import type { CommandName } from "../domain/engine";
@@ -16,13 +16,18 @@ export function useAction(actor: string) {
     setDone(e ? null : (success ?? null));
     return !e;
   };
-  return { run, error, done, clear: () => (setError(null), setDone(null)) };
+  return { run, error, done, clear: () => (setError(null), setDone(null)), fail: (msg: string) => (setError(msg), setDone(null), false) };
 }
 
 export function Message({ error, done }: { error?: string | null; done?: string | null }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  // An error takes focus so keyboard and screen-reader users land on it (and it scrolls into view above the phone bar).
+  useEffect(() => {
+    if (error) ref.current?.focus();
+  }, [error]);
   if (error)
     return (
-      <p role="alert" className="mt-3 flex gap-2 text-small text-amber">
+      <p ref={ref} tabIndex={-1} role="alert" className="mt-3 flex gap-2 text-small text-amber outline-none">
         <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {error}
       </p>
     );
@@ -104,7 +109,7 @@ export function AppStatus({ s, funderView }: { s: Application["status"]; funderV
 }
 
 /** Approval policies in plain words (docs/02 §5.7). */
-export const policyText = (p: "Simple" | "Standard" | "Institutional") => (p === "Institutional" ? "A panel decides; two people sign off" : p === "Standard" ? "Two people sign off" : "One person signs off");
+export const policyText = (p: "Simple" | "Standard" | "Institutional") => (p === "Institutional" ? "Two reviewers recommend; a different person approves; finance pays" : p === "Standard" ? "One person recommends; a different person approves" : "One person decides");
 
 export function Section({ title, children, aside, id }: { title: string; children: ReactNode; aside?: ReactNode; id?: string }) {
   const hid = id ?? title.toLowerCase().replace(/[^a-z]+/g, "-");

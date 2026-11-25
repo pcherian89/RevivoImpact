@@ -253,3 +253,15 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
 }
+
+/* Phones: focused fields never hide under the sticky prototype bar or the bottom menu (WCAG 2.2, 2.4.11). */
+@media (max-width: 767px) {
+  html {
+    scroll-padding-top: 64px;
+    scroll-padding-bottom: 96px;
+  }
+}
+::placeholder {
+  color: var(--ri-subtle);
+  opacity: 1;
+}

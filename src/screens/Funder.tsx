@@ -3,7 +3,7 @@ import { ArrowRight, ChevronRight, CircleCheck, CircleHelp, FileText, HandHeart,
 import { useStore } from "../state/store";
 import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
 import { agreementTotals, counts, fit, fmt, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
-import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
+import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
 import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
@@ -21,7 +21,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const funds = fundsOf(w, fid);
   const needs: { t: string; d: string; a: string; to: string }[] = [];
   for (const o of Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "awaiting"))
-    needs.push(o.draftedBy === persona.id ? { t: `Your draft "${o.title}" waits for a colleague's approval`, d: "You prepared it, so a different person must publish it.", a: "See opportunities", to: "opps" } : { t: `${w.people[o.draftedBy!]?.name ?? "A colleague"}'s draft is waiting for approval`, d: `${o.title} · you did not prepare it, so you can publish it`, a: "Review and publish", to: "opps" });
+    if (o.draftedBy === persona.id || persona.perms.includes("Approve")) needs.push(o.draftedBy === persona.id ? { t: `Your draft "${o.title}" waits for a colleague's approval`, d: "You prepared it, so a different person must publish it.", a: "See opportunities", to: "opps" } : { t: `${w.people[o.draftedBy!]?.name ?? "A colleague"}'s draft is waiting for approval`, d: `${o.title} · you did not prepare it, so you can publish it`, a: "Review and publish", to: "opps" });
   const waiting = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "second-approval");
   const forMe = waiting.filter((o) => o.by !== persona.id);
   if (forMe.length && persona.perms.includes("Approve")) needs.push({ t: `${forMe.length} offer${forMe.length > 1 ? "s" : ""} waiting for your second approval`, d: "A colleague made them; this fund needs two people.", a: "Give second approval", to: "apps" });
@@ -116,7 +116,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
 }
 
 function funderTotals(w: World, fid: string) {
-  const ags = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid);
+  const ags = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g));
   const by = (b: string) => sum(ags.filter((g) => BEHAVIOUR[w.funds[g.fundId].type] === b).map((g) => g.amount));
   return { count: ags.length, devCommitted: by("development"), progCommitted: by("programme"), comCommitted: by("commercial"), released: sum(ags.filter((g) => BEHAVIOUR[w.funds[g.fundId].type] !== "commercial").map((g) => released(w, g.id))) };
 }
@@ -216,7 +216,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
             setChips(briefToChips(briefText));
           }}
         >
-          <input id="brief" value={briefText} onChange={(e) => setBriefText(e.target.value)} placeholder="For example: judo athletes in Coastal Region needing travel" className={cn(inputCls, "flex-1")} />
+          <input id="brief" value={briefText} onChange={(e) => setBriefText(e.target.value)} placeholder="For example: judo athletes in Coastal Region needing travel" className={cn(inputCls, "sm:flex-1")} />
           <button type="submit" className={btn("secondary", "shrink-0")}>
             Turn into filters
           </button>
@@ -224,9 +224,9 @@ export function FunderDiscover({ persona }: { persona: Person }) {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-small text-subtle">Filters from your brief (edit freely):</span>
           {chips.map((c) => (
-            <span key={c} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-signal/50 pr-1 pl-3 text-small">
+            <span key={c} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-line-strong pr-1 pl-3 text-small">
               {c}
-              <button type="button" aria-label={`Remove filter ${c}`} onClick={() => setChips(chips.filter((x) => x !== c))} className="rounded-full p-1.5 hover:bg-surface-2">
+              <button type="button" aria-label={`Remove filter ${c}`} onClick={() => setChips(chips.filter((x) => x !== c))} className="inline-flex size-8 items-center justify-center rounded-full hover:bg-surface-2">
                 <X className="size-3" aria-hidden="true" />
               </button>
             </span>
@@ -355,7 +355,8 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
   const line = t?.lines.find((l) => l.id === lineId);
   const [amount, setAmount] = useState(String(ask ? ask.amount : r?.minor ? 2600 : Math.min(line?.remaining ?? 0, 2500)));
   const [fundId, setFundId] = useState(funds[0]?.id ?? "");
-  const [reason, setReason] = useState("");
+  // A suggested reason the funder reads and edits (it becomes part of the record), never an empty field.
+  const [reason, setReason] = useState(r?.minor ? "Competition travel to a verified national qualification." : `${r?.lines[0]?.label ?? "Support"} for a verified ${r?.ownerKind === "org" ? "club" : "athlete"}, within our published criteria.`);
   const act = useAction(persona.id);
   if (!r || !t) return <Empty>This request is not available.</Empty>;
   const mineAny = Object.values(w.offers).some((o) => o.requestId === id && w.funds[o.fundId].funderId === fid);
@@ -459,11 +460,13 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
         )}
         <Field label="Amount (USD)" hint={`Still needed on this line: ${fmt(line?.remaining ?? 0)}. Offers are capped at what is still needed.`} htmlFor="of-amt">
           <input id="of-amt" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className={cn(inputCls, "max-w-[12rem]")} />
+          {fund?.delegatedLimit && Number(amount.replace(/\D/g, "")) > fund.delegatedLimit && <p className="mt-2 text-small text-amber">Above your {fmt(fund.delegatedLimit)} limit: a colleague with Approve must agree before it is sent.</p>}
+          {fund && fund.policy !== "Simple" && <p className="mt-2 text-small text-subtle">This fund needs a second person with Approve to agree before any offer is sent.</p>}
         </Field>
         <Field label="Reason, linked to the fund's published criteria" htmlFor="of-reason" hint="Required: it becomes part of the selection record.">
           <textarea id="of-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={r.minor ? "Competition travel to a verified national qualification." : "Equipment for a verified adult athlete competing nationally."} className="w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" />
         </Field>
-        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: `of-${fid}-${Date.now()}`, fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: Number(amount.replace(/\D/g, "")), reason: reason || (r.minor ? "Competition travel to a verified national qualification." : "Equipment for a verified adult athlete competing nationally.") }, "Offer sent (simulated).") && setOpen(false)}>
+        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: `of-${fid}-${Date.now()}`, fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: Number(amount.replace(/\D/g, "")), reason }, "Offer sent (simulated).") && setOpen(false)}>
           Send offer
         </Button>
         <Message error={act.error} />
@@ -754,8 +757,8 @@ export function FunderApplications({ persona }: { persona: Person }) {
           </div>
         </>
       )}
-      <Section title={`Support asks received · ${asks.filter((a) => a.status === "sent").length} open`}>
-        {asks.length === 0 ? <Empty>No asks yet. Seekers can ask you because your profile accepts support asks.</Empty> : (
+      <Section title={`Direct requests received · ${asks.filter((a) => a.status === "sent").length} open`}>
+        {asks.length === 0 ? <Empty>No requests yet. Athletes and clubs can ask you directly because your profile accepts direct requests.</Empty> : (
           <ul>
             {asks.map((a) => {
               const r = w.requests[a.requestId];
@@ -790,7 +793,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
                   {fmt(o.amount)} to <span className="font-medium">{recipientName(w, o.recipientKind, o.recipientId, persona)}</span> · {w.funds[o.fundId].name}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Chip kind={o.status === "accepted" ? "verified" : o.status === "held" ? "awaiting" : o.status === "second-approval" ? "attention" : "info"}>{o.status === "held" ? "Awaiting acceptance" : o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "Platform safeguarding review" : o.status === "second-approval" ? `Needs a second approver · ${w.funds[o.fundId].policy}` : o.status === "withdrawn" ? "Withdrawn" : "Declined"}</Chip>
+                  <Chip kind={o.status === "accepted" ? "verified" : o.status === "held" ? "awaiting" : o.status === "second-approval" ? "attention" : "info"}>{o.status === "held" ? "Awaiting acceptance" : o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "Platform safeguarding review" : o.status === "second-approval" ? "Needs a second approver" : o.status === "withdrawn" ? "Withdrawn" : "Declined"}</Chip>
                   {o.status === "second-approval" && persona.perms.includes("Approve") && o.by !== persona.id && (
                     <ActionButton actor={persona.id} type="approveOffer" args={{ offerId: o.id }} success="Second approval given. The offer has been sent.">
                       Give second approval
@@ -919,7 +922,7 @@ function DecideOne({ persona, appId }: { persona: Person; appId: string }) {
   const can = a.status === "shortlisted" && !a.pendingFact;
   const notes = {
     offer: `We are pleased to offer you ${fmt(a.recommendedTier ?? 0)}, the published level for your results. Read what ${funder} will see, then accept or decline.`,
-    waiting: "You reached the minimum score, but one fact still needs checking. We have put you on the waiting list and will tell you by the date shown.",
+    waiting: "You reached the minimum score, but one fact still needs checking. We have put you on the waiting list and will tell you as soon as it is checked.",
     notselected: "Thank you for applying. We could not offer funding this time. Other open opportunities that may suit you are listed in Discover.",
   } as const;
   const [d, setD] = useState<keyof typeof notes>(can ? "offer" : a.pendingFact ? "waiting" : "notselected");
@@ -929,7 +932,7 @@ function DecideOne({ persona, appId }: { persona: Person; appId: string }) {
     <div className="mt-3">
       <div className="flex flex-wrap gap-2" role="group" aria-label="Decision">
         {(["offer", "waiting", "notselected"] as const).filter((k) => k !== "offer" || can).map((k) => (
-          <button key={k} type="button" aria-pressed={d === k} onClick={() => (setD(k), setNote(notes[k]))} className={cn("min-h-10 rounded-full border px-4 text-small", d === k ? "border-ink bg-surface-2 font-medium" : "border-line-strong")}>
+          <button key={k} type="button" aria-pressed={d === k} onClick={() => (setD(k), setNote(notes[k]))} className={seg(d === k)}>
             {k === "offer" ? `Offer ${fmt(a.recommendedTier ?? 0)}` : k === "waiting" ? "Waiting list" : "Not this time"}
           </button>
         ))}
@@ -937,7 +940,7 @@ function DecideOne({ persona, appId }: { persona: Person; appId: string }) {
       <label htmlFor={`note-${appId}`} className="mt-3 block text-small text-subtle">
         Message to the applicant
       </label>
-      <textarea id={`note-${appId}`} rows={2} className="mt-1 w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" value={note} onChange={(e) => setNote(e.target.value)} />
+      <textarea id={`note-${appId}`} rows={4} className="mt-1 w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" value={note} onChange={(e) => setNote(e.target.value)} />
       <Button className="mt-2" variant="secondary" onClick={() => act.run("decideApplication", { appId, decision: d, note }, "Decision sent.")}>
         Send this decision
       </Button>
@@ -949,6 +952,7 @@ function DecideOne({ persona, appId }: { persona: Person; appId: string }) {
 export function SelectionPage({ persona, id }: { persona: Person; id: string }) {
   const { world: w } = useStore();
   const o = w.opps[id];
+  const [confirming, setConfirming] = useState(false);
   const act = useAction(persona.id);
   if (!o) return <Empty>Not found.</Empty>;
   const fund = w.funds[o.fundId];
@@ -988,12 +992,27 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
       </Section>
       <div className="mt-8">
         {o.status === "decided" ? (
-          <p className="flex gap-2 text-signal"><CircleCheck className="size-5" aria-hidden="true" /> Decisions sent to all {apps.length} applicants. Every unsuccessful message links to other open opportunities.</p>
+          <p className="flex gap-2"><CircleCheck className="size-5 shrink-0 text-signal" aria-hidden="true" /> Decisions sent to all {apps.length} applicants. Every unsuccessful message links to other open opportunities.</p>
         ) : (
           <>
-            <Button onClick={() => act.run("sendDecisions", { oppId: id }, "Decisions sent.")} arrow>
-              Send decisions
-            </Button>
+            {!confirming ? (
+              <Button onClick={() => setConfirming(true)} arrow>
+                Send decisions
+              </Button>
+            ) : (
+              <div className="rounded-[10px] border border-line-strong p-4">
+                <p className="font-medium">
+                  Send {offerable.length} offers, {short.filter((a) => a.pendingFact).length} waiting-list places and a respectful message to the other {apps.filter((a) => ["submitted", "info"].includes(a.status)).length} applicants?
+                </p>
+                <p className="mt-1 text-small text-subtle">This can&rsquo;t be undone. Offers are held until each person accepts.</p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Button onClick={() => act.run("sendDecisions", { oppId: id }, "Decisions sent.") && setConfirming(false)}>Yes, send them</Button>
+                  <button type="button" className={btn("secondary")} onClick={() => setConfirming(false)}>
+                    Not yet
+                  </button>
+                </div>
+              </div>
+            )}
             <p className="mt-2 text-small text-subtle">Sends the decisions you haven&rsquo;t sent one by one: offers to every recommendation, the waiting list, and a respectful message to everyone else. Nobody who scored an application can approve it.</p>
           </>
         )}
@@ -1026,10 +1045,11 @@ export function Portfolio({ persona }: { persona: Person }) {
   const toCheck = Object.values(w.expenses).filter((e) => mine.some((g) => g.id === e.agreementId) && e.status === "reported" && e.receipt);
   const reports = Object.values(w.reports).filter((r) => mine.some((g) => g.id === r.agreementId) && r.status !== "draft");
   const programmes = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));
+  const byFund = (k: "committed" | "paid" | "checked") => ({ title: k === "committed" ? "Committed, by fund" : k === "paid" ? "Paid, by fund" : "Spending checked, by fund", rows: funds.filter((f) => BEHAVIOUR[f.type] !== "inkind").map((f) => ({ label: f.name, value: fmt(sum(cash.filter((g) => g.fundId === f.id).map((g) => agreementTotals(w, g.id)[k]))) })).filter((r) => r.value !== "$0") });
   const answers = [
-    { q: "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: "Accepted by both sides" },
-    { q: "How much have we paid?", a: fmt(sum(money.map((m) => m.paid))), d: `${fmt(sum(money.map((m) => m.stillToPay)))} still to pay` },
-    { q: "How much spending is checked?", a: fmt(sum(money.map((m) => m.checked))), d: `${fmt(sum(money.map((m) => m.waiting)))} waiting to be checked` },
+    { q: "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: "Accepted by both sides", src: byFund("committed") },
+    { q: "How much have we paid?", a: fmt(sum(money.map((m) => m.paid))), d: `${fmt(sum(money.map((m) => m.stillToPay)))} still to pay`, src: byFund("paid") },
+    { q: "How much spending is checked?", a: fmt(sum(money.map((m) => m.checked))), d: `${fmt(sum(money.map((m) => m.waiting)))} waiting to be checked`, src: byFund("checked") },
   ];
   return (
     <div className="pb-8">
@@ -1038,8 +1058,10 @@ export function Portfolio({ persona }: { persona: Person }) {
         {answers.map((x) => (
           <div key={x.q}>
             <p className="text-small text-subtle">{x.q}</p>
-            <p className="text-stat mt-1 tabular-nums">{x.a}</p>
-            <p className="text-small text-muted">{x.d}</p>
+            <p className="text-stat mt-1 tabular-nums">
+              <SeeSource name={x.q} source={x.src}>{x.a}</SeeSource>
+            </p>
+            <p className="mt-2 text-small text-muted">{x.d}</p>
           </div>
         ))}
       </section>
@@ -1076,33 +1098,6 @@ export function Portfolio({ persona }: { persona: Person }) {
       </div>
       {tab === "agreements" && (
         <>
-          <Section title="Is there money left in each fund?">
-            <ul>
-              {funds.map((f) => {
-                const t = fundTotals(w, f.id);
-                return (
-                  <li key={f.id} className="border-b border-line py-5">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="font-medium">{f.name}</p>
-                      <p className="text-small text-subtle">
-                        {f.type} · {policyText(f.policy).toLowerCase()} · {plural(t.count, "agreement")}
-                      </p>
-                    </div>
-                    {BEHAVIOUR[f.type] === "inkind" ? (
-                      <p className="mt-2 text-small">
-                        {kits.reduce((a, g) => a + g.kits!.items, 0)} kits declared at {fmt(t.committed)} (not cash, never added to money totals) · {delivered} delivered
-                      </p>
-                    ) : (
-                      <div className="mt-3">
-                        <FundBar announced={t.announced} committed={t.committed} reserved={t.held} sources={fundSources(w, f.id, persona)} />
-                        <p className="mt-2 text-small text-muted">Paid so far {fmt(t.released)}</p>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </Section>
           <Section title="Who we support" aside={<button type="button" className={btn("secondary", "min-h-10")} onClick={() => setAdding(true)}>Add existing funding</button>}>
             <ul>
               {own.map((g) => {
@@ -1137,6 +1132,35 @@ export function Portfolio({ persona }: { persona: Person }) {
                 </Row>
               ))}
               {own.length === 0 && earlier.length === 0 && <Empty li>No agreements yet.</Empty>}
+            </ul>
+          </Section>
+          <Section title="Is there money left in each fund?">
+            <ul>
+              {funds.map((f) => {
+                const t = fundTotals(w, f.id);
+                return (
+                  <li key={f.id} className="border-b border-line py-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-medium">{f.name}</p>
+                      <p className="text-small text-subtle">
+                        {f.type} · {policyText(f.policy).toLowerCase()} · {plural(t.count, "agreement")}
+                      </p>
+                    </div>
+                    {t.committed + t.held === 0 && BEHAVIOUR[f.type] !== "inkind" ? (
+                      <p className="mt-1 text-small text-muted">{fmt(t.announced)} available · nothing committed yet</p>
+                    ) : BEHAVIOUR[f.type] === "inkind" ? (
+                      <p className="mt-2 text-small">
+                        {kits.reduce((a, g) => a + g.kits!.items, 0)} kits declared at {fmt(t.committed)} (not cash, never added to money totals) · {delivered} delivered
+                      </p>
+                    ) : (
+                      <div className="mt-3">
+                        <FundBar announced={t.announced} committed={t.committed} reserved={t.held} sources={fundSources(w, f.id, persona)} />
+                        <p className="mt-2 text-small text-muted">Paid so far {fmt(t.released)}</p>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </Section>
         </>
@@ -1207,7 +1231,7 @@ function AddExisting({ persona, open, onClose }: { persona: Person; open: boolea
       <p className="text-small text-muted">No new application is needed. A second person with Approve confirms it, then the organisation checks the figures.</p>
       <Field label="Who receives it?" htmlFor="ex-org">
         <select id="ex-org" className={inputCls} value={org} onChange={(e) => setOrg(e.target.value)}>
-          {Object.values(w.orgs).filter((o) => !o.light).map((o) => (
+          {Object.values(w.orgs).filter((o) => !o.light && o.id !== fid && !w.funders[o.id]?.type?.match(/Company|Sports brand|Foundation/)).map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
             </option>

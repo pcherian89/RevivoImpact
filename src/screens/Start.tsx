@@ -72,10 +72,10 @@ export function Start() {
           <p id="choose" className="label text-subtle">
             Choose how to explore
           </p>
-          <div className="mt-4 rounded-[10px] border-2 border-signal p-5 sm:p-6">
+          <div className="mt-4 rounded-[10px] border border-line-strong p-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <Footprints className="size-7 text-signal" aria-hidden="true" />
-              <span className="rounded-full bg-lime px-3 py-1 font-display text-sm font-bold text-on-lime">Recommended</span>
+              <span className="label text-subtle">Recommended</span>
             </div>
             <h2 className="text-subtitle mt-4">Guided journeys</h2>
             <p className="mt-2 text-muted">
@@ -85,11 +85,11 @@ export function Start() {
             </p>
             <ul className="mt-4 space-y-2 text-small text-muted">
               <li className="flex gap-2">
-                <UsersRound className="mt-0.5 size-4 shrink-0 text-signal" aria-hidden="true" />A guide opens each person&rsquo;s real
+                <UsersRound className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden="true" />A guide opens each person&rsquo;s real
                 screen and explains every step.
               </li>
               <li className="flex gap-2">
-                <Sparkles className="mt-0.5 size-4 shrink-0 text-signal" aria-hidden="true" />
+                <Sparkles className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden="true" />
                 Then: two-way discovery and sponsorship · programme funding · existing funding · coach, guardian and
                 safeguarding.
               </li>
@@ -108,7 +108,7 @@ export function Start() {
               <span aria-hidden="true" className="relative row-span-2 flex flex-col items-center py-6">
                 <span className="size-[10px] rounded-full border-[1.75px] border-ink bg-canvas" />
                 <span className="w-[1.75px] flex-1 bg-track" />
-                <span className="size-[10px] rounded-full bg-signal" />
+                <span className="size-[10px] rounded-full bg-ink" />
               </span>
               <button type="button" onClick={() => go("roles")} className="group border-b border-line py-4 text-left">
                 <span className="flex items-center gap-2 font-display text-xl font-bold group-hover:text-signal">

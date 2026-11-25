@@ -144,30 +144,32 @@ export function MiniLine({ total, current, label }: { total: number; current: nu
  * yet spent · still to pay. Plain words for each audience; colour never carries meaning on its own; every figure can
  * open its records.
  */
-export type MoneyParts = { committed: number; paid: number; received: number; spent: number; checked: number; carriedSpent?: number };
-export function FundingBar({ m, audience, sources }: { m: MoneyParts; audience: "funder" | "recipient"; sources?: Partial<Record<"checked" | "waiting" | "carried" | "notYetSpent" | "stillToPay" | "paid", Source>> }) {
-  const me = audience === "recipient";
+export type MoneyParts = { committed: number; paid: number; received: number; spent: number; checked: number; carriedSpent?: number; carriedPaid?: number };
+export function FundingBar({ m, audience, sources, who }: { m: MoneyParts; audience: "funder" | "recipient"; who?: string; sources?: Partial<Record<"checked" | "waiting" | "carried" | "notYetSpent" | "stillToPay" | "paid", Source>> }) {
+  // "you" only for the athlete or organisation itself; a guardian or coach reads "Paid to Tiago".
+  const me = audience === "recipient" && !who;
+  const recipient = audience === "recipient";
   const carried = m.carriedSpent ?? 0;
   const seg = [
-    { key: "checked" as const, v: m.checked, label: me ? "Spent, checked by the funder" : "Spent and checked", cls: "bg-ink" },
+    { key: "checked" as const, v: m.checked, label: recipient ? "Spent, checked by the funder" : "Spent and checked", cls: "bg-ink" },
     { key: "carried" as const, v: carried, label: "Spent before joining (carried in)", cls: "border border-ink bg-ink/40" },
     { key: "waiting" as const, v: m.spent - m.checked - carried, label: "Spent, waiting to be checked", cls: "hatch border border-steel" },
     { key: "notYetSpent" as const, v: Math.max(0, m.paid - m.spent), label: "Paid, not yet spent", cls: "border border-ink bg-surface-2" },
-    { key: "stillToPay" as const, v: m.committed - m.paid, label: me ? "Still to come" : "Still to pay", cls: "border border-dashed border-control" },
+    { key: "stillToPay" as const, v: m.committed - m.paid, label: recipient ? "Still to come" : "Still to pay", cls: "border border-dashed border-control" },
   ].filter((x) => x.v > 0 || x.key === "stillToPay" || x.key === "notYetSpent");
   const paidPct = m.committed ? (m.paid / m.committed) * 100 : 0;
   return (
     <figure>
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-small">
         <span className="text-muted">
-          {me ? "Paid to you" : "Paid"}{" "}
+          {me ? "Paid to you" : who ? `Paid to ${who}` : "Paid"}{" "}
           <SeeSource name="Paid" source={sources?.paid}>
             <span className="font-medium text-ink">{fmt(m.paid)}</span>
           </SeeSource>
-          {m.paid > 0 && <span className="text-subtle"> · {m.received >= m.paid ? "arrival confirmed" : `${fmt(m.paid - m.received)} not yet confirmed as received`}</span>}
+          {m.paid > 0 && <span className="text-subtle"> · {m.paid - (m.carriedPaid ?? 0) - m.received <= 0 ? (m.carriedPaid ? "includes money paid before joining" : "arrival confirmed") : `${fmt(m.paid - (m.carriedPaid ?? 0) - m.received)} not yet confirmed as received`}</span>}
         </span>
         <span className="text-subtle">
-          {me ? "Agreed" : "Committed"} <span className="font-medium text-ink tabular-nums">{fmt(m.committed)}</span>
+          {recipient ? "Agreed" : "Committed"} <span className="font-medium text-ink tabular-nums">{fmt(m.committed)}</span>
         </span>
       </div>
       <div className="relative" aria-hidden="true">
@@ -199,7 +201,7 @@ export function FundBar({ announced, committed, reserved, sources }: { announced
   const parts = [
     { key: "committed" as const, label: "Committed", v: committed, cls: "bg-ink" },
     { key: "reserved" as const, label: "Set aside for offers", v: reserved, cls: "border border-dashed border-ink bg-surface-2" },
-    { key: "available" as const, label: "Still available", v: available, cls: "bg-line-strong" },
+    { key: "available" as const, label: "Still available", v: available, cls: "border border-control" },
   ];
   return (
     <figure>

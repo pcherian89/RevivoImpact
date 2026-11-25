@@ -23,6 +23,7 @@ import {
 } from "../domain/model";
 import {
   agreementTotals,
+  progressPaused,
   BEHAVIOUR_OF,
   claimsCheck,
   fmt,
@@ -233,6 +234,10 @@ export function AgreementStages({
             : ""}
         </span>
       </p>
+      <details className="md:hidden">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-small underline underline-offset-4">Show all steps</summary>
+        <div className="mt-3">{line}</div>
+      </details>
       <div className="hidden md:block">{line}</div>
     </>
   );
@@ -303,7 +308,7 @@ export function AgreementPage({
       />
       <ExistingFundingBanner persona={persona} g={g} />
       <div className="mt-2">
-        <AgreementStages w={w} g={g} viewer={persona} />
+        <AgreementStages w={w} g={g} viewer={persona} compact />
       </div>
       <NextForRecord persona={persona} g={g} side={side} />
 
@@ -312,6 +317,7 @@ export function AgreementPage({
           <FundingBar
             m={t}
             audience={me ? "recipient" : "funder"}
+            who={me && g.recipientKind === "athlete" && persona.id !== g.recipientId ? w.athletes[g.recipientId]?.name.split(" ")[0] : undefined}
             sources={src}
           />
         </div>
@@ -328,7 +334,7 @@ export function AgreementPage({
             <RecordPayment persona={persona} g={g} />
           )}
         {me &&
-          t.paid > t.received &&
+          t.toConfirm > 0 &&
           canAct(w, persona, g) &&
           persona.role !== "coach" && (
             <ActionButton
@@ -338,7 +344,7 @@ export function AgreementPage({
               args={{ agreementId: id, entryId: `rc-${id}-${Date.now()}` }}
               success="Thank you. Arrival confirmed (your confirmation, not a bank check)."
             >
-              Confirm I received {fmt(t.paid - t.received)}
+              Confirm I received {fmt(t.toConfirm)}
             </ActionButton>
           )}
       </Section>
@@ -402,22 +408,25 @@ export function AgreementPage({
                     </Chip>
                     {side === "funder" &&
                       (persona.perms.includes("Finance") ||
-                        persona.perms.includes("Review")) &&
+                        persona.perms.includes("Verify")) &&
                       (e.status === "reported" || e.status === "query") &&
                       e.receipt && (
-                        <ActionButton
-                          actor={persona.id}
-                          type="checkExpense"
-                          args={{ expenseId: e.id }}
-                          variant="secondary"
-                          success="Checked."
-                        >
-                          Check
-                        </ActionButton>
+                        <>
+                          <ActionButton
+                            actor={persona.id}
+                            type="checkExpense"
+                            args={{ expenseId: e.id }}
+                            variant="secondary"
+                            success="Checked against the receipt."
+                          >
+                            Receipt matches: check
+                          </ActionButton>
+                          {e.status === "reported" && <AskAbout persona={persona} expenseId={e.id} />}
+                        </>
                       )}
                     {side === "funder" &&
                       (persona.perms.includes("Finance") ||
-                        persona.perms.includes("Review")) &&
+                        persona.perms.includes("Verify")) &&
                       e.status === "reported" &&
                       !e.receipt && (
                         <ActionButton
@@ -512,7 +521,9 @@ export function AgreementPage({
             ) : undefined
           }
         >
-          {progress.length === 0 ? (
+          {side === "funder" && g.recipientKind === "athlete" && progressPaused(w, g.recipientId) ? (
+            <Empty>Progress sharing is paused by the {minor ? "guardian" : "athlete"}. Earlier updates are hidden until it is turned back on; a person at your organisation can follow up. Nothing is penalised automatically.</Empty>
+          ) : progress.length === 0 ? (
             <Empty>No updates yet.</Empty>
           ) : (
             <ul>
@@ -623,37 +634,45 @@ function NextForRecord({
   const { world: w } = useStore();
   const t = agreementTotals(w, g.id);
   const ex = Object.values(w.expenses).filter((e) => e.agreementId === g.id);
+  if (g.status && g.status !== "active") return null;
   let msg: string | null = null;
-  if (side === "recipient") {
-    if (t.paid > t.received)
-      msg = `Confirm that ${fmt(t.paid - t.received)} arrived.`;
-    else if (ex.some((e) => e.status === "query"))
-      msg = "The funder asked for a receipt. Add it below.";
-    else if (t.paid > t.spent && BEHAVIOUR_OF(w, g.fundId) !== "commercial")
-      msg = `${fmt(t.paid - t.spent)} is not yet accounted for. Add spending as you go.`;
-  } else {
+  let action: React.ReactNode = null;
+  const query = ex.find((e) => e.status === "query");
+  if (side === "recipient" && canAct(w, persona, g)) {
+    if (t.toConfirm > 0 && persona.role !== "coach") {
+      msg = `Confirm that ${fmt(t.toConfirm)} arrived.`;
+      action = (
+        <ActionButton actor={persona.id} type="confirmReceipt" args={{ agreementId: g.id, entryId: `rc-${g.id}-${Date.now()}` }} success="Thank you. Arrival confirmed.">
+          Confirm I received {fmt(t.toConfirm)}
+        </ActionButton>
+      );
+    } else if (query) {
+      msg = `The funder asked for the receipt for “${query.what}”.`;
+      action = (
+        <ActionButton actor={persona.id} type="addReceipt" args={{ expenseId: query.id }} success="Receipt added (simulated). The funder can check it now.">
+          Add the receipt
+        </ActionButton>
+      );
+    } else if (t.paid > t.spent && BEHAVIOUR_OF(w, g.fundId) !== "commercial") {
+      msg = `${fmt(t.paid - t.spent)} is not yet accounted for.`;
+      action = (
+        <a className={btn("primary")} href={`#/app/${persona.id}/update/${g.id}`}>
+          Add spending
+        </a>
+      );
+    }
+  } else if (side === "funder") {
     const toCheck = ex.filter((e) => e.status === "reported" && e.receipt);
-    if (
-      toCheck.length &&
-      (persona.perms.includes("Finance") || persona.perms.includes("Review"))
-    )
-      msg = `${toCheck.length} expense${toCheck.length > 1 ? "s" : ""} to check (${fmt(toCheck.reduce((a, e) => a + e.amount, 0))}).`;
-    else if (
-      t.stillToPay > 0 &&
-      t.paid === 0 &&
-      persona.perms.includes("Finance") &&
-      !g.status?.startsWith("awaiting")
-    )
-      msg = "Record the first payment.";
+    if (toCheck.length && (persona.perms.includes("Finance") || persona.perms.includes("Verify")))
+      msg = `${toCheck.length} expense${toCheck.length > 1 ? "s" : ""} to check (${fmt(toCheck.reduce((a, e) => a + e.amount, 0))}), listed below.`;
+    else if (t.stillToPay > 0 && t.paid === 0 && persona.perms.includes("Finance")) msg = "Record the first payment, below.";
   }
   if (!msg) return null;
   return (
-    <p
-      role="status"
-      className="mt-6 flex gap-2 border-l-2 border-signal pl-3 font-medium"
-    >
-      Next: {msg}
-    </p>
+    <div role="status" className="mt-6 flex flex-col gap-3 border-l-2 border-signal pl-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="font-medium">Next: {msg}</p>
+      {action}
+    </div>
   );
 }
 
@@ -796,11 +815,20 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
 }
 
 function RecordReview({ persona, g }: { persona: Person; g: Agreement }) {
+  const { world: w } = useStore();
   const [decision, setDecision] = useState<
-    "Continue" | "Continue with conditions" | "Pause" | "Close"
-  >("Continue");
+    "" | "Continue" | "Continue with conditions" | "Pause" | "Close"
+  >("");
+  const recent = Object.values(w.reviews).some((r) => r.agreementId === g.id && r.at === w.moment);
+  const [again, setAgain] = useState(false);
   const [conditions, setConditions] = useState("");
   const act = useAction(persona.id);
+  if (recent && !again)
+    return (
+      <button type="button" className={btn("quiet", "mt-4")} onClick={() => setAgain(true)}>
+        Record another review
+      </button>
+    );
   return (
     <div className="mt-6 border-t border-line pt-5">
       <fieldset>
@@ -814,7 +842,7 @@ function RecordReview({ persona, g }: { persona: Person; g: Agreement }) {
               className={cn(
                 "inline-flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-small",
                 decision === d
-                  ? "border-ink bg-surface-2 font-medium"
+                  ? "border-ink bg-ink font-medium text-canvas before:content-['✓']"
                   : "border-line-strong",
               )}
             >
@@ -876,6 +904,29 @@ function RecordReview({ persona, g }: { persona: Person; g: Agreement }) {
   );
 }
 
+/** Ask the recipient about one expense, in your own words (a question needs a reason). */
+function AskAbout({ persona, expenseId }: { persona: Person; expenseId: string }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  if (!open)
+    return (
+      <button type="button" className={btn("quiet", "min-h-10")} onClick={() => setOpen(true)}>
+        Ask a question
+      </button>
+    );
+  return (
+    <div className="flex w-full flex-wrap items-end gap-2">
+      <label className="min-w-56 flex-1 text-small">
+        <span className="text-subtle">Your question</span>
+        <input className={cn(inputCls, "mt-1")} value={q} onChange={(e) => setQ(e.target.value)} placeholder="For example: is this the June or July invoice?" />
+      </label>
+      <ActionButton actor={persona.id} type="queryExpense" args={{ expenseId, reason: q }} variant="secondary" success="Sent. It shows as a question until they answer.">
+        Send
+      </ActionButton>
+    </div>
+  );
+}
+
 function Deliverables({
   persona,
   g,
@@ -924,7 +975,7 @@ function Deliverables({
                   persona.id === g.recipientId &&
                   d.done + d.pending < d.target && (
                     <a
-                      className={btn("secondary", "min-h-10")}
+                      className={d.id === dels.find((x) => x.done + x.pending < x.target)?.id ? btn("secondary", "min-h-10") : "inline-flex min-h-10 items-center text-small underline underline-offset-4"}
                       href={`#/app/${persona.id}/update/${g.id}?proof`}
                     >
                       Send proof
@@ -978,6 +1029,8 @@ export function UpdatePage({ persona, id }: { persona: Person; id: string }) {
   const [kind, setKind] = useState<"spending" | "progress" | "proof">(initial);
   if (!g || !mine.some((x) => x.id === g.id))
     return <Empty>There is no funding for you to update yet.</Empty>;
+  // A guardian or coach sending an update writes about the athlete, not about themselves.
+  const forOther = g.recipientKind === "athlete" && persona.id !== g.recipientId ? w.athletes[g.recipientId]?.name.split(" ")[0] : undefined;
   const back = () => go(`app/${persona.id}/agreement/${g.id}`);
   return (
     <div className="max-w-2xl pb-10">
@@ -985,9 +1038,9 @@ export function UpdatePage({ persona, id }: { persona: Person; id: string }) {
         eyebrow="Send an update"
         title={
           kind === "spending"
-            ? "What did you spend money on?"
+            ? forOther ? `What did ${forOther} spend money on?` : "What did you spend money on?"
             : kind === "progress"
-              ? "What happened in your sport?"
+              ? forOther ? `What happened in ${forOther}'s sport?` : "What happened in your sport?"
               : "What have you done for your sponsor?"
         }
       />
@@ -1025,7 +1078,7 @@ export function UpdatePage({ persona, id }: { persona: Person; id: string }) {
             className={cn(
               "min-h-11 rounded-full border px-5 text-small",
               kind === k
-                ? "border-ink bg-surface-2 font-medium"
+                ? "border-ink bg-ink font-medium text-canvas before:content-['✓']"
                 : "border-line-strong",
             )}
           >
@@ -1057,7 +1110,7 @@ function SpendingForm({
   g: Agreement;
   onDone: () => void;
 }) {
-  const { world: w } = useStore();
+  const { world: w, setNotice } = useStore();
   const t = agreementTotals(w, g.id);
   const [what, setWhat] = useState("");
   const [amount, setAmount] = useState("");
@@ -1078,6 +1131,7 @@ function SpendingForm({
       className="mt-2"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!what.trim()) return act.fail("Say what the money was spent on.");
         if (
           act.run(
             "addExpense",
@@ -1089,10 +1143,12 @@ function SpendingForm({
               paidOn: day(paidOn),
               receipt,
             },
-            "Added. The funder checks it against the receipt.",
+            "Added.",
           )
-        )
+        ) {
+          setNotice(`${what.trim()} · ${fmt(Number(amount))} added. ${receipt ? "Waiting to be checked by the funder." : "Add the receipt when you have it."}`);
           onDone();
+        }
       }}
     >
       <p className="mt-4 text-small text-muted">
@@ -1166,7 +1222,7 @@ function ProgressForm({
   g: Agreement;
   onDone: () => void;
 }) {
-  const { world: w } = useStore();
+  const { world: w, setNotice } = useStore();
   const [kind, setKind] = useState<"result" | "training" | "milestone">(
     "result",
   );
@@ -1200,8 +1256,10 @@ function ProgressForm({
             },
             "Sent. The funder sees it on the funding record.",
           )
-        )
+        ) {
+          setNotice("Update sent. The funder sees it on this record.");
           onDone();
+          }
       }}
     >
       <fieldset className="mt-6">
@@ -1213,7 +1271,7 @@ function ProgressForm({
               className={cn(
                 "inline-flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-small",
                 kind === k
-                  ? "border-ink bg-surface-2 font-medium"
+                  ? "border-ink bg-ink font-medium text-canvas before:content-['✓']"
                   : "border-line-strong",
               )}
             >
@@ -1298,7 +1356,7 @@ function ProofForm({
   g: Agreement;
   onDone: () => void;
 }) {
-  const { world: w } = useStore();
+  const { world: w, setNotice } = useStore();
   const dels = Object.values(w.deliverables).filter(
     (d) => d.agreementId === g.id && d.done + d.pending < d.target,
   );
@@ -1318,8 +1376,10 @@ function ProofForm({
             { deliverableId: did, evidence },
             "Sent to your sponsor.",
           )
-        )
+        ) {
+          setNotice("Proof sent to your sponsor.");
           onDone();
+          }
       }}
     >
       <Field label="Which one?" htmlFor="pf-d">
@@ -1864,6 +1924,19 @@ function SessionRecorder({
           </p>
           {!why ? (
             <>
+              <label
+                htmlFor={`note-${siteId}`}
+                className="mt-3 block text-small text-subtle"
+              >
+                Note (optional; no names)
+              </label>
+              <input
+                id={`note-${siteId}`}
+                className={cn(inputCls, "mt-1")}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="For example: relay games; two new starters"
+              />
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <div>
                   <label
@@ -1910,19 +1983,7 @@ function SessionRecorder({
                   Couldn&rsquo;t run
                 </button>
               </div>
-              <label
-                htmlFor={`note-${siteId}`}
-                className="mt-3 block text-small text-subtle"
-              >
-                Note (optional; no names)
-              </label>
-              <input
-                id={`note-${siteId}`}
-                className={cn(inputCls, "mt-1")}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="For example: relay games; two new starters"
-              />
+
             </>
           ) : (
             <div className="mt-3">
@@ -1933,6 +1994,7 @@ function SessionRecorder({
                     "weather",
                     "coach availability",
                     "venue unavailable",
+                    "other",
                   ] as const
                 ).map((r) => (
                   <button
@@ -1958,7 +2020,9 @@ function SessionRecorder({
                       ? "Weather"
                       : r === "coach availability"
                         ? "No coach available"
-                        : "Venue not available"}
+                        : r === "venue unavailable"
+                          ? "Venue not available"
+                          : "Something else"}
                   </button>
                 ))}
                 <button
@@ -2165,7 +2229,7 @@ export function ReportPage({ persona, id }: { persona: Person; id: string }) {
 
 type Answer = { q: string; a: string[]; sources: string[]; refusal?: boolean };
 const REFUSE =
-  /\b(best|rank|ranking|top|who should we fund|should we fund|most talented|potential|which child|name of|names of|who is the child|worst)\b/i;
+  /\b(best|rank|ranking|top|worst|deserv\w*|should|decide|approve|reject|stop funding|most talented|potential|which child|identify|who is|name of|names of|surname|address|school)\b/i;
 
 /** Simulated AI (AI C): fixed templates over the records the viewer may see; refuses ranking, deciding and identifying. */
 export function answer(
@@ -2248,7 +2312,7 @@ export function answer(
     const m = agreementTotals(w, g.id);
     const who = athleteLabel(w, g.recipientId, persona);
     const ex = Object.values(w.expenses).filter((e) => e.agreementId === g.id);
-    const pr = Object.values(w.progress).filter((x) => x.agreementId === g.id);
+    const pr = progressPaused(w, g.recipientKind === "athlete" ? g.recipientId : undefined) ? [] : Object.values(w.progress).filter((x) => x.agreementId === g.id);
     return {
       q,
       a: [

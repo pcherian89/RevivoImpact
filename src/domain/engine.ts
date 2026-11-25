@@ -38,7 +38,7 @@ export type Event = { n: number; at: Moment; actor: string; type: CommandName; a
 export const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 export const person = (w: World, id: string) => w.people[id] as Person | undefined;
 /** An existing-funding draft counts only once a second person approves it (docs/03 Journey D). */
-export const counts = (g: Agreement) => g.status !== "awaiting-approval";
+export const counts = (g: Agreement) => g.status !== "awaiting-approval" && g.status !== "disputed";
 export const BEHAVIOUR_OF = (w: World, fundId: string) => BEHAVIOUR[w.funds[fundId].type];
 export const agreementsOf = (w: World, fundId: string) => Object.values(w.agreements).filter((a) => a.fundId === fundId && counts(a));
 export const released = (w: World, agreementId: string) => sum(w.ledger.filter((l) => l.agreementId === agreementId && (l.kind === "release" || l.kind === "carried-in")).map((l) => l.amount));
@@ -68,7 +68,8 @@ export function agreementTotals(w: World, agreementId: string) {
   const checked = sum(ex.filter((e) => e.status === "checked").map((e) => e.amount));
   const carriedSpent = sum(ex.filter((e) => e.status === "carried-in").map((e) => e.amount));
   const query = sum(ex.filter((e) => e.status === "query").map((e) => e.amount));
-  return { committed: g.amount, paid, carriedPaid, received: received(w, agreementId), spent, checked, carriedSpent, waiting: spent - checked - carriedSpent, query, notYetSpent: Math.max(0, paid - spent), stillToPay: g.amount - paid };
+  const rec = received(w, agreementId);
+  return { committed: g.amount, paid, carriedPaid, received: rec, toConfirm: Math.max(0, paid - carriedPaid - rec), spent, checked, carriedSpent, waiting: spent - checked - carriedSpent, query, notYetSpent: Math.max(0, paid - spent), stillToPay: g.amount - paid };
 }
 
 /** Programme status per site (docs/05 §6): ≥95% on track, 85–94% needs attention, <85% behind; alert after two missed in a row. */
@@ -98,10 +99,18 @@ export function programmeTotals(w: World, programmeId: string) {
 }
 
 /** Claims check for reports (docs/02 §10): words that claim more than records show. Deterministic. */
-const CLAIMS = ["improved confidence", "transformed", "changed lives", "life-changing", "proven", "proves", "guaranteed", "impact on wellbeing", "caused", "because of the programme"]; // copy-check: allow (the words the claims check refuses)
-export function claimsCheck(text: string) {
+const CLAIMS = ["improved confidence", "transformed", "changed lives", "changing lives", "life-changing", "life changing", "proven", "proves", "proved", "guaranteed", "impact on wellbeing", "caused", "because of the programme", "thanks to the programme", "as a result of the programme", "happier", "healthier", "anti-social", "crime", "100%", "every child", "all children", "all participants"]; // copy-check: allow (the words the claims check refuses)
+export function claimsCheck(text: string, w?: World, agreementId?: string) {
   const t = text.toLowerCase();
-  return CLAIMS.filter((c) => t.includes(c));
+  const esc = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const out = CLAIMS.filter((c) => new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t));
+  // Figures must match the records: "N of M sessions" and money amounts that the records do not contain.
+  const p = w && agreementId ? Object.values(w.programmes).find((x) => x.agreementId === agreementId) : undefined;
+  if (w && p) {
+    const pt = programmeTotals(w, p.id);
+    for (const m of t.matchAll(/(\d+) of (\d+) (?:planned )?sessions/g)) if (Number(m[1]) !== pt.delivered || Number(m[2]) !== pt.planned) out.push(`${m[1]} of ${m[2]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
+  }
+  return out;
 }
 
 /** Simulated AI report draft (AI C): built only from the records, every figure from a selector. */
@@ -285,6 +294,7 @@ const positive = (n: unknown, what = "The amount") => need(typeof n === "number"
 const fresh = (map: Record<string, unknown>, rid: string) => need(rid && !map[rid], "That record already exists. Nothing was changed.");
 /** Sports only (docs/02 §4.4): a fixed word list catches costs that are plainly not sporting. Deterministic, never AI. */
 const NOT_SPORT = ["holiday", "vacation", "beach", "rent", "mortgage", "tuition", "school fees", "university", "college fees", "wedding", "painting", "paint ", "art ", "art scholarship", "music", "piano", "groceries", "phone", "laptop", "car loan", "debt", "medical bills", "general expenses", "donation", "crowdfund"];
+const SPORTS_LIST = ["Archery", "Athletics", "Badminton", "Boxing", "Canoeing", "Cycling", "Fencing", "Football", "Judo", "Rowing", "Swimming", "Table tennis", "Triathlon", "Wheelchair basketball", "Wheelchair racing"];
 const SPORT_WORDS = ["sport", "athlet", "archery", "badminton", "boxing", "canoe", "cycling", "fencing", "football", "judo", "rowing", "swim", "table tennis", "triathlon", "wheelchair", "para", "netball", "basketball", "hockey", "rugby", "tennis", "gymnast", "running", "sprint"];
 export function sportingCheck(...texts: string[]) {
   const t = ` ${texts.join(" ").toLowerCase()} `;
@@ -313,6 +323,23 @@ function canActForAthlete(w: World, actor: string, athleteId: string, power: "su
   if (power === "prepare") return w.authorisations.some((z) => z.athleteId === athleteId && z.coachId === actor && z.powers.includes("prepare"));
   return false;
 }
+
+/** Programme staff with a given power (Admin/Approve run the programme; Verify checks a site; coaches record their own sites). */
+const staffCan = (w: World, actor: string, orgId: string, ...perms: Person["perms"][number][]) => {
+  const p = w.people[actor];
+  return !!p && p.orgId === orgId && p.perms.some((x) => perms.includes(x));
+};
+const siteOf = (w: World, actor: string, siteId: string) => !w.people[actor]?.sites || w.people[actor].sites!.includes(siteId);
+
+/** Money and updates move only on an agreement both sides have agreed (not a draft, not awaiting confirmation, not disputed). */
+const live = (g: Agreement) => need(!g.status || g.status === "active", g.status === "awaiting-approval" ? "This funding waits for a second person at the funder to approve it." : g.status === "awaiting-recipient" ? "This funding waits for the organisation to confirm the figures." : "The figures on this funding are disputed. Agree them first.");
+/** A paused or closed review stops further payments until a new review. */
+const notStopped = (w: World, g: Agreement) => {
+  const r = Object.values(w.reviews).filter((x) => x.agreementId === g.id).pop();
+  need(!r || (r.decision !== "Pause" && r.decision !== "Close"), `The last review ${r?.decision === "Pause" ? "paused" : "closed"} this funding. Record a new review first.`);
+};
+/** Progress sharing paused by the athlete or guardian (docs/02 §7.1). */
+export const progressPaused = (w: World, athleteId?: string) => !!athleteId && w.consents.some((z) => z.athleteId === athleteId && z.purpose === "progress" && z.value === false);
 
 /** Who may add spending or send updates on an agreement: the recipient, a minor's guardian, a coach with the update power, or the receiving organisation. */
 function mayUpdate(w: World, actor: string, g: Agreement) {
@@ -366,7 +393,9 @@ export const commands = {
 
   register(c: Ctx, a: { kind: "athlete"; personId: string; name: string; age: number; sport: string; region: string; gender: "woman" | "man" }) {
     need(a.age >= 18, "Athletes under 18 are registered by a parent or guardian.");
-    need(!c.w.athletes[a.personId], "This account already exists.");
+    need(!c.w.athletes[a.personId] && (!c.w.people[a.personId] || c.w.people[a.personId].athleteId === a.personId), "This account already exists.");
+    need(Number.isInteger(a.age), "Give your age in whole years.");
+    need(SPORT_WORDS.some((x) => a.sport.toLowerCase().includes(x)) || SPORTS_LIST.includes(a.sport), "Revivo Impact is for sport. Choose your sport.");
     const base = a.personId === "amira" ? AMIRA_PROFILE() : null;
     c.w.athletes[a.personId] = base ?? { id: a.personId, name: a.name, age: a.age, minor: false, gender: a.gender, sport: a.sport, discipline: a.sport, level: "Not yet added", levelRank: 1, region: a.region, discoverable: false, currentSupport: [], tags: [a.sport.toLowerCase(), a.region], createdAt: c.at, facts: [] };
     if (!c.w.people[a.personId]) c.w.people[a.personId] = { id: a.personId, name: a.name, role: "athlete", title: `Athlete, ${a.age} · ${a.sport.toLowerCase()}`, athleteId: a.personId, perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: true };
@@ -388,7 +417,7 @@ export const commands = {
     need(a.personId && !c.w.people[a.personId] && !c.w.athletes[a.childId], "This account already exists.");
     need(a.name?.trim() && a.childName?.trim(), "Add your name and the athlete's name.");
     need(Number.isInteger(a.age) && a.age >= 8 && a.age < 18, "A guardian registers athletes aged 8 to 17. Athletes 18 or over register themselves.");
-    need(SPORT_WORDS.some((x) => a.sport.toLowerCase().includes(x)) || a.sport.trim().length > 2, "Choose the athlete's sport.");
+    need(SPORT_WORDS.some((x) => a.sport.toLowerCase().includes(x)) || SPORTS_LIST.includes(a.sport), "Revivo Impact is for sport. Choose the athlete's sport.");
     c.w.athletes[a.childId] = { id: a.childId, name: a.childName.trim(), age: a.age, minor: true, gender: a.gender, guardianId: a.personId, sport: a.sport, discipline: a.sport, level: "Not yet added", levelRank: 1, region: a.region, discoverable: false, currentSupport: [], tags: [a.sport.toLowerCase(), a.region], createdAt: c.at, facts: [] };
     c.w.people[a.personId] = { id: a.personId, name: a.name.trim(), role: "guardian", title: `Guardian of ${a.childName.trim().split(" ")[0]} (${a.age})`, perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: true };
     audit(c, "Registered as a guardian and added a young athlete (never discoverable)", "Athlete under 18");
@@ -410,7 +439,7 @@ export const commands = {
   registerFunder(c: Ctx, a: { personId: string; name: string; orgName: string; type: "Company" | "Individual sponsor"; sports: string }) {
     const fid = `f-${a.personId}`;
     need(a.personId && !c.w.people[a.personId] && !c.w.funders[fid], "This account already exists.");
-    c.w.funders[fid] = { id: fid, name: a.type === "Individual sponsor" ? a.name : a.orgName, type: a.type, sports: a.sports, regions: "Any region", typesLabel: ["Development grant"], typical: "Up to $2,000", accepts: "yes", acceptsNote: "Accepts support asks (set up on joining)", acceptsMax: 2000, acceptsSupport: ["Equipment", "Travel", "Coaching"], objective: "New participating funder.", verified: false, relevant: ["any"] };
+    c.w.funders[fid] = { id: fid, name: a.type === "Individual sponsor" ? a.name : a.orgName, type: a.type, sports: a.sports, regions: "Any region", typesLabel: ["Development grant"], typical: "Up to $2,000", accepts: "yes", acceptsNote: "Accepts direct requests (set up on joining)", acceptsMax: 2000, acceptsSupport: ["Equipment", "Travel", "Coaching"], objective: "New participating funder.", verified: false, relevant: ["any"] };
     c.w.funds[`${fid}-fund`] = { id: `${fid}-fund`, funderId: fid, name: `${a.type === "Individual sponsor" ? a.name : a.orgName} support`, type: "Development grant", announced: 10000, max: 2000, policy: "Simple" };
     c.w.people[a.personId] = { id: a.personId, name: a.name, role: a.type === "Individual sponsor" ? "individual" : "sponsor", title: a.type === "Individual sponsor" ? "Individual sponsor (verification requested)" : `Sponsor · ${a.orgName}`, funderId: fid, perms: ["Approve", "Review", "Finance"], group: "Providing funding", journeys: "", tasks: [], persona: true };
     audit(c, `Registered as ${a.type === "Individual sponsor" ? "an individual sponsor" : "a company"}; verification requested (simulated)`, a.name);
@@ -526,6 +555,7 @@ export const commands = {
   answerInfo(c: Ctx, a: { appId: string; otherFunding: string }) {
     const app = c.w.applications[a.appId];
     need(canActForAthlete(c.w, c.actor, app.applicantId, "submit"), "Only the applicant (or guardian) answers.");
+    need(app.status === "info" && app.info?.status === "open", "There is no open question on this application.");
     app.info = { ...app.info!, status: "answered" };
     app.otherFunding = a.otherFunding;
     app.status = "submitted";
@@ -571,7 +601,8 @@ export const commands = {
     const total = sum(offerable.map((x) => x.recommendedTier!));
     const t = fundTotals(c.w, fund.id);
     need(total <= t.available, `This would exceed the money available by ${fmt(total - t.available)}.`);
-    need(!fund.awards || offerable.length + t.count <= fund.awards, `This fund publishes at most ${fund.awards} awards.`);
+    const heldAlready = Object.values(c.w.offers).filter((y) => y.fundId === fund.id && ["held", "safeguarding", "second-approval"].includes(y.status)).length;
+    need(!fund.awards || offerable.length + t.count + heldAlready <= fund.awards, `This fund publishes at most ${fund.awards} awards.`);
     for (const x of offerable) {
       const oid = `of-${x.id}`;
       fresh(c.w.offers, oid);
@@ -639,7 +670,12 @@ export const commands = {
         need(/^(january|february|march|april|may|june|july|august|september|october|november|december)$/i.test(a.neededMonth.trim()), "For athletes under 18, give only the month the money is needed, not an exact date.");
         region = chk.region;
       }
-    } else region = c.w.orgs[a.ownerId].region;
+    } else {
+      const org = c.w.orgs[a.ownerId] ?? fail("That organisation does not exist.");
+      const p = c.w.people[c.actor];
+      need(p?.orgId === org.id && p.perms.some((x) => x === "Admin" || x === "Approve"), "Only someone with Admin or Approve at the organisation publishes its requests.");
+      region = org.region;
+    }
     c.w.requests[a.requestId] = { id: a.requestId, ownerKind: a.ownerKind, ownerId: a.ownerId, title: a.title, sport: a.sport, region, minor, ageGroup, lines: a.lines.map((l, i) => ({ id: `l${i + 1}`, label: l.label, amount: l.amount, otherSources: 0 })), visibility: minor ? "Verified funders only" : a.visibility, discoverable: true, status: "open", neededBy: a.neededBy, neededMonth: a.neededMonth, publishedBy: c.actor, publishedAt: c.at, verifiedLabel: a.verifiedLabel, tags: a.tags, safeguarding: minor ? "Checked for identifying details (simulated) · 6 May" : undefined };
     audit(c, minor ? "Published an anonymised funding request (identifiability check passed)" : "Published a funding request", a.title);
   },
@@ -707,6 +743,7 @@ export const commands = {
     const p = c.w.people[c.actor];
     const ath = c.w.athletes[a.athleteId];
     need(p?.funderId, "Only funders express interest.");
+    need(c.w.funders[p!.funderId!].verified, "Your organisation is waiting for verification (simulated). Interest opens once the platform has checked you.");
     need(!ath.minor, "Interest in athletes under 18 goes only through a guardian's anonymised request.");
     need(ath.discoverable, "This athlete is not discoverable.");
     need(!c.w.blocks.some((b) => b.athleteId === a.athleteId && b.funderId === p!.funderId), "This athlete has blocked contact from your organisation.");
@@ -731,6 +768,7 @@ export const commands = {
     const fund = c.w.funds[a.fundId];
     const funder = c.w.funders[fund.funderId];
     need(isApprover(c.w, c.actor, fund.funderId), "Only someone with Approve at this funder can make offers.");
+    need(funder.verified, "Your organisation is waiting for verification (simulated). You can explore now; offers open once the platform has checked you.");
     fresh(c.w.offers, a.offerId);
     positive(a.amount);
     need(a.reason.trim().length > 10, "Give a reason linked to the fund's published criteria.");
@@ -846,7 +884,12 @@ export const commands = {
     const fund = c.w.funds[ag.fundId];
     const p = c.w.people[c.actor];
     need(p?.funderId === fund.funderId && p.perms.includes("Finance"), "Only someone with Finance at this funder records payments.");
-    if (fund.policy === "Institutional") need(c.w.offers[ag.offerId ?? ""]?.by !== c.actor, "Under this fund's rules, the person who approved the offer cannot also record its payment. Ask your finance colleague.");
+    live(ag);
+    notStopped(c.w, ag);
+    if (fund.policy === "Institutional") {
+      const o = c.w.offers[ag.offerId ?? ""];
+      need(o?.by !== c.actor && o?.approvedBy !== c.actor && ag.approvedBy !== c.actor, "Under this fund's rules, the person who approved it cannot also record its payment. Ask your finance colleague.");
+    }
     positive(a.amount, "A payment");
     need(!c.w.ledger.some((l) => l.id === a.entryId), "That record already exists. Nothing was changed.");
     need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === a.ref), `Payment ${a.ref} is already recorded.`);
@@ -858,10 +901,15 @@ export const commands = {
   confirmReceipt(c: Ctx, a: { agreementId: string; entryId: string }) {
     const ag = c.w.agreements[a.agreementId];
     const ath = ag.recipientKind === "athlete" ? c.w.athletes[ag.recipientId] : null;
-    need(ath ? (ath.minor ? ath.guardianId === c.actor : ath.id === c.actor) : c.w.people[c.actor]?.orgId === ag.recipientId, "Only the person who received the money (or their guardian) confirms it arrived.");
+    need(ath ? (ath.minor ? ath.guardianId === c.actor : ath.id === c.actor) : staffCan(c.w, c.actor, ag.recipientId, "Admin", "Approve", "Finance"), "Only the person who received the money (or their guardian, or the organisation's finance lead) confirms it arrived.");
     need(!c.w.ledger.some((l) => l.id === a.entryId), "That record already exists. Nothing was changed.");
-    const unconfirmed = released(c.w, ag.id) - received(c.w, ag.id);
-    need(unconfirmed > 0, "There is no payment to confirm yet.");
+    live(ag);
+    // One confirmation per recorded payment (I9); money carried in from before is never "received" here.
+    const releases = c.w.ledger.filter((l) => l.agreementId === ag.id && l.kind === "release");
+    let left = received(c.w, ag.id);
+    const next = releases.find((l) => (left -= l.amount) < 0);
+    need(next, "There is no payment to confirm yet.");
+    const unconfirmed = -left;
     c.w.ledger.push({ id: a.entryId, agreementId: ag.id, kind: "receipt", amount: unconfirmed, by: c.actor, at: c.at, ref: "receipt" });
     audit(c, `Confirmed receipt of ${fmt(unconfirmed)}`, c.w.funds[ag.fundId].name);
   },
@@ -904,6 +952,8 @@ export const commands = {
     positive(a.amount);
     need(a.what?.trim().length >= 3, "Say what the money was spent on.");
     sportingCheck(a.what);
+    live(g);
+    need(!Object.values(c.w.expenses).some((e) => e.agreementId === g.id && e.what.toLowerCase() === a.what.trim().toLowerCase() && e.amount === a.amount && e.paidOn === a.paidOn), "This expense is already recorded (same item, amount and date).");
     const t = agreementTotals(c.w, g.id);
     need(t.spent + a.amount <= t.paid, `Only ${fmt(t.paid - t.spent)} of the money paid is not yet accounted for. Spending can't be more than was paid.`);
     c.w.expenses[a.expenseId] = { id: a.expenseId, agreementId: g.id, what: a.what.trim(), amount: a.amount, paidOn: a.paidOn, receipt: a.receipt, category: a.category, by: c.actor, at: c.at, status: "reported" };
@@ -923,7 +973,7 @@ export const commands = {
     const e = c.w.expenses[a.expenseId] ?? fail("That expense does not exist.");
     const g = c.w.agreements[e.agreementId];
     const fid = c.w.funds[g.fundId].funderId;
-    need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Review"), "Only someone at the funder with Finance or Review checks spending.");
+    need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Verify"), "Only someone at the funder with Finance or Verify checks spending.");
     need(e.by !== c.actor, "You added this expense. Someone else must check it.");
     need(e.status === "reported" || e.status === "query", e.status === "checked" ? "This expense is already checked." : "Money carried in from before is shown as reported, never checked.");
     need(e.receipt, "There is no receipt yet. Ask for it instead of checking.");
@@ -935,7 +985,7 @@ export const commands = {
   queryExpense(c: Ctx, a: { expenseId: string; reason: string }) {
     const e = c.w.expenses[a.expenseId] ?? fail("That expense does not exist.");
     const fid = c.w.funds[c.w.agreements[e.agreementId].fundId].funderId;
-    need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Review"), "Only someone at the funder with Finance or Review asks about spending.");
+    need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Verify"), "Only someone at the funder with Finance or Verify asks about spending.");
     need(e.status === "reported", "Only spending waiting to be checked can be asked about.");
     need(a.reason?.trim().length > 3, "Say what you need, for example “Please add the receipt”.");
     e.status = "query";
@@ -946,12 +996,24 @@ export const commands = {
   sendProgress(c: Ctx, a: { progressId: string; agreementId?: string; athleteId?: string; orgId?: string; kind: Progress["kind"]; text: string; proof: boolean; photo?: boolean }) {
     fresh(c.w.progress, a.progressId);
     need(a.text?.trim().length >= 3, "Say what happened, in a sentence.");
+    need(a.athleteId || a.orgId, "Say who the update is about.");
+    if (a.agreementId) {
+      const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
+      need(a.athleteId ? g.recipientKind === "athlete" && g.recipientId === a.athleteId : g.recipientKind === "org" && g.recipientId === a.orgId, "An update goes on the funding record of the athlete or organisation it is about.");
+      live(g);
+    }
     if (a.athleteId) {
       const ath = c.w.athletes[a.athleteId] ?? fail("That athlete does not exist.");
       const coach = c.w.authorisations.some((z) => z.athleteId === ath.id && z.coachId === c.actor && z.powers.includes("updates"));
       need(c.actor === ath.id || ath.guardianId === c.actor || coach, "Only the athlete, their guardian or a coach allowed to send updates can do this.");
       if (a.photo) need(c.w.consents.some((z) => z.athleteId === ath.id && z.purpose === "photos" && z.value), "Photos need consent first. The athlete (or guardian) can turn on “Photos and stories”.");
-    } else need(c.w.people[c.actor]?.orgId === a.orgId, "Only the organisation can send its update.");
+      need(!progressPaused(c.w, ath.id), `Progress sharing is paused for ${ath.name.split(" ")[0]}. ${ath.minor ? "The guardian" : "The athlete"} can turn it back on in Consent & safety.`);
+      if (ath.minor) {
+        // Funders see a minor's first name only: no surname or club in update text.
+        const words = [...ath.name.split(" ").slice(1), ...(ath.club ? [ath.club] : [])].filter((x) => x.length > 2).map((x) => x.toLowerCase());
+        need(!words.some((x) => a.text.toLowerCase().includes(x)), "Leave out the surname and club: funders see a young athlete's first name only.");
+      }
+    } else need(a.orgId && c.w.people[c.actor]?.orgId === a.orgId, "Only the organisation can send its update.");
     c.w.progress[a.progressId] = { id: a.progressId, agreementId: a.agreementId, athleteId: a.athleteId, orgId: a.orgId, kind: a.kind, text: a.text.trim(), proof: a.proof, photo: a.photo, by: c.actor, at: c.at };
     audit(c, `Sent a ${a.kind === "result" ? "result" : a.kind === "training" ? "training" : "progress"} update${a.photo ? " with a photo (consent on)" : ""}`, a.athleteId ? (c.w.athletes[a.athleteId].minor ? "Athlete under 18" : c.w.athletes[a.athleteId].name) : c.w.orgs[a.orgId!]?.name ?? "");
   },
@@ -993,6 +1055,8 @@ export const commands = {
     const fid = c.w.funds[g.fundId].funderId;
     need(memberOf(c.w, c.actor, fid, "Review") || memberOf(c.w, c.actor, fid, "Approve"), "Only someone at the funder with Review or Approve records a review.");
     fresh(c.w.reviews, a.reviewId);
+    need(["Continue", "Continue with conditions", "Pause", "Close"].includes(a.decision), "Choose Continue, Continue with conditions, Pause or Close.");
+    need(a.decision.startsWith("Continue") || memberOf(c.w, c.actor, fid, "Approve"), "Pausing or closing funding needs someone with Approve.");
     need(a.decision === "Continue" || a.conditions?.trim(), a.decision === "Continue with conditions" ? "Write the conditions." : "Give the reason.");
     c.w.reviews[a.reviewId] = { id: a.reviewId, agreementId: g.id, decision: a.decision, conditions: a.conditions?.trim(), by: c.actor, at: c.at };
     audit(c, `Review: ${a.decision}${a.conditions ? `: ${a.conditions.trim()}` : ""}`, c.w.funds[g.fundId].name);
@@ -1003,6 +1067,9 @@ export const commands = {
     const person = c.w.people[c.actor];
     need(person?.orgId === p.orgId, "Only the programme's own coaches and staff record sessions.");
     const site = p.sites.find((x) => x.id === a.siteId) ?? fail("That site is not part of this programme.");
+    need(siteOf(c.w, c.actor, site.id), "You record sessions only at the sites you coach.");
+    need(a.status === "delivered" || a.status === "missed", "Say whether the session ran.");
+    if (a.status === "missed") need(["weather", "coach availability", "venue unavailable", "other"].includes(a.reason ?? ""), "Choose why it couldn't run.");
     need(Number.isInteger(a.slot) && a.slot >= 0 && a.slot <= LAST_SLOT[c.at], "You can record only sessions that have already happened.");
     need(!Object.values(c.w.sessions).some((x) => x.siteId === a.siteId && x.slot === a.slot && x.programmeId === p.id), "This session has already been recorded.");
     fresh(c.w.sessions, a.sessionId);
@@ -1015,7 +1082,7 @@ export const commands = {
   checkSession(c: Ctx, a: { sessionId: string }) {
     const x = c.w.sessions[a.sessionId] ?? fail("That session does not exist.");
     const p = c.w.programmes[x.programmeId];
-    need(c.w.people[c.actor]?.orgId === p.orgId && c.w.people[c.actor].perms.includes("Verify"), "Only a site coordinator with Verify checks sessions.");
+    need(staffCan(c.w, c.actor, p.orgId, "Verify") && siteOf(c.w, c.actor, x.siteId), "Only the site's coordinator (with Verify) checks its sessions.");
     need(x.by !== c.actor, "You recorded this session. Someone else must check it.");
     need(x.status === "delivered" && !x.checked, "This session does not need checking.");
     x.checked = true;
@@ -1034,7 +1101,8 @@ export const commands = {
 
   submitRecoveryPlan(c: Ctx, a: { planId: string; programmeId: string; siteId: string; text: string }) {
     const p = c.w.programmes[a.programmeId] ?? fail("That programme does not exist.");
-    need(c.w.people[c.actor]?.orgId === p.orgId, "Only the programme's staff write a recovery plan.");
+    need(staffCan(c.w, c.actor, p.orgId, "Admin", "Approve", "Verify"), "Only the programme director or the site coordinator writes a recovery plan.");
+    need(p.sites.some((x) => x.id === a.siteId), "That site is not part of this programme.");
     fresh(c.w.recoveryPlans, a.planId);
     need(a.text?.trim().length > 10, "Say how the missed sessions will be made up.");
     c.w.recoveryPlans[a.planId] = { id: a.planId, programmeId: p.id, siteId: a.siteId, text: a.text.trim(), by: c.actor, at: c.at, status: "submitted" };
@@ -1057,7 +1125,8 @@ export const commands = {
 
   draftReport(c: Ctx, a: { reportId: string; agreementId: string; period: string }) {
     const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
-    need(g.recipientKind === "org" && c.w.people[c.actor]?.orgId === g.recipientId, "Only the organisation that received the funding writes its report.");
+    need(g.recipientKind === "org" && staffCan(c.w, c.actor, g.recipientId, "Admin", "Approve"), "Only the organisation's director (Admin or Approve) writes its report.");
+    live(g);
     fresh(c.w.reports, a.reportId);
     c.w.reports[a.reportId] = { id: a.reportId, agreementId: g.id, period: a.period, text: draftReportText(c.w, g.id), by: c.actor, at: c.at, status: "draft" };
     audit(c, "Drafted a report from the records (Simulated AI)", a.period);
@@ -1065,10 +1134,10 @@ export const commands = {
 
   submitReport(c: Ctx, a: { reportId: string; text: string }) {
     const r = c.w.reports[a.reportId] ?? fail("That report does not exist.");
-    need(c.w.people[c.actor]?.orgId === c.w.agreements[r.agreementId].recipientId, "Only the organisation submits its report.");
+    need(staffCan(c.w, c.actor, c.w.agreements[r.agreementId].recipientId, "Admin", "Approve"), "Only the organisation's director (Admin or Approve) sends its report.");
     need(r.status === "draft" || r.status === "returned", "This report has already been sent.");
     need(!a.text.includes("[What participants"), "Replace the gap marked in square brackets with your own words, or delete it.");
-    const flags = claimsCheck(a.text);
+    const flags = claimsCheck(a.text, c.w, r.agreementId);
     need(!flags.length, `“${flags[0]}” claims more than your records show. Say what was measured instead, for example what participants said in the survey.`);
     r.text = a.text;
     r.status = "submitted";
@@ -1089,7 +1158,7 @@ export const commands = {
 
   addExistingFunding(c: Ctx, a: { agreementId: string; fundId: string; orgId: string; amount: number; purpose: string; paid: number; spent: number; nextUpdate: string }) {
     const fund = c.w.funds[a.fundId] ?? fail("That fund does not exist.");
-    need(c.w.people[c.actor]?.funderId === fund.funderId, "Only people at this funder add its existing funding.");
+    need(memberOf(c.w, c.actor, fund.funderId, "Review") || memberOf(c.w, c.actor, fund.funderId, "Approve"), "Only someone at this funder with Review or Approve adds its existing funding.");
     need(c.w.orgs[a.orgId], "Choose a registered organisation (otherwise an invitation would be sent).");
     fresh(c.w.agreements, a.agreementId);
     positive(a.amount);

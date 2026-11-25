@@ -12,7 +12,7 @@ export const NAV: Record<RoleKey, NavItem[]> = {
   ],
   guardian: [
     { label: "Home", screen: "home" },
-    { label: "My Athletes", screen: "safety" },
+    { label: "Consent & safety", screen: "safety" },
     { label: "Discover", screen: "discover" },
     { label: "Applications", screen: "applications" },
     { label: "Funding & Updates", screen: "funding" },

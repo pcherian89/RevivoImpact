@@ -31,6 +31,9 @@ type Store = {
   stepDone: (s: Step) => boolean;
   ownEvents: number;
   reset: () => void;
+  notice: string | null;
+  /** Confirmation shown on the next screen (it survives one navigation, then clears). */
+  setNotice: (s: string | null) => void;
 };
 
 const KEY = "revivo-impact:v2";
@@ -94,6 +97,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   worldRef.current = world;
   ownRef.current = own;
   const [changed, setChanged] = useState<Changed | null>(null);
+  const [notice, setNoticeState] = useState<string | null>(null);
+  const armed = useRef(false);
+  const setNotice = useCallback((s: string | null) => {
+    armed.current = !!s;
+    setNoticeState(s);
+  }, []);
   const [guide, setGuideState] = useState<Guide>({ open: false, journey: "A", step: 0 });
 
   useEffect(() => {
@@ -106,6 +115,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return next;
       });
       window.scrollTo(0, 0);
+      if (armed.current) armed.current = false;
+      else setNoticeState(null);
     };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
@@ -158,10 +169,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setMoment = useCallback(
     (m: Moment) => {
       if (m === moment) return;
-      if (own.length && !window.confirm("Moving the demonstration date loads the story at that date. Your own changes since the last date will be replaced. Continue?")) return;
+      // The date menu itself warns when your own changes will be replaced (no browser pop-up).
       loadAt(m, []);
     },
-    [moment, own.length, loadAt],
+    [moment, loadAt],
   );
 
   const stepDone = useCallback((s: Step) => (s.done ? s.done(world) : false), [world]);
@@ -236,8 +247,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stepDone,
       ownEvents: own.length,
       reset,
+      notice,
+      setNotice,
     }),
-    [world, theme, reducedMotion, moment, setMoment, route, go, act, changed, guide, showStep, loadStep, stepDone, own.length, reset],
+    [world, theme, reducedMotion, moment, setMoment, route, go, act, changed, guide, showStep, loadStep, stepDone, own.length, reset, notice, setNotice],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

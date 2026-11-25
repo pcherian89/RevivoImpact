@@ -2,8 +2,8 @@ import { CircleCheck, Lock, ShieldCheck } from "lucide-react";
 import { useStore } from "../state/store";
 import type { Person } from "../domain/model";
 import { fmt } from "../domain/engine";
-import { Chip, cn, PageHead, Tabs } from "../components/ui";
-import { ActionButton, Empty, Row, Section, useAction } from "./common";
+import { Chip, PageHead, seg, Tabs } from "../components/ui";
+import { ActionButton, Empty, Message, Row, Section, useAction } from "./common";
 import { useManaging } from "../components/Shell";
 import { useState } from "react";
 
@@ -24,7 +24,7 @@ export function Safety({ persona }: { persona: Person }) {
   const canChange = persona.role === "guardian" || persona.role === "athlete";
   return (
     <div className="pb-8">
-      <PageHead eyebrow={persona.role === "athlete" ? "Consent & safety" : `My Athletes · ${ath.name}`} title="Who can see what, and how do I stay in control?" lead="Every choice takes effect at once. Saying no changes nothing else." />
+      <PageHead eyebrow={persona.role === "athlete" ? "Consent & safety" : `Consent & safety · ${ath.name}`} title="Who can see what, and how do I stay in control?" lead="Every choice takes effect at once. Saying no changes nothing else." />
       {!canChange && <p className="flex gap-2 text-muted"><Lock className="mt-1 size-4" aria-hidden="true" /> As a coach you cannot change consent, accept offers or publish requests.</p>}
       <Section title="What you have agreed to">
         <ul>
@@ -41,12 +41,13 @@ export function Safety({ persona }: { persona: Person }) {
                 <p className="text-small text-subtle">{effect}</p>
                 <div className="mt-3 flex gap-3">
                   {[true, false].map((val) => (
-                    <button key={String(val)} type="button" disabled={!canChange} aria-pressed={v === val} onClick={() => act.run("setConsent", { athleteId: ath.id, purpose: p, value: val })} className={cn("min-h-11 min-w-24 rounded-full border px-5 font-display font-bold disabled:opacity-50", v === val ? (val ? "border-lime bg-lime text-on-lime" : "border-ink bg-ink text-canvas") : "border-control text-ink")}>
+                    <button key={String(val)} type="button" disabled={!canChange} aria-pressed={v === val} onClick={() => act.run("setConsent", { athleteId: ath.id, purpose: p, value: val }, val ? `${label}: on for ${ath.name.split(" ")[0]}.` : `${label}: off for ${ath.name.split(" ")[0]}. This takes effect now.`)} className={seg(v === val)}>
                       {val ? "Yes" : "No"}
                     </button>
                   ))}
                   <span className="self-center text-small text-subtle">{v === undefined ? "Not chosen yet" : "Change or withdraw at any time"}</span>
                 </div>
+                <Message error={act.error} done={act.done} />
               </li>
             );
           })}
@@ -58,14 +59,14 @@ export function Safety({ persona }: { persona: Person }) {
             {reqs.map((r) => (
               <Row key={r.id}>
                 <span>
-                  {r.title} {r.minor && <Chip kind="neutral">Shown without names</Chip>}
+                  {r.title}
                 </span>
                 {r.discoverable && canChange ? (
                   <ActionButton actor={persona.id} type="hideRequest" args={{ requestId: r.id }} variant="secondary" success="Hidden from Discover. Existing offers and agreements continue.">
                     Hide from discovery
                   </ActionButton>
                 ) : (
-                  <Chip kind="self">{r.discoverable ? "Visible" : "Hidden from discovery"}</Chip>
+                  <Chip kind="self">{r.discoverable ? (r.minor ? "In Discover, without names" : "In Discover") : "Hidden from Discover"}</Chip>
                 )}
               </Row>
             ))}
@@ -74,6 +75,12 @@ export function Safety({ persona }: { persona: Person }) {
       )}
       <Section title={`Who can act for ${ath.name.split(" ")[0]}`}>
         <ul>
+          {ath.minor && ath.guardianId && w.people[ath.guardianId] && (
+            <Row>
+              <span>{w.people[ath.guardianId].name} · guardian</span>
+              <span className="text-small text-subtle">Everything: accepts offers, publishes requests, controls consent.</span>
+            </Row>
+          )}
           {reps.map((z) => (
             <Row key={z.coachId}>
               <span>

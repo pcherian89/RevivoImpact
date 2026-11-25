@@ -145,7 +145,7 @@ describe("verifier regressions", () => {
   it("only verified organisations reach minors; the recipient is always the request's owner", () => {
     const w = may();
     apply(w, { n: 0, at: "may06", actor: "new", type: "registerFunder", args: { personId: "new", name: "New Person", orgName: "New Co", type: "Company", sports: "Any" } });
-    expect(offer(w, "new", { fundId: "f-new-fund", recipientKind: "athlete", recipientId: "a-cyclist", requestId: "rq-cyclist", lineId: "l1", amount: 500 })).toMatch(/Only verified organisations/);
+    expect(offer(w, "new", { fundId: "f-new-fund", recipientKind: "athlete", recipientId: "a-cyclist", requestId: "rq-cyclist", lineId: "l1", amount: 500 })).toMatch(/waiting for verification/);
     expect(offer(w, "lucy", { fundId: "cap", recipientKind: "athlete", recipientId: "nadia", requestId: "rq-cyclist", lineId: "l1", amount: 500 })).toMatch(/goes to the person or organisation that published it/);
     expect(offer(w, "marcus", { fundId: "has", recipientKind: "org", recipientId: "highland", requestId: "rq-cyclist", lineId: "l1", amount: 500 })).toMatch(/goes to the person or organisation/);
     expect(offer(w, "kenji", { fundId: "oas", recipientKind: "athlete", recipientId: "tiago", amount: 500 })).toMatch(/only through a guardian's anonymised request/);
@@ -311,5 +311,73 @@ describe("P3 reconciliation (30 Jun, all journey steps done)", () => {
     expect(fundTotals(w, "fdg").committed).toBe(0);
     w.people.danielApprove = { ...w.people.daniel, id: "danielApprove" };
     expect(tryCmd(w, { at: "jun30", actor: "daniel", type: "approveExistingFunding", args: { agreementId: "e1" } })).toMatch(/Approve/);
+  });
+});
+
+/* Regressions found by the P3 money and safeguarding verification (docs/12 §5). */
+describe("P3 verifier regressions", () => {
+  const full = () => {
+    const w = replay(checkpoint("jun30"));
+    for (const j of JOURNEYS) for (const s of j.steps.filter((x) => x.when === "jun30")) for (const e of stepEvents(s)) apply(w, e);
+    return w;
+  };
+  const at = (w: ReturnType<typeof baseWorld>, actor: string, type: string, args: Record<string, unknown>) => tryCmd(w, { at: "jun30", actor, type: type as Event["type"], args });
+  it("an update goes only on the record of the athlete or organisation it is about; no surname or club for a minor", () => {
+    const w = full();
+    expect(at(w, "amira", "sendProgress", { progressId: "x1", agreementId: "ag-pe1", athleteId: "amira", kind: "result", text: "Won a medal", proof: true })).toMatch(/funding record of the athlete or organisation/);
+    expect(at(w, "rosa", "sendProgress", { progressId: "x2", agreementId: "ag-amira", athleteId: "tiago", kind: "result", text: "Won", proof: true })).toMatch(/funding record of the athlete or organisation/);
+    expect(at(w, "marcus", "sendProgress", { progressId: "x3", agreementId: "ag-oriel-tiago", kind: "result", text: "Photo", proof: true, photo: true })).toMatch(/who the update is about/);
+    expect(at(w, "jonas", "sendProgress", { progressId: "x4", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "result", text: "Tiago Esteves of Saltmere won", proof: true })).toMatch(/surname and club/);
+  });
+  it("withdrawing progress consent pauses updates", () => {
+    const w = full();
+    apply(w, { n: 0, at: "jun30", actor: "rosa", type: "setConsent", args: { athleteId: "tiago", purpose: "progress", value: false } });
+    expect(at(w, "jonas", "sendProgress", { progressId: "x5", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "training", text: "Training week", proof: false })).toMatch(/Progress sharing is paused/);
+  });
+  it("the claims check catches outcome claims and figures that differ from the records", () => {
+    const w = full();
+    expect(claimsCheck("life changing results; children are happier and healthier thanks to the programme", w, "ag-pe1").length).toBeGreaterThan(2);
+    expect(claimsCheck("120 of 120 sessions ran", w, "ag-pe1")[0]).toMatch(/records show 108 of 120/);
+    expect(claimsCheck("108 of 120 planned sessions ran; attendance improved in May", w, "ag-pe1")).toEqual([]);
+  });
+  it("no money moves on existing funding before approval and confirmation; disputed funding stops counting", () => {
+    const w = replay(checkpoint("jun30"));
+    apply(w, { n: 0, at: "jun30", actor: "daniel", type: "addExistingFunding", args: { agreementId: "e1", fundId: "fdg", orgId: "ostral", amount: 24000, purpose: "Regional swimming coach development", paid: 12000, spent: 10400, nextUpdate: "Thu 30 Sep" } });
+    expect(at(w, "priya", "recordRelease", { agreementId: "e1", amount: 5000, ref: "r", entryId: "r" })).toMatch(/second person/);
+    expect(at(w, "farid", "addExpense", { expenseId: "x", agreementId: "e1", what: "Coach course", amount: 100, paidOn: "Mon 28 Jun", receipt: true })).toMatch(/second person/);
+    apply(w, { n: 0, at: "jun30", actor: "ingrid", type: "approveExistingFunding", args: { agreementId: "e1" } });
+    expect(at(w, "farid", "confirmReceipt", { agreementId: "e1", entryId: "c" })).toMatch(/confirm the figures/);
+    apply(w, { n: 0, at: "jun30", actor: "farid", type: "confirmExistingFunding", args: { agreementId: "e1", agree: false, reason: "Spent figure differs" } });
+    expect(fundTotals(w, "fdg").committed).toBe(0);
+    expect(at(w, "priya", "recordRelease", { agreementId: "e1", amount: 5000, ref: "r2", entryId: "r2" })).toMatch(/disputed/);
+  });
+  it("carried-in money is never confirmed as received; one confirmation per payment", () => {
+    const w = full();
+    expect(agreementTotals(w, "ag-ostral").toConfirm).toBe(0);
+    expect(at(w, "farid", "confirmReceipt", { agreementId: "ag-ostral", entryId: "c" })).toMatch(/no payment to confirm/);
+  });
+  it("organisation requests only by its own people; offers and interest only from verified funders", () => {
+    const w = full();
+    expect(at(w, "amira", "publishRequest", { requestId: "rq-x", ownerKind: "org", ownerId: "lanternfield", title: "Bibs and cones", sport: "Community multi-sport", lines: [{ label: "Bibs", amount: 100 }], visibility: "Public", neededBy: "July", neededMonth: "July", verifiedLabel: "", tags: [] })).toMatch(/Admin or Approve at the organisation/);
+    apply(w, { n: 0, at: "jun30", actor: "newco", type: "registerFunder", args: { personId: "newco", name: "New Person", orgName: "New Co", type: "Company", sports: "Boxing" } });
+    expect(at(w, "newco", "makeOffer", { offerId: "o1", fundId: "f-newco-fund", recipientKind: "athlete", recipientId: "jonah", amount: 500, reason: "Equipment for an adult sprinter." })).toMatch(/waiting for verification/);
+  });
+  it("no reopening a decided application; the awards cap counts offers already sent", () => {
+    const w = full();
+    expect(at(w, "amira", "answerInfo", { appId: "app-amira", otherFunding: "None" })).toMatch(/no open question/);
+  });
+  it("reviews: a fixed set of decisions; Pause and Close need Approve and stop payments", () => {
+    const w = full();
+    expect(at(w, "daniel", "recordReview", { reviewId: "r1", agreementId: "ag-amira", decision: "Approve all" })).toMatch(/Choose Continue/);
+    expect(at(w, "daniel", "recordReview", { reviewId: "r2", agreementId: "ag-amira", decision: "Pause", conditions: "Missing receipts" })).toMatch(/needs someone with Approve/);
+    apply(w, { n: 0, at: "jun30", actor: "ingrid", type: "recordReview", args: { reviewId: "r3", agreementId: "ag-amira", decision: "Pause", conditions: "Missing receipts" } });
+    expect(at(w, "priya", "recordRelease", { agreementId: "ag-amira", amount: 2250, ref: "i2", entryId: "i2" })).toMatch(/paused this funding/);
+  });
+  it("duplicate expenses are refused; a funder cannot register as an athlete under their own account", () => {
+    const w = full();
+    apply(w, { n: 0, at: "jun30", actor: "amira", type: "addExpense", args: { expenseId: "d1", agreementId: "ag-amira", what: "Physio", amount: 85, paidOn: "Mon 28 Jun", receipt: true } });
+    expect(at(w, "amira", "addExpense", { expenseId: "d2", agreementId: "ag-amira", what: "Physio", amount: 85, paidOn: "Mon 28 Jun", receipt: true })).toMatch(/already recorded/);
+    expect(at(w, "daniel", "register", { kind: "athlete", personId: "daniel", name: "Daniel Osei", age: 30, sport: "Judo", region: "Coastal Region", gender: "man" })).toMatch(/already exists/);
+    expect(at(w, "sam", "recordSession", { sessionId: "s1", programmeId: "play-every-day", siteId: "riverside", slot: 19, status: "delivered", attendance: 10 })).toMatch(/sites you coach|already been recorded/);
   });
 });

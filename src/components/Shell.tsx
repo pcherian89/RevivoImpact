@@ -10,7 +10,7 @@ import { btn, cn, Label } from "./ui";
 /* ------------------------------------------------ prototype bar & banner */
 
 export function PrototypeBar() {
-  const { moment, setMoment, go, guide, setGuide, reset } = useStore();
+  const { moment, setMoment, go, guide, setGuide, reset, ownEvents } = useStore();
   const [open, setOpen] = useState(false);
   const m = MOMENTS.find((x) => x.id === moment)!;
   const pill = "min-h-9 px-3 font-sans text-small font-medium tracking-normal";
@@ -39,6 +39,7 @@ export function PrototypeBar() {
             {open && (
               <div role="menu" className="absolute right-0 mt-2 w-72 rounded-[10px] border border-line-strong bg-surface p-2 shadow-xl">
                 <Label className="px-2 pt-1 pb-2">Demonstration date</Label>
+                {ownEvents > 0 && <p className="px-2 pb-2 text-small text-amber">Choosing another date loads the story at that date and replaces what you have changed.</p>}
                 {MOMENTS.map((x) => (
                   <button key={x.id} role="menuitemradio" aria-checked={x.id === moment} type="button" onClick={() => (setMoment(x.id), setOpen(false))} className={cn("flex w-full flex-col items-start rounded-[6px] px-3 py-2 text-left hover:bg-surface-2", x.id === moment && "bg-surface-2")}>
                     <span className="font-medium">{x.label}</span>
@@ -56,14 +57,13 @@ export function PrototypeBar() {
           </div>
         </div>
       </div>
-      <Banner />
     </div>
   );
 }
 
 export function Banner() {
   return (
-    <p className="border-t border-line bg-raised px-4 py-1.5 text-center text-small text-muted">
+    <p data-ri-banner className="border-b border-line bg-raised px-4 py-1.5 text-center text-[12px] leading-snug text-muted sm:text-small">
       <span className="font-medium text-ink">Demonstration on fictional data.</span> Every person, organisation, amount and record is invented, and no real money moves.
     </p>
   );
@@ -104,7 +104,7 @@ const ManagingCtx = createContext<string | undefined>(undefined);
 /** The athlete a guardian or coach is currently managing ("Managing: Tiago ▾"). */
 export const useManaging = () => useContext(ManagingCtx);
 
-const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Audit & admin": ShieldCheck, Programme: CalendarCheck };
+const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Consent & safety": ShieldCheck, "Audit & admin": ShieldCheck, Programme: CalendarCheck };
 
 export function AppFrame({ persona, active, children }: { persona: Person; active: string; children: ReactNode }) {
   const { go, world } = useStore();
@@ -156,13 +156,16 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
                 <UserRound className="size-4 shrink-0 text-signal" aria-hidden="true" />
                 <span className="truncate">
                   <span className="hidden sm:inline">Viewing as </span>
-                  {persona.name.split(" ")[0]} · Change
+                  {persona.name.split(" ")[0]}
+                  <span className="hidden sm:inline"> · Change</span>
+                  <span className="sr-only sm:hidden"> (change person)</span>
                 </span>
               </button>
-              <ThemeButtons />
+              <ThemeButtons withMotion={false} />
             </div>
           </div>
         </header>
+        <Notice />
         <main id="main" className="container-site">
           {children}
         </main>
@@ -186,6 +189,19 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
         <WhatChanged />
       </div>
     </ManagingCtx.Provider>
+  );
+}
+
+/** A short confirmation after an action that moves you to another screen (for example "Spending added"). */
+function Notice() {
+  const { notice } = useStore();
+  if (!notice) return null;
+  return (
+    <div role="status" className="container-site mt-4">
+      <p className="flex items-center gap-2 border-l-2 border-signal py-1 pl-3 font-medium">
+        <CheckCircle2 className="size-4 shrink-0 text-ok" aria-hidden="true" /> {notice}
+      </p>
+    </div>
   );
 }
 

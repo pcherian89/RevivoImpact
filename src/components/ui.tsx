@@ -15,6 +15,9 @@ import {
 
 export const cn = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
+/** One selected state for every choice (consent, decisions, update types): ink fill with a tick; never lime for an answer. */
+export const seg = (on: boolean) => cn("inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-small disabled:opacity-50", on ? "border-ink bg-ink font-medium text-canvas before:content-['✓']" : "border-line-strong text-ink hover:border-ink");
+
 /** Buttons: website buttonClasses() (docs/04 §2). One primary per view. */
 export function btn(variant: "primary" | "secondary" | "quiet" = "primary", extra?: string) {
   return cn(
@@ -135,7 +138,7 @@ export function SeeSource({ children, name, onClick, source }: { children: React
   const open = useContext(SourceCtx);
   if (!onClick && !source) return <span className="tabular-nums">{children}</span>;
   return (
-    <button type="button" onClick={() => (source ? open(source) : onClick?.())} title={`See where this comes from: ${name}`} className="tabular-nums underline decoration-dotted decoration-1 underline-offset-4 hover:text-signal">
+    <button type="button" onClick={() => (source ? open(source) : onClick?.())} title={`See where this comes from: ${name}`} className="-mx-1.5 -my-2.5 inline-block px-1.5 py-2.5 tabular-nums underline decoration-dotted decoration-1 underline-offset-4 hover:text-signal">
       {children}
       <span className="sr-only"> (see where this comes from: {name})</span>
     </button>
@@ -289,7 +292,7 @@ export function Tabs<T extends string>({
   label: string;
 }) {
   return (
-    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b border-line">
+    <div role="tablist" aria-label={label} className="flex flex-wrap gap-x-1 border-b border-line">
       {tabs.map((t) => {
         const on = t.id === value;
         return (
