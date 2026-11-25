@@ -2,6 +2,36 @@
 
 Read this whole file before any change. It holds the decisions that must survive between sessions.
 
+## 0. Permanent quality principles (founder, 25 Nov 2026; apply to every phase and refinement)
+
+Solve complex sports funding problems in the simplest, most efficient way. The system carries the complexity; the user
+does not. Not the most features, screens or charts: the clearest solution to the real problems. Full text:
+`docs/02` §1.1 (product), `docs/04` §1.1 (design and wording), `docs/06` §6.1 (the seven end-of-phase reviews).
+
+- **Every screen understandable at first sight.** Check each against the eight questions in `docs/04` §1.1 (purpose,
+  no explanation needed, obvious primary action, next step, every item relevant, nothing removable, easy to scan,
+  works on a phone). If it needs a presenter or tooltip to explain its purpose, redesign it. The product must work
+  without the guide.
+- **Everyday words everywhere** (headings, buttons, labels, statuses, charts, errors, form questions): no grant-admin,
+  finance or software jargon; no invented terms; explain necessary terms in passing; language fit for each role. Use
+  the plain money vocabulary in `docs/04` §6 ("Paid", not "Released"; "Record a payment", "Confirm money received",
+  "Check spending"). The copy check (`tools/check-copy.mjs`) blocks known jargon, but it does not replace the
+  plain-language review.
+- **Efficient workflows:** fewest steps; reuse profile data; sensible defaults; no duplicate entry or repeated
+  confirmations. Never pre-fill a declaration the user must genuinely confirm. Keep verification, consent, safeguarding
+  and financial controls, but make them easy to use.
+- **Complete, not bloated:** keep the whole journey and every approved funding route; every feature solves a real
+  problem, improves efficiency, strengthens accountability or improves the experience, or it goes.
+- **Role-appropriate:** athletes get the simplest, phone-first experience; coaches and guardians avoid organisational
+  administration; funders get the money answers; approval policies stay configurable (Simple is not Institutional).
+- **Charts answer a named question** with real numbers and units; no unexplained percentages, legends or colour
+  codes; figures stay traceable to records. The Funding Line stays, with every stage named in plain words.
+- **AI makes things easier**, never decorative; deterministic money, eligibility and approval rules; people decide.
+- **Prototype only:** no production auth, payments, databases, identity checks, paid AI, backends or integrations.
+- **At the end of every phase, run the seven reviews** (`docs/06` §6.1): functional, plain-language, usability
+  (independent AI reviewers acting as untrained first-time users, clearly labelled as AI, not human testing),
+  workflow efficiency, visual design, accessibility, financial and safeguarding. They must produce real changes.
+
 ## 1. Read order
 
 1. `docs/00-START-HERE.md` — what the product is, where the work stands, what to do next.

@@ -119,6 +119,25 @@ API is ever integrated without the founder's approval.
 | Copy lint | Script | Fails on banned words and names (`CLAUDE.md` §4), "Impact" without "Revivo" in product-name positions, American spellings on a short list, seeker-side jargon ("disbursement"), and a missing banner |
 | Quality bar | People | P5: three first-time viewers complete "find and apply" and "approve an award" unaided; a side-by-side review with the Pathway prototype finds no family drift |
 
+### 6.1 The seven end-of-phase reviews (founder, 25 Nov 2026; permanent, every phase from P3)
+
+Automated tests are necessary but do not show that the experience is intuitive. At the end of every phase:
+
+1. **Functional:** every intended workflow works end to end (journeys, both guide modes, every role).
+2. **Plain language:** every heading, button, label, notification, status, chart and instruction read and rewritten
+   where confusing (`04` §1.1, money vocabulary `04` §6). Record before/after examples.
+3. **Usability:** each role tried as an untrained first-time user, without guided mode. Use independent AI reviewers
+   given only a goal ("find funding for your judo season"), not navigation instructions. Label them as AI reviews;
+   they are not human usability testing (the human sessions are P5).
+4. **Workflow efficiency:** count the actions for the key tasks (register, find funding, find a sponsor, apply,
+   publish a request, find an athlete, make an offer, review, record a payment, confirm receipt, add an expense,
+   record progress, check spending, produce a report); remove unnecessary steps, repeats and duplicate entry.
+5. **Visual design:** premium Revivo quality and hierarchy on every screen, Dark and Daylight, all widths.
+6. **Accessibility:** contrast, readability, keyboard, phone layouts, accessible controls (axe plus manual checks).
+7. **Financial and safeguarding:** invariants, permissions, consent, verification and child safeguarding preserved.
+
+Each review must lead to real changes; the phase report lists what changed.
+
 Before every commit: lint, typecheck, unit tests, copy lint and the single-file build. Before every phase gate: the
 full Playwright suite.
 

@@ -24,6 +24,29 @@ organisation, amount and record is fictional, AI is simulated, and payments, ver
 
 **Central experience: Discover → Apply or Connect → Fund → Track → Review.**
 
+### 1.1 Product philosophy (founder, 25 Nov 2026; permanent)
+
+Revivo Impact solves complex sports funding and sponsorship problems in the simplest and most efficient way: ease of
+use, complete and meaningful functionality, everyday language, efficient workflows, premium design, relevant AI help
+and commercial credibility. The system handles complexity behind the scenes instead of passing it to the user. The aim
+is not the most features, screens, charts or controls, but the platform that solves the real problems best and is
+easiest to understand.
+
+- **Complete, not bloated.** Keep the whole journey (Discover → Apply or Connect → Fund → Track → Review) and every
+  approved route: open sports scholarships, athlete-led funding requests, funder-led discovery, direct and partial
+  sponsorship, programme funding, existing funding relationships, lightweight commercial sponsorship. Every feature
+  must solve a real user problem, improve efficiency, strengthen accountability or improve the experience.
+- **Role-appropriate.** Athletes: where to find funding, who might sponsor me, do I qualify, how to apply, what is
+  happening, how much support I have, what updates I owe; phone-first and simplest. Coaches and guardians: manage
+  authorised athletes, find opportunities, help with applications, send updates; no organisational administration.
+  Funders: who can we support, what we published, who applied, who we support, committed, paid, how the money is used,
+  what progress, what needs attention. Organisations: requests, funded athletes, programmes, delivery and reporting,
+  with approval processes that fit their size.
+- **Efficient.** Fewest steps; reuse profile data; defaults and pre-filled information, except declarations that need
+  the user's genuine confirmation; controls (verification, consent, safeguarding, money) kept but easy to use.
+- **Sports-only and independent** of Revivo Pathway (§12); open registration and discovery across many independent
+  funders.
+
 **Sports only.** Every profile, opportunity, funding request, agreement and programme names a sport and a sporting
 purpose (§4.4). General academic scholarships, non-sport charity and generic fundraising are out of scope.
 

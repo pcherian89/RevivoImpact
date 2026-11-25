@@ -37,6 +37,42 @@ without purpose. These are folded into §1, §3, §7 and §9 below.
   encouraging; the funder experience is professional and transparent; discovery is engaging without looking like an
   e-commerce catalogue (no product-card grids, prices as hero, "buy" language or star ratings).
 
+### 1.1 Simplicity, plain language and the eight screen questions (founder, 25 Nov 2026; permanent)
+
+Every existing and new screen is checked against:
+
+1. Can a first-time user immediately understand what this page is for?
+2. Can they understand the information without a lengthy explanation?
+3. Is the primary action obvious?
+4. Do they know what to do next?
+5. Is every piece of information relevant?
+6. Can anything be removed without reducing meaningful functionality?
+7. Is the page visually appealing and easy to scan?
+8. Does the page work equally well on a phone?
+
+If a screen needs a presenter, tooltip or long explanation to understand its basic purpose, redesign it. The guided
+demonstration shows the story; the product must be intuitive without it.
+
+**Everyday words.** Every heading, button, label, status, chart, notification, error, form question and instruction is
+written for someone who knows sport but not grant management, finance or software. Keep a sporting or financial term
+only where it is genuinely needed, and explain it in passing. No invented or branded terms where a common word works.
+Athletes and families get the warmest, simplest wording ("My Funding"); funders get fuller financial detail, still in
+plain words. Examples: "Record a payment" (not "initiate a disbursement"); "Athletes and programmes we support" (not
+"beneficiary portfolio"); "Check spending" (not "expenditure reconciliation"); "Upload proof"; "Type of funding";
+"Payments still due"; "Confirm money received"; "Activities behind schedule"; "Do I qualify?"; "How the money is being
+used"; "Applications and decisions"; "Check the evidence".
+
+**Charts and figures.** Every chart answers a question written as its heading ("How much funding is still
+available?", "Where has the money been spent?", "Which expenses need checking?", "Which payments are still due?",
+"Are funded programmes on track?"). Real numbers with units, readable labels, meaningful comparisons; no unexplained
+percentages, complex legends, many colours or ambiguous status marks. Important figures open their records
+("See source"), subject to permissions.
+
+**Visual quality.** Black, white and electric lime; premium type; cinematic photography where it helps (never where
+it gets in the way of a task); clear hierarchy; clean layouts; whitespace; subtle motion; Dark and Daylight; phone,
+tablet and desktop. Avoid grey-heavy screens, card grids, unnecessary badges, too much lime, repeated information,
+oversized decoration on working screens, generic admin dashboards, long explanatory text and clutter.
+
 ## 2. Copied 1:1 (no redesign allowed)
 
 | Element | Source | Rule |
@@ -174,6 +210,22 @@ consent recorded.
 
 Money states never rely on colour alone. Each segment has a label and a tabular figure; outstanding and unspent amounts
 are also written in words. Lime never fills money.
+
+**Plain money vocabulary (founder direction, 25 Nov 2026).** The five money states never blur, and each has one
+everyday name used on every screen:
+
+| State (internal) | Funder sees | Athlete or organisation sees | Meaning in one line |
+|---|---|---|---|
+| Committed | **Committed** | **Agreed** | Accepted by both sides; not yet paid |
+| Released | **Paid** | **Paid to you** | The funder recorded a payment (simulated) |
+| Received | **Received** | **Received** | The recipient confirmed the money arrived |
+| Reported | **Spent (reported)** | **Spent** | The recipient recorded what it was spent on |
+| Verified | **Checked** | **Checked by the funder** | A person at the funder checked the proof |
+
+Other money words: "Still to pay" (committed, not yet paid), "Not yet spent" (paid, not reported), "Waiting to be
+checked", "Set aside for offers" (held), "Still available", "Total fund" (announced), "Carried in" (paid before the
+agreement joined Revivo Impact; never counts as checked). Actions: "Record a payment", "Confirm money received", "Add an
+expense", "Check spending", "Send an update".
 
 **Agreement funding bar** (total length = Committed), left to right:
 

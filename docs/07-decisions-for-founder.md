@@ -287,3 +287,24 @@ closed by them.
    grey-heavy interfaces; design, UX, creative and accessibility perspectives in implementation reviews; placeholders
    until the founder supplies images.
 7. **After P2:** an end-to-end review of every journey and a test of each role's view.
+
+## P2 approval and permanent quality principles (25 Nov 2026)
+
+The founder reviewed the P2 summary and approved P2 (functionality and direction), and asked to proceed with P3. The
+founder set permanent principles for P3, P4, P5 and every later refinement, recorded in `CLAUDE.md` §0, `02` §1.1,
+`04` §1.1 and §6 (plain money vocabulary) and `06` §6.1 (the seven end-of-phase reviews). In short: solve complex
+problems simply; every screen understandable at first sight (eight questions); everyday words everywhere, with a full
+review of existing wording; efficient workflows that reuse profile data without pre-filling declarations; complete
+functionality without bloat; role-appropriate experiences; charts that answer a named question; AI that makes things
+easier; prototype only.
+
+P3 scope confirmed: spending and receipts, checking expenses, sporting progress and milestones, commercial
+deliverables, programme delivery and attendance, missed sessions and recovery plans, existing funding, funding
+reviews, reports, and the remaining connected journeys. P2 gaps to close before the prototype is complete: a new
+fictional athlete can register and get their own profile; clubs and organisations register independently; existing
+funding fully shown; individual scholarship decisions (not only one bulk action); meaningful sports-only checks;
+complete programme-operator and coach workflows; every action updates its connected records.
+
+At the end of P3 the founder expects: the standalone prototype, a plain summary, phone/tablet/laptop screenshots,
+completed workflows, financial and safeguarding results, accessibility results, wording before/after examples,
+simplified workflows, what was removed, remaining limitations and updated image requirements.
