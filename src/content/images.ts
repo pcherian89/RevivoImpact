@@ -12,6 +12,7 @@ import im01 from "../assets/photos/im-01-landing.webp";
 import im02 from "../assets/photos/im-02-landing-phone.webp";
 import im03 from "../assets/photos/im-03-athlete-home.webp";
 import im05 from "../assets/photos/im-05-discover-opportunities.webp";
+import im06 from "../assets/photos/im-06-funder-visit.webp";
 import im11 from "../assets/photos/im-11-competition-travel.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
@@ -27,6 +28,10 @@ export const PHOTOS: Record<string, Photo> = {
   // Founder's photo "sunset sports complex" (25 Nov 2026): badminton, table tennis, boxing and cycling in one place.
   // Trimmed 8px at each edge (rounded corners). Its wall banners carry the Revivo pulse (the founder's own mark).
   "im-05-discover-opportunities.png": { src: im05, w: 1654, h: 926, tone: "saturate(0.79) brightness(0.75)", note: "Many sports in one sunlit community sports centre" },
+  // Founder's photo "sunset strategy training field" (25 Nov 2026): funders, staff and coaches on a balcony watching a
+  // football session; the players are distant and not identifiable. As supplied. Brightness at the solver's floor
+  // (0.75), so it sits slightly brighter than the set (p75 ~87): the sun and sky are in frame.
+  "im-06-funder-visit.png": { src: im06, w: 1670, h: 942, tone: "saturate(0.7) brightness(0.75)", note: "Funders and coaches watch a football session from a balcony at sunset" },
   // Founder's photo "sunset poolside coaching huddle" (25 Nov 2026): adult swimmers only, so it suits the swimming
   // travel grant; never used on screens about young athletes. Trimmed 8px at each edge (rounded corners).
   "im-11-competition-travel.png": { src: im11, w: 1654, h: 925, tone: "saturate(0.7) brightness(0.84)", note: "A coach talking with adult swimmers by the pool at sunset" },

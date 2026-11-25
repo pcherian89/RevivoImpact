@@ -7,7 +7,7 @@ needs no other change.
 
 ## 0. Photographs placed so far (25 Nov 2026)
 
-The founder supplied five of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
+The founder supplied six of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
 the website and Pathway in light and grade. **Founder direction on the look: these photos win over this plan where
 they differ** — everyone in black kit with thin lime trim (not only coaches), and warm sunset light (the judo hall at
 sunset rather than morning daylight). Later images should follow the same look; prompts below are not yet rewritten.
@@ -18,11 +18,12 @@ sunset rather than morning daylight). Later images should follow the same look; 
 | im-02-landing-phone (Start, phones) | Sunset stadium running team (upright; shown in its own shape, not cut to 9:16) | 8 px trimmed at each edge (rounded corners) | saturate(0.7) brightness(0.87) |
 | im-03-athlete-home (athlete and coach Home) | Sunset judo hall: three women judoka, pairs practising behind | none | saturate(0.89) brightness(0.87) |
 | im-05-discover-opportunities (seeker Discover header; Emerging Athletes Scholarship header) | Sunset sports complex: badminton, table tennis, boxing, cycling; wall banners with the Revivo pulse | 8 px trimmed at each edge (rounded corners) | saturate(0.79) brightness(0.75) |
+| im-06-funder-visit (funder Overview band; public profiles of foundations, companies and federations) | Sunset strategy training field: funders, staff and coaches on a balcony watching a football session | none | saturate(0.7) brightness(0.75) |
 | im-11-competition-travel (Competition Travel Grant and Athlete Travel Bursary headers) | Sunset poolside coaching huddle: adult swimmers and their coach (close faces, so never used for young athletes such as Tiago) | 8 px trimmed at each edge (rounded corners) | saturate(0.7) brightness(0.84) |
 
 Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
 `tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
-Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. The other 11 slots
+Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. The other 10 slots
 still show "Photograph to come". The judo photo would also suit im-12 (High Performance Camp Support) if the founder
 wants it reused there.
 
