@@ -7,7 +7,7 @@ needs no other change.
 
 ## 0. Photographs placed so far (25 Nov 2026)
 
-The founder supplied thirteen of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
+The founder supplied fourteen of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
 the website and Pathway in light and grade. **Founder direction on the look: these photos win over this plan where
 they differ** — everyone in black kit with thin lime trim (not only coaches), and warm sunset light (the judo hall at
 sunset rather than morning daylight). Later images should follow the same look; prompts below are not yet rewritten.
@@ -25,6 +25,7 @@ sunset rather than morning daylight). Later images should follow the same look; 
 | im-13-equipment-handover (Oriel Kit Scheme header) | Golden hour team gear unpacking: coaches and staff unpacking balls, cones and kit by a clubhouse | 10 px trimmed at each edge (rounded corners) | (grade only) |
 | im-21-womens-basketball (new slot: Women's Sporting Development Fund header, in place of im-10) | Golden hour basketball training: a women's session with two coaches | 10 px trimmed at each edge; seven shoe and sock logos removed | (grade only) |
 | im-14-sponsorship-sprinter (Corvane Sportswear profile, the sports-brand variant) | Pre-race team spirit at sunset: adult sprinters and their coach at an evening meet | 10 px trimmed at each edge (rounded corners) | (grade only) |
+| im-15-facilities (Facilities Small Grants header) | Community field renovation at sunset: volunteers painting seats, carrying a goal and laying turf | 10 px trimmed at each edge; one small shoe mark removed | (grade only) |
 | im-20-swimming-coaching (new slot: Competition Travel Grant header, swimming) | Sunset poolside coaching huddle: adult swimmers and their coach (close faces, so never used for young athletes such as Tiago) | 8 px trimmed at each edge (rounded corners) | (grade only) |
 
 **Founder direction, 25 Nov 2026 (after seeing the first screenshots):** the solved tones made the photos too dim and
@@ -43,7 +44,7 @@ guessing.
 
 Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
 `tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
-Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. Still to come: im-04, im-12, im-15, im-16 and im-19 (and im-10, no longer shown until a logo-free football photo arrives)
+Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. Still to come: im-04, im-12, im-16 and im-19 (and im-10, no longer shown until a logo-free football photo arrives)
 still show "Photograph to come". The founder's women's football photo (for im-10) is on hold: it carries many Nike marks (bibs, shorts, socks,
 shoes), too many to remove cleanly; a version without logos was requested. The judo photo would also suit im-12 (High Performance Camp Support) if the founder
 wants it reused there.

@@ -21,6 +21,7 @@ import im11 from "../assets/photos/im-11-competition-travel.webp";
 import im13 from "../assets/photos/im-13-equipment-handover.webp";
 import im21 from "../assets/photos/im-21-womens-basketball.webp";
 import im14 from "../assets/photos/im-14-sponsorship-sprinter.webp";
+import im15 from "../assets/photos/im-15-facilities.webp";
 import im20 from "../assets/photos/im-20-swimming-coaching.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
@@ -63,4 +64,7 @@ export const PHOTOS: Record<string, Photo> = {
   // Founder's photo "pre-race team spirit at sunset" (25 Nov 2026): adult sprinters and their coach at an evening meet,
   // a crowd in the stand. Trimmed 10px at each edge (rounded corners).
   "im-14-sponsorship-sprinter.png": { src: im14, w: 1650, h: 921, tone: "", note: "Sprinters and their coach before a race at an evening meet" },
+  // Founder's photo "community field renovation at sunset" (25 Nov 2026): volunteers painting seats, carrying a goal and
+  // laying turf beside a clubhouse. Trimmed 10px at each edge (rounded corners); one small shoe mark removed.
+  "im-15-facilities.png": { src: im15, w: 1651, h: 921, tone: "", note: "Volunteers renovate a community sports ground at sunset" },
 };
