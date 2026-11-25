@@ -109,7 +109,7 @@ screen but is reached from Funding and Overview; registration and onboarding sha
 Every guided step names who acts, the screen and the data that changes. The demo clock has three moments: **Mon 12
 Apr 2027**, **Thu 6 May 2027** and **Wed 30 Jun 2027**.
 
-### Journey A — Find and secure a sports scholarship (signature; 13 steps; about 10 minutes)
+### Journey A — Find and secure a sports scholarship (signature; 14 guided steps; about 10 minutes)
 
 Amira has never heard of Tallwater. She finds it on Revivo Impact. No Revivo Pathway step anywhere.
 
@@ -140,6 +140,13 @@ Amira has never heard of Tallwater. She finds it on Revivo Impact. No Revivo Pat
 |---|---|---|---|---|
 | 12 | Amira | 18 | **Expenditure and progress:** 4 expenses (one without a receipt) and progress (5th place at the Continental U21 Invitational with the results document; 34 of 36 training sessions attested by her coach). Photos: No. | Reported $1,930; 2 progress records |
 | 13 | Priya, Daniel | 17 + P2 | **Funder review and renewal:** Priya verifies 3 lines ($1,720) and queries the judogi ($210). Daniel reads the chain, asks Revivo "Summarise Amira's quarter", and records "Continue with conditions: instalment 2 on Wed 1 Sep once the judogi receipt is added; invite to renew in March". | Verified $1,720; query; Review decision |
+
+**P4 change (25 Nov 2026, after the first-time-user and guided-demo reviews):** the guide shows rows 4 and 5 as one
+step (Discover, then the scholarship's rules), and adds two short "look" steps after row 13 so the 10-minute demo also
+answers "how do companies find athletes?" and "how are programmes monitored?". Guide step 13: Kenji Arakawa (Oriel,
+CSR) describes what he wants to support on Discover and sees which filters each result meets and lacks. Guide step 14:
+Ingrid opens Play Every Day and sees sessions by site, the Greenpark flag and the approved
+recovery plan, in counts only. Every step has "Show me"; a look step's "Show me" opens the screen as that person.
 
 **Finish screen:** "What you just saw: an athlete who found an unfamiliar funder, 4 people, 2 four-eyes approvals, 1
 eligibility check, 1 chain from need to review", with links to journeys B–E.

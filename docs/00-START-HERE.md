@@ -1,6 +1,6 @@
 # Revivo Impact — start here
 
-**Status (25 Nov 2026): P1 and P2 approved; P3 built and reviewed (report: `12-p3-report.md`). Next gate: the founder approves P3.** The founder approved P1's architecture with
+**Status (25 Nov 2026): P1, P2 and P3 approved; P4 built, reviewed and tested (report: `13-p4-report.md`). Next: P5 (human sessions, images, QA and packaging), then the founder's approval gate.** The founder approved P1's architecture with
 refinements (`07` §"P1 approval and refinements"). P2 turned the shell into a working two-sided prototype on one
 event-sourced rules engine: registration, profiles, discovery in both directions, applications, support asks, offers,
 selection, acceptance, payments and receipts, guardian safety and platform safeguarding. What P2 covers and how it was
@@ -38,7 +38,7 @@ independent products that share one design family.
 | 6 | **How does it work without Revivo Pathway?** | Completely: own registration, profiles, verification, consent, discovery, agreements, reporting and admin. Pathway appears only as an optional, simulated import in Explore. |
 | 7 | **How is it different?** | Hypotheses: sport-specific reusable profiles verified fact by fact; two-way discovery with safeguarding built in; nomination-native rounds; money states that reconcile; support followed to verified spending and sporting progress (no sponsorship marketplace checked does this, `08` §2.0). |
 | 8 | **Strongest commercial use case?** | A foundation or company runs a sports scholarship round from a shareable link and tracks every award; its opportunity also appears in Discover. The prototype shows the whole two-sided ecosystem around it. |
-| 9 | **Main demonstration journey?** | Journey A (13 steps, about 10 minutes): Tallwater publishes; Amira (19, judo, no prior relationship) registers, has her federation confirm her result, discovers 5 opportunities from 5 organisations, applies with help, is scored by two reviewers and selected by a third person, accepts, receives instalment 1, reports spending and progress, and Tallwater reviews. Journeys B–E: two-way discovery and sponsorship, programme funding, existing funding, coach and guardian safeguarding (`03` §5). |
+| 9 | **Main demonstration journey?** | Journey A (14 guided steps, about 10 minutes): Tallwater publishes; Amira (19, judo, no prior relationship) registers, has her federation confirm her result, discovers 5 opportunities from 5 organisations, applies with help, is scored by two reviewers and selected by a third person, accepts, receives instalment 1, reports spending and progress, and Tallwater reviews; then a company finds an athlete and a foundation watches a programme by site. Journeys B–E: two-way discovery and sponsorship, programme funding, existing funding, coach and guardian safeguarding (`03` §5). |
 | 10 | **What is excluded?** | Public donations and crowdfunding; real payments; free messaging; e-signatures; committee scoring and appeals; sponsorship inventory and valuation; non-sport funding; real logins; voice-note AI (`02` §13). |
 
 ## 3. Key facts to keep identical everywhere
@@ -80,9 +80,11 @@ independent products that share one design family.
    The P2 build is also saved as `prototype/revivo-impact-p2.html` (open it in any browser, offline). Previews:
    `docs/p2-previews/` (P1's shell: `docs/p1-previews/`).
 4. P2 report: `11-p2-report.md`. P3 report (track and review, wording, reviews, limitations): `12-p3-report.md`.
+   P4 report (AI experiences, payment schedules, reports, documents, reviews, limitations, P5 plan): `13-p4-report.md`;
+   build `prototype/revivo-impact-p4.html`; previews `docs/p4-previews/`.
    Permanent quality principles: `CLAUDE.md` §0 (founder, 25 Nov 2026).
-5. **Next:** the founder's P3 approval gate (the financial model in use), then P4 (intelligence, reporting polish,
-   images) and P5 (QA and packaging), `06` §8.
+5. **Next:** P5 (human sessions with three first-time viewers, images, the P4 leftovers in `13` §8, full QA, presenter
+   guide and packaging), then the founder's approval gate, `06` §8.
 
 ## 6. Approval gates
 

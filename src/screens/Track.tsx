@@ -2192,7 +2192,7 @@ function figureRows(f: ReturnType<typeof reportFigures>) {
   return [
     ["Agreed", f.committed, "Committed by both sides"],
     ["Paid", f.paid, f.carriedPaid ? `Includes ${fmt(f.carriedPaid)} paid before joining Revivo Impact` : "Payments recorded by the funder (simulated)"],
-    ["Received", f.received, f.paid - f.received > 0 ? `Arrival confirmed by the recipient; ${fmt(f.paid - f.received)} is paid but not yet confirmed${f.carriedPaid ? " or was paid before joining" : ""}` : "Arrival confirmed by the recipient"],
+    ["Received", f.received, ["Arrival confirmed by the recipient", ...(f.paid - f.received - f.carriedPaid > 0 ? [`${fmt(f.paid - f.received - f.carriedPaid)} paid is waiting for the recipient to confirm it arrived`] : []), ...(f.carriedPaid ? [`${fmt(f.carriedPaid)} was paid before joining Revivo Impact, so it is not counted here`] : [])].join("; ")],
     ["Spending reported", f.spent, "What the money was spent on"],
     ["Spending checked", f.checked, "Checked against receipts by the funder"],
     ["Waiting to be checked", f.waiting, "Usually waiting for a receipt"],
@@ -2466,8 +2466,7 @@ export function FunderReportPage({ persona }: { persona: Person }) {
             <tr key={x.sp} className="border-b border-line">
               <td className="py-2 pr-3">{x.sp}</td>
               <td className="py-2 pr-3 text-right tabular-nums">
-                {x.athletes} {x.athletes === 1 ? "athlete" : "athletes"}
-                {x.n - x.athletes ? ` · ${x.n - x.athletes} ${x.n - x.athletes === 1 ? "organisation" : "organisations"}` : ""}
+                {[x.athletes ? `${x.athletes} ${x.athletes === 1 ? "athlete" : "athletes"}` : "", x.n - x.athletes ? `${x.n - x.athletes} ${x.n - x.athletes === 1 ? "organisation" : "organisations"}` : ""].filter(Boolean).join(" · ")}
               </td>
               <td className="py-2 pr-3 text-right tabular-nums">{fmt(x.committed)}</td>
               <td className="py-2 text-right tabular-nums">{fmt(x.paid)}</td>
@@ -2532,7 +2531,7 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
     const paid = tt.reduce((a, t) => a + t.paid, 0);
     const left = tt.reduce((a, t) => a + t.stillToPay, 0);
     const comm = all.filter((g) => BEHAVIOUR_OF(w, g.fundId) === "commercial").map((g) => agreementTotals(w, g.id));
-    return { q, lead: `You have paid ${fmt(paid)} and ${fmt(left)} is still to pay, across ${mine.length} development and programme agreements.${comm.length ? ` Commercial sponsorship is counted apart: ${fmt(comm.reduce((a, t) => a + t.paid, 0))} paid, ${fmt(comm.reduce((a, t) => a + t.stillToPay, 0))} still to pay.` : ""}`, rows: [{ label: "Agreed", value: fmt(tt.reduce((a, t) => a + t.committed, 0)) }, { label: "Paid", value: fmt(paid) }, { label: "Confirmed received", value: fmt(tt.reduce((a, t) => a + t.received, 0)), note: "the rest is waiting for the recipient to confirm it arrived" }, { label: "Still to pay", value: fmt(left), note: "see “Which payments are coming up?” for dates" }], from: "Payment records (the ledger)" };
+    return { q, lead: `You have paid ${fmt(paid)} and ${fmt(left)} is still to pay, across ${mine.length} development and programme agreements.${comm.length ? ` Commercial sponsorship is counted apart: ${fmt(comm.reduce((a, t) => a + t.paid, 0))} paid, ${fmt(comm.reduce((a, t) => a + t.stillToPay, 0))} still to pay.` : ""}`, rows: [{ label: "Agreed", value: fmt(tt.reduce((a, t) => a + t.committed, 0)) }, { label: "Paid", value: fmt(paid) }, { label: "Confirmed received", value: fmt(tt.reduce((a, t) => a + t.received, 0)), note: [tt.reduce((a, t) => a + t.toConfirm, 0) ? `${fmt(tt.reduce((a, t) => a + t.toConfirm, 0))} waiting for the recipient to confirm it arrived` : "", tt.reduce((a, t) => a + t.carriedPaid, 0) ? `${fmt(tt.reduce((a, t) => a + t.carriedPaid, 0))} paid before joining Revivo Impact` : ""].filter(Boolean).join("; ") || undefined }, { label: "Still to pay", value: fmt(left), note: "see “Which payments are coming up?” for dates" }], from: "Payment records (the ledger)" };
   }
   if (/spent|spend|where.*money|used/.test(ql) && !/check/.test(ql)) {
     const rows = named.map((g) => ({ g, t: agreementTotals(w, g.id) })).filter((x) => x.t.spent > 0).sort((a, b) => b.t.spent - a.t.spent);

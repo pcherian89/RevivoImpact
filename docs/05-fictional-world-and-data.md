@@ -97,7 +97,7 @@ secretary (Admin).
 | Awards | Up to 50, in three published tiers tied to criteria: $5,000 (international results or a national title), $4,500 (a national medal), $3,500 (a national final or a top-8 national ranking) |
 | Purpose | Coaching, training fees, competition entry and travel, and equipment for the season |
 | Eligible sports (9) | Athletics (including para athletics), badminton, boxing, cycling, judo, rowing, swimming, table tennis, wheelchair basketball |
-| Eligibility (6 criteria) | 1 Aged 15–21 on 30 Apr 2027 · 2 One of the 9 sports · 3 Lives in an eligible region (all six regions) · 4 A result at national level or above in the last 18 months · 5 A coach or club referee · 6 A statement of financial need |
+| Eligibility (6 criteria) | 1 Aged 15–21 on 30 Apr 2027 · 2 One of the 9 sports · 3 Lives in an eligible region (all six regions) · 4 A result at national level or above in the last 18 months · 5 A coach or club who can vouch for you · 6 A statement of financial need |
 | Also required | "Other funding for the same costs" declaration; proof of age (ID document); results evidence; coach or club reference; budget with invoices or quotes |
 | Access route · visibility | Open, plus nominations by federations and clubs · **Public** (anyone registered can discover it; share link too) |
 | Published | Mon 12 Apr 2027 (Journey A step 1) |

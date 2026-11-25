@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { baseWorld } from "../../src/domain/model";
-import { agreementTotals, apply, claimsCheck, counts, scheduleOf, fundTotals, platformTotals, programmeTotals, requestTotals, RuleError, type Event } from "../../src/domain/engine";
+import { agreementTotals, identifyingWords, apply, claimsCheck, counts, scheduleOf, fundTotals, platformTotals, programmeTotals, requestTotals, RuleError, type Event } from "../../src/domain/engine";
 import { checkpoint, JOURNEYS, stepEvents } from "../../src/domain/story";
 
 const replay = (evs: Event[]) => {
@@ -469,5 +469,41 @@ describe("Ask Revivo for funders", async () => {
     const w = full();
     expect(funderAnswer(w, w.people.daniel, "Which athlete deserves the money most?").refusal).toBe(true);
     for (const q of FUNDER_QUESTIONS) expect(JSON.stringify(funderAnswer(w, w.people.kenji, q))).not.toMatch(/Esteves/);
+  });
+});
+
+describe("P4 money and safeguarding verifier regressions", async () => {
+  const { funderAnswer } = await import("../../src/screens/Track");
+  const full = () => {
+    const w = replay(checkpoint("jun30"));
+    for (const j of JOURNEYS) for (const s of j.steps.filter((x) => x.when === "jun30")) for (const e of stepEvents(s)) apply(w, e);
+    return w;
+  };
+  it("a payment cannot run ahead of the payment schedule", () => {
+    const w = full();
+    // Amira's second instalment waits for its condition (the judogi receipt), so nothing is due yet.
+    expect(tryCmd(w, { at: "jun30", actor: "priya", type: "recordRelease", args: { agreementId: "ag-amira", amount: 2250, ref: "early", entryId: "early" } })).toMatch(/Nothing is due yet/);
+    expect(scheduleOf(w, "ag-amira").reduce((a, x) => a + x.amount, 0)).toBe(4500);
+  });
+  it("instalments are whole dollars and still add up to the amount agreed", () => {
+    const w = full();
+    for (const g of Object.values(w.agreements)) {
+      const s = scheduleOf(w, g.id);
+      expect(s.every((x) => Number.isInteger(x.amount))).toBe(true);
+      expect(s.reduce((a, x) => a + x.amount, 0)).toBe(g.amount);
+    }
+  });
+  it("commercial sponsorship never enters a funder's cash answers", () => {
+    const w = full();
+    const lucy = Object.values(w.people).find((p) => p.funderId === "corvane" && p.perms.includes("Finance"));
+    if (!lucy) return;
+    const a = funderAnswer(w, lucy, "How much have we paid so far?");
+    expect(a.lead).toMatch(/development and programme agreements/);
+  });
+  it("funders never see a young athlete's surname, club or coach in what they send", () => {
+    const w = full();
+    const words = identifyingWords(w, "tiago");
+    expect(words.length).toBeGreaterThan(1);
+    expect(tryCmd(w, { at: "jun30", actor: "jonas", type: "sendProgress", args: { progressId: "z1", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "training", text: `Trained hard with ${words[0]} this week`, proof: false } })).toMatch(/first name only/);
   });
 });

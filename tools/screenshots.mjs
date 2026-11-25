@@ -31,6 +31,13 @@ const shots = [
   ["20-coach-home", "app/jonas/home", "jun30"],
   ["21-organisation-home", "app/maya/home", "jun30"],
   ["22-admin", "app/alex/admin", "complete"],
+  // P4: payments coming up, the funder report, Ask Revivo for funders, a fictional receipt, the guided demo
+  ["23-payments-coming-up", "app/priya/portfolio", "jun30"],
+  ["24-funder-report", "app/ingrid/freport", "complete"],
+  ["25-ask-revivo-funder", "app/ingrid/overview", "complete", ["Ask Revivo about our funding", "Which payments are coming up?"]],
+  ["26-receipt-preview", "app/priya/agreement/ag-amira", "complete", ["View the receipt"]],
+  ["27-guided-demo", "app/ingrid/opps", "apr12", ["Guided journeys"]],
+  ["28-opportunity-eligibility", "app/amira/opportunity/eas", "may06"],
 ];
 const widths = (process.env.WIDTHS ?? "375,768,1024,1440").split(",").map(Number);
 const themes = (process.env.THEMES ?? "dark").split(",");
@@ -39,10 +46,14 @@ const browser = await chromium.launch();
 for (const theme of themes)
   for (const w of widths) {
     const page = await browser.newPage({ viewport: { width: w, height: w < 600 ? 812 : w < 1100 ? 1024 : 900 }, deviceScaleFactor: scale });
-    for (const [name, route, moment] of shots) {
+    for (const [name, route, moment, clicks = []] of shots) {
       if (only && !only.includes(name)) continue;
       await page.goto(`${file}?${moment === "complete" ? "story=complete" : `moment=${moment}`}&theme=${theme}&motion=reduced&s=${name}#/${route}`);
       await page.waitForTimeout(250);
+      for (const c of clicks) {
+        await page.getByRole("button", { name: c }).first().click();
+        await page.waitForTimeout(250);
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       if (overflow > 0) console.log(`OVERFLOW ${overflow}px: ${name} @ ${w} ${theme}`);
       // Grow the viewport to the page height so fixed bars (phone navigation) sit at the bottom of the image.
