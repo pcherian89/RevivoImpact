@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
-import { agreementsFor, agreementTotals, nextInstalment, eligibility, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
+import { agreementsFor, agreementTotals, nextInstalment, eligibility, type Criterion, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SimulatedAI, Tabs } from "../components/ui";
 import { FundingBar, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
@@ -283,7 +283,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
           </p>
           <ul className="mt-2 border-t border-line">
             {open.map(({ o, e }) => (
-              <OppRow key={o.id} w={w} o={o} summary={e.summary} kind={e.kind} personaId={persona.id} />
+              <OppRow key={o.id} w={w} o={o} summary={e.summary} kind={e.kind} personaId={persona.id} because={e.criteria.length ? whyFits(e.criteria) : undefined} />
             ))}
             {open.length === 0 && (
               <Empty li>
@@ -308,7 +308,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
           <p className="mt-6 text-small text-subtle">Participating funders relevant to {isOrg ? "you" : "this profile"}. Revivo Impact shows participating organisations only; it is not a list of every sponsor.</p>
           <ul className="mt-2 border-t border-line">
             {funders.map((f) => (
-              <FunderRow key={f.id} f={f} personaId={persona.id} />
+              <FunderRow key={f.id} f={f} personaId={persona.id} why={sponsorWhy(f, ath)} />
             ))}
           </ul>
         </>
@@ -317,7 +317,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
       <Panel open={why} onClose={() => setWhy(false)} title="Why these appear" eyebrow="Matching · Simulated AI">
         <SimulatedAI />
         <p className="mt-4 text-muted">
-          {ath ? `Suggested because the sport (${ath.sport.toLowerCase()}), region (${ath.region}) and level on the profile match these funders' published criteria.` : "Suggested from your organisation's sport and region."}
+          {ath ? `Each row says why: the funder's published rules (sport, region, age, level) checked against ${persona.role === "athlete" ? "your" : `${ath.name.split(" ")[0]}'s`} profile, quoting the records it used, and what is still to do.` : "Suggested from your organisation's sport and region."}
         </p>
         <ul className="mt-4 space-y-2 text-small">
           <li>· Whether you qualify comes from each funder&rsquo;s rules, not from AI.</li>
@@ -330,7 +330,14 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
 }
 const rank = (k: string) => (k === "eligible" ? 0 : k === "check" ? 1 : 2);
 
-function OppRow({ w, o, summary, kind, personaId }: { w: World; o: Opportunity; summary: string; kind: "eligible" | "check" | "not"; personaId: string }) {
+/** Matching explanation (Simulated AI, from the records): which published rules the profile meets, and what is left. */
+export function whyFits(criteria: Criterion[]) {
+  const met = criteria.filter((c) => c.result === "met").map((c) => c.detail.replace(/ \(the panel checks your ID\)/, "").replace(/ · /, ", "));
+  const todo = criteria.filter((c) => c.result === "todo" || c.result === "check").map((c) => (c.result === "check" ? `${c.label.toLowerCase()} (the panel checks)` : c.label.toLowerCase()));
+  return [met.length ? `Fits because: ${met.slice(0, 3).join(" · ")}` : "", todo.length ? `Still to do: ${todo.join(", ")}` : ""].filter(Boolean).join(". ");
+}
+
+function OppRow({ w, o, summary, kind, personaId, because }: { w: World; o: Opportunity; summary: string; kind: "eligible" | "check" | "not"; personaId: string; because?: string }) {
   const f = funderOf(w, w.funds[o.fundId].funderId);
   const days = (Date.parse(o.closes) - Date.parse(DATE[w.moment])) / 86400000;
   return (
@@ -356,7 +363,10 @@ function OppRow({ w, o, summary, kind, personaId }: { w: World; o: Opportunity; 
         </span>
         <span className="flex items-start gap-2 text-small">
           <EligIcon kind={kind} />
-          <span className={kind === "not" ? "text-subtle" : "text-ink"}>{summary}</span>
+          <span className={kind === "not" ? "text-subtle" : "text-ink"}>
+            {summary}
+            {because && kind !== "not" && <span className="mt-0.5 block text-subtle">{because}</span>}
+          </span>
         </span>
         <span className="hidden items-center gap-1 text-small font-medium text-muted group-hover:text-ink lg:flex">
           {kind !== "not" && oppStatusAt(w, o) === "open" ? "Apply" : "View"} <ChevronRight className="size-4" aria-hidden="true" />
@@ -366,7 +376,16 @@ function OppRow({ w, o, summary, kind, personaId }: { w: World; o: Opportunity; 
   );
 }
 
-function FunderRow({ f, personaId }: { f: Funder; personaId: string }) {
+/** Why a sponsor is relevant: its published sports, regions and what it accepts, against the athlete's profile. */
+function sponsorWhy(f: Funder, ath?: Athlete) {
+  if (!ath) return undefined;
+  const sport = f.sports === "Any sport" || f.sports.toLowerCase().includes(ath.sport.toLowerCase()) ? (f.sports === "Any sport" ? "supports any sport" : `supports ${ath.sport.toLowerCase()}`) : "supports athletes like you";
+  const region = f.regions === "Any region" ? "any region" : f.regions.includes(ath.region) ? ath.region : f.regions;
+  const asks = f.accepts === "yes" ? `accepts direct requests${f.acceptsMax ? ` up to ${fmt(f.acceptsMax)}` : ""}${f.acceptsSupport ? ` for ${f.acceptsSupport.join(", ").toLowerCase()}` : ""}` : f.accepts === "commercial" ? "proposes commercial sponsorship to adults" : "funds through its published opportunities";
+  return `Why: ${sport} · ${region} · ${asks}`;
+}
+
+function FunderRow({ f, personaId, why }: { f: Funder; personaId: string; why?: string }) {
   const Icon = typeIcon[f.type];
   return (
     <li className="border-b border-line">
@@ -385,6 +404,7 @@ function FunderRow({ f, personaId }: { f: Funder; personaId: string }) {
           <span className="block text-subtle">
             {f.regions} · {f.typical}
           </span>
+          {why && <span className="mt-0.5 block text-subtle">{why}</span>}
         </span>
         <span>{f.accepts === "yes" ? <Chip kind="verified">Accepts direct requests</Chip> : f.accepts === "commercial" ? <Chip kind="info">Commercial proposals only</Chip> : <Chip kind="self">Only through opportunities</Chip>}</span>
         <ChevronRight className="hidden size-5 text-subtle lg:block" aria-hidden="true" />
@@ -1174,9 +1194,23 @@ export function Publish({ persona }: { persona: Person }) {
   const ath = useSubject(persona);
   const isOrg = persona.role === "organisation";
   const act = useAction(persona.id);
-  const [title, setTitle] = useState(ath?.minor ? "Competition travel" : "");
-  const [lines, setLines] = useState<{ label: string; amount: number }[]>(ath?.minor ? [{ label: "Competition travel and entry", amount: 2400 }] : [{ label: "", amount: 0 }]);
-  const [month, setMonth] = useState("August");
+  // Tiago's story values only (Journey E); everyone else starts empty: amounts come from the family's own quotes.
+  const story = ath?.id === "tiago";
+  const [title, setTitle] = useState(story ? "Competition travel" : "");
+  const [lines, setLines] = useState<{ label: string; amount: number }[]>(story ? [{ label: "Competition travel and entry", amount: 2400 }] : [{ label: "", amount: 0 }]);
+  const [month, setMonth] = useState(story ? "August" : "");
+  const [helped, setHelped] = useState(false);
+  /** Request help (Simulated AI): words from the profile, never amounts or achievements it cannot see. */
+  const help = () => {
+    if (!ath && !isOrg) return;
+    const need = ath?.facts.find((f) => f.label === "Support needed")?.value;
+    const goal = ath?.facts.find((f) => f.kind === "goal")?.value;
+    const sport = isOrg ? w.orgs[persona.orgId!].sport : ath!.sport;
+    const items = need ? [need === "Travel" ? "Competition travel" : need === "Coaching" ? "Coaching sessions" : "Equipment"] : ["Competition travel", "Equipment"];
+    setTitle(title || `${items.join(" and ")} for ${sport.toLowerCase()}${goal ? ` (${goal.toLowerCase()})` : ""}`);
+    setLines(items.map((label) => ({ label, amount: 0 })));
+    setHelped(true);
+  };
   const preview = useMemo(() => {
     if (!ath?.minor) return null;
     const ageGroup = ath.age < 14 ? "Under 14" : ath.age < 16 ? "14–15" : "16–17";
@@ -1192,6 +1226,18 @@ export function Publish({ persona }: { persona: Person }) {
   return (
     <div className="max-w-3xl pb-10">
       <PageHead eyebrow="Publish a funding request" title="What do you need funding for?" lead="Funders who support your sport can find it in Discover and offer full or part funding, line by line." />
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={help} className={btn("secondary", "min-h-10 px-4 font-sans text-small font-medium tracking-normal")}>
+          <Sparkles className="size-4" aria-hidden="true" /> Help me write this
+        </button>
+        <SimulatedAI />
+      </div>
+      {helped && (
+        <p role="status" className="mt-3 text-small text-muted">
+          Suggested from {isOrg ? "your organisation's sport" : "the profile's sport, goals and support needed"}. Add each amount from your own quotes: Revivo never guesses costs or adds achievements.
+          {ath && !ath.facts.some((f) => f.state === "verified" || f.state === "confirmed") ? " Tip: funders trust verified facts; ask your federation or club to confirm a result on your profile." : ""}
+        </p>
+      )}
       <Field label="What it is for" htmlFor="pr-title">
         <input id="pr-title" className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="For example: racing wheels and competition travel" />
       </Field>

@@ -365,6 +365,26 @@ await check("Guardian sees a confirmation when progress sharing is turned off", 
 await go("app/kenji/agreement/ag-oriel-tiago");
 await check("Funder sees progress sharing paused, not the updates", (await text()).includes("Progress sharing is paused"));
 
+// P4: Ask Revivo for funders, matching explanations, request help, receipts and the funder report
+await page.goto(`${file}?story=complete&motion=reduced&fresh=3#/app/daniel/overview`);
+await page.waitForTimeout(200);
+await click("Ask Revivo about our funding");
+await click("Which expenses still need checking?");
+await check("Ask Revivo answers from the records with a link to act", (await page.getByRole("link", { name: /Competition judogi/ }).count()) > 0);
+await page.keyboard.press("Escape");
+await go("app/priya/agreement/ag-amira");
+await click("View the receipt");
+await check("A fictional receipt opens from the record", (await text()).includes("Fictional demonstration document"));
+await page.keyboard.press("Escape");
+await go("app/ingrid/freport");
+await check("The funder report shows live figures", (await text()).includes("Spending checked") && /independently established impact/i.test(await text()));
+await page.goto(`${file}?moment=apr12&motion=reduced&fresh=4#/app/nadia/discover`);
+await page.waitForTimeout(200);
+await check("Discovery explains why an opportunity fits", (await text()).includes("Fits because"));
+await go("app/nadia/publish");
+await click("Help me write this");
+await check("Request help suggests words but never amounts", (await text()).includes("never guesses costs"));
+
 await check("no page errors", errs.length === 0);
 // Privacy: "What changed" never carries one person's names onto another person's screen
 await go("app/rosa/applications");

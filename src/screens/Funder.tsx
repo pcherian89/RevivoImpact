@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ArrowRight, ChevronRight, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
+import { ArrowRight, ChevronRight, MessageCircleQuestion, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
 import { agreementTotals, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
+import { FunderAskRevivo } from "./Track";
 import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
 import { fmtDate } from "./Seeker";
 
@@ -16,6 +17,7 @@ const fundsOf = (w: World, funderId: string) => Object.values(w.funds).filter((f
 
 export function FunderOverview({ persona }: { persona: Person }) {
   const { world: w } = useStore();
+  const [ask, setAsk] = useState(false);
   const fid = persona.funderId!;
   const f = w.funders[fid];
   const funds = fundsOf(w, fid);
@@ -61,6 +63,13 @@ export function FunderOverview({ persona }: { persona: Person }) {
         <p className="label text-signal">{f.name} · Overview</p>
         <h1 className="text-title mt-2">What needs you, {persona.name.split(" ")[0]}?</h1>
       </HeroBand>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <button type="button" className={btn("secondary")} onClick={() => setAsk(true)}>
+          <MessageCircleQuestion className="size-4" aria-hidden="true" /> Ask Revivo about our funding
+        </button>
+        <SimulatedAI />
+      </div>
+      <FunderAskRevivo open={ask} onClose={() => setAsk(false)} persona={persona} />
       <Section title={`Needs you · ${Math.min(needs.length, 3)}`}>
         {needs.length === 0 ? <Empty>Nothing needs you right now. Discover athletes and requests, or follow your funding.</Empty> : (
           <ul>

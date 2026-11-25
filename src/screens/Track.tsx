@@ -2407,6 +2407,150 @@ export function FunderReportPage({ persona }: { persona: Person }) {
   );
 }
 
+/* ------------------------------------------- Ask Revivo for funders (AI C) */
+
+export type FunderAnswer = { q: string; lead: string; rows: { label: string; value?: string; note?: string; href?: string }[]; from: string; refusal?: boolean };
+
+export const FUNDER_QUESTIONS = [
+  "Where has our funding been spent?",
+  "Which expenses still need checking?",
+  "Which athletes need to send updates?",
+  "Which payments are coming up?",
+  "Which sporting programmes are behind schedule?",
+  "What should we review before renewing funding?",
+];
+
+/**
+ * Simulated AI (AI C) for a whole funder: fixed, deterministic answers built only from this funder's records, each row
+ * linking to the record where a person acts. Refuses ranking, deciding and identifying young people.
+ */
+export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer {
+  const REF = /\b(best|rank|ranking|top|worst|deserv\w*|should we (fund|stop|cut)|decide|approve|reject|most talented|potential|which child|identify|who is|surname|address|school)\b/i;
+  if (REF.test(q)) return { q, lead: "I can't rank people, judge potential, decide funding or identify young participants. People decide on Revivo Impact. Try one of the questions below.", rows: [], from: "", refusal: true };
+  const fid = persona.funderId!;
+  const mine = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR_OF(w, g.fundId) !== "inkind");
+  const named = mine.filter((g) => !g.light);
+  const who = (g: Agreement) => recipientName(w, g.recipientKind, g.recipientId, persona);
+  const link = (g: Agreement) => `#/app/${persona.id}/agreement/${g.id}`;
+  const ql = q.toLowerCase();
+  if (/spent|spend|where.*money|used/.test(ql) && !/check/.test(ql)) {
+    const rows = named.map((g) => ({ g, t: agreementTotals(w, g.id) })).filter((x) => x.t.spent > 0).sort((a, b) => b.t.spent - a.t.spent);
+    const total = rows.reduce((a, x) => a + x.t.spent, 0);
+    return { q, lead: rows.length ? `${fmt(total)} of spending is recorded across ${rows.length} agreement${rows.length > 1 ? "s" : ""}; ${fmt(rows.reduce((a, x) => a + x.t.checked, 0))} of it is checked against receipts.` : "No spending has been recorded yet on the agreements you manage here.", rows: rows.map((x) => ({ label: who(x.g), value: fmt(x.t.spent), note: `${fmt(x.t.checked)} checked${x.t.waiting ? ` · ${fmt(x.t.waiting)} waiting` : ""}${x.t.carriedSpent ? " · includes spending before joining" : ""}`, href: link(x.g) })), from: "Expense records and receipts" };
+  }
+  if (/check|receipt|verify/.test(ql)) {
+    const ex = Object.values(w.expenses).filter((e) => named.some((g) => g.id === e.agreementId) && (e.status === "reported" || e.status === "query"));
+    return { q, lead: ex.length ? `${ex.length} expense${ex.length > 1 ? "s" : ""} (${fmt(ex.reduce((a, e) => a + e.amount, 0))}) still need checking. ${ex.filter((e) => !e.receipt).length ? `${ex.filter((e) => !e.receipt).length} have no receipt yet.` : "All have receipts."}` : "Nothing is waiting to be checked.", rows: ex.map((e) => ({ label: `${who(w.agreements[e.agreementId])}: ${e.what}`, value: fmt(e.amount), note: e.receipt ? "Receipt added: ready to check" : e.status === "query" ? `You asked: “${e.query}”` : "No receipt yet", href: link(w.agreements[e.agreementId]) })), from: "Expense records" };
+  }
+  if (/update|report|progress/.test(ql) && !/programme|behind/.test(ql)) {
+    const due = named.filter((g) => g.recipientKind === "athlete" && agreementTotals(w, g.id).paid > 0).filter((g) => !Object.values(w.expenses).some((e) => e.agreementId === g.id && e.at === w.moment) && !Object.values(w.progress).some((x) => x.agreementId === g.id && x.at === w.moment));
+    const paused = named.filter((g) => g.recipientKind === "athlete" && progressPaused(w, g.recipientId));
+    return { q, lead: due.length ? `${due.length} athlete${due.length > 1 ? "s have" : " has"} not sent an update this quarter.${paused.length ? ` Progress sharing is paused for ${paused.length}: a person should follow up; nothing is penalised automatically.` : ""}` : "Every athlete you fund has sent an update this quarter.", rows: due.map((g) => ({ label: who(g), value: fmt(agreementTotals(w, g.id).notYetSpent), note: "paid but not yet accounted for", href: link(g) })), from: "Payments, expenses and progress records" };
+  }
+  if (/pay|due|instal|tranche|coming/.test(ql)) {
+    const rows = mine
+      .map((g) => ({ g, x: scheduleOf(w, g.id).find((i) => i.status !== "paid") }))
+      .filter((r) => r.x)
+      .sort((a, b) => a.x!.dueISO.localeCompare(b.x!.dueISO));
+    const nm = rows.filter((r) => !r.g.light);
+    const light = rows.filter((r) => r.g.light);
+    return { q, lead: rows.length ? `${fmt(rows.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0))} is scheduled across ${rows.length} agreements. The next: ${rows[0].x!.dueLabel}.` : "No payments are scheduled.", rows: [...nm.slice(0, 6).map((r) => ({ label: `${r.x!.dueLabel}: ${who(r.g)}`, value: fmt(r.x!.amount - r.x!.paid), note: r.x!.condition && !r.x!.conditionMet ? `Once ${r.x!.condition}` : "No condition outstanding", href: link(r.g) })), ...(light.length ? [{ label: `${light.length} earlier agreements`, value: fmt(light.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0)), note: "Grouped; see Funding for dates" }] : [])], from: "Payment schedules" };
+  }
+  if (/programme|behind|schedule|session|site/.test(ql)) {
+    const progs = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));
+    const rows = progs.flatMap((p) => programmeTotals(w, p.id).sites.filter((x) => x.status !== "On track").map((x) => ({ label: `${p.name}: ${x.site.name}`, value: `${x.delivered} of ${x.due}`, note: `${x.status}${x.plan?.status === "approved" ? " · recovery plan approved" : x.alert ? " · two missed in a row" : ""}`, href: `#/app/${persona.id}/programme/${p.id}` })));
+    return { q, lead: progs.length ? (rows.length ? `${rows.length} site${rows.length > 1 ? "s are" : " is"} behind or needing attention. Counts only: you never see children's details.` : "Every site is on track.") : "You don't fund a programme with session records.", rows, from: "Session records (counts only)" };
+  }
+  if (/renew|review|before|risk|attention/.test(ql)) {
+    const rows = named.flatMap((g) => {
+      const t = agreementTotals(w, g.id);
+      const out: string[] = [];
+      const r = Object.values(w.reviews).filter((x) => x.agreementId === g.id).pop();
+      if (r && r.decision !== "Continue") out.push(`last review: ${r.decision.toLowerCase()}${r.conditions ? ` (${r.conditions})` : ""}`);
+      if (t.waiting) out.push(`${fmt(t.waiting)} of spending not yet checked`);
+      if (t.notYetSpent && t.paid) out.push(`${fmt(t.notYetSpent)} paid but not accounted for`);
+      const d = Object.values(w.deliverables).filter((x) => x.agreementId === g.id && x.status !== "complete");
+      if (d.length) out.push(`${d.length} deliverable${d.length > 1 ? "s" : ""} not finished`);
+      if (g.recipientKind === "athlete" && progressPaused(w, g.recipientId)) out.push("progress sharing paused");
+      const p = Object.values(w.programmes).find((x) => x.agreementId === g.id);
+      if (p) {
+        const behind = programmeTotals(w, p.id).sites.filter((x) => x.status === "Behind");
+        if (behind.length) out.push(`${behind.map((x) => x.site.name).join(", ")} behind`);
+      }
+      return out.length ? [{ label: who(g), note: out.join(" · "), href: link(g) }] : [];
+    });
+    return { q, lead: rows.length ? `${rows.length} agreement${rows.length > 1 ? "s have" : " has"} something to look at before renewing. Deciding is yours.` : "Nothing outstanding on the agreements you manage.", rows, from: "Reviews, expenses, deliverables, progress and sessions" };
+  }
+  return { q, lead: "I answer questions about your funding records. Try one of these:", rows: FUNDER_QUESTIONS.map((x) => ({ label: x })), from: "", refusal: true };
+}
+
+export function FunderAskRevivo({ open, onClose, persona }: { open: boolean; onClose: () => void; persona: Person }) {
+  const { world: w } = useStore();
+  const [q, setQ] = useState("");
+  const [answers, setAnswers] = useState<FunderAnswer[]>([]);
+  const ask = (text: string) => text.trim() && setAnswers((a) => [funderAnswer(w, persona, text.trim()), ...a]);
+  return (
+    <Panel open={open} onClose={onClose} eyebrow="Ask Revivo · Simulated AI" title="What would you like to know?">
+      <div className="flex flex-wrap gap-2">
+        {FUNDER_QUESTIONS.map((s) => (
+          <button key={s} type="button" className={btn("secondary", "min-h-10 px-3 font-sans text-small font-medium tracking-normal")} onClick={() => ask(s)}>
+            {s}
+          </button>
+        ))}
+      </div>
+      <form
+        className="mt-4 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(q);
+          setQ("");
+        }}
+      >
+        <label htmlFor="fask-q" className="sr-only">
+          Your question
+        </label>
+        <input id="fask-q" className={inputCls} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Or ask in your own words" />
+        <Button type="submit" variant="secondary">
+          Ask
+        </Button>
+      </form>
+      <ul className="mt-5 space-y-6">
+        {answers.map((a, i) => (
+          <li key={i} className="border-t border-line pt-4">
+            <p className="text-small text-subtle">{a.q}</p>
+            <p className={cn("mt-2", a.refusal && "text-muted")}>{a.lead}</p>
+            {a.rows.length > 0 && (
+              <ul className="mt-2">
+                {a.rows.map((r, k) => (
+                  <li key={k} className="flex items-start justify-between gap-3 border-b border-line py-2 text-small">
+                    <span>
+                      {r.href ? (
+                        <a className="font-medium underline underline-offset-4 hover:text-signal" href={r.href} onClick={onClose}>
+                          {r.label}
+                        </a>
+                      ) : a.refusal ? (
+                        <button type="button" className="text-left underline underline-offset-4" onClick={() => ask(r.label)}>
+                          {r.label}
+                        </button>
+                      ) : (
+                        <span className="font-medium">{r.label}</span>
+                      )}
+                      {r.note && <span className="block text-subtle">{r.note}</span>}
+                    </span>
+                    {r.value && <span className="shrink-0 tabular-nums">{r.value}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {a.from && <p className="mt-2 text-small text-subtle">From: {a.from}. Open a row to see the records and act.</p>}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-6 text-small text-subtle">Simulated AI: fixed answers built only from your organisation&rsquo;s records, respecting consent and privacy. It never ranks people, decides funding or names young participants.</p>
+    </Panel>
+  );
+}
+
 /* ---------------------------------------------------- Ask Revivo (AI C) */
 
 type Answer = { q: string; a: string[]; sources: string[]; refusal?: boolean };

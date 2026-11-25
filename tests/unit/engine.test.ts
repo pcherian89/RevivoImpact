@@ -436,3 +436,27 @@ describe("report consistency", async () => {
     expect(claimsCheck("We spent $10,800, of which $10,368 is checked; coaching cost $6,480.", w, "ag-pe1")).toEqual([]);
   });
 });
+
+/* P4: Ask Revivo for funders answers from the funder's own records, links to actions, and refuses. */
+describe("Ask Revivo for funders", async () => {
+  const { funderAnswer, FUNDER_QUESTIONS } = await import("../../src/screens/Track");
+  const full = () => {
+    const w = replay(checkpoint("jun30"));
+    for (const j of JOURNEYS) for (const s of j.steps.filter((x) => x.when === "jun30")) for (const e of stepEvents(s)) apply(w, e);
+    return w;
+  };
+  it("answers the six questions from Tallwater's records, each row linking to a record", () => {
+    const w = full();
+    const ask = (q: string) => funderAnswer(w, w.people.daniel, q);
+    expect(ask(FUNDER_QUESTIONS[0]).lead).toMatch(/\$23,130 of spending is recorded/);
+    expect(ask(FUNDER_QUESTIONS[1]).rows.map((r) => r.label).join(" ")).toMatch(/Competition judogi/);
+    expect(ask(FUNDER_QUESTIONS[3]).lead).toMatch(/scheduled across/);
+    expect(ask(FUNDER_QUESTIONS[4]).rows.map((r) => r.label).join(" ")).toMatch(/Greenpark School/);
+    expect(ask(FUNDER_QUESTIONS[5]).rows.some((r) => r.href?.includes("ag-amira"))).toBe(true);
+  });
+  it("refuses to rank, decide or identify, and never names a young athlete in full", () => {
+    const w = full();
+    expect(funderAnswer(w, w.people.daniel, "Which athlete deserves the money most?").refusal).toBe(true);
+    for (const q of FUNDER_QUESTIONS) expect(JSON.stringify(funderAnswer(w, w.people.kenji, q))).not.toMatch(/Esteves/);
+  });
+});
