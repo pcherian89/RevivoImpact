@@ -316,3 +316,22 @@ main > div > :first-child {
     animation: none;
   }
 }
+
+/* The focus ring appears at once: colour transitions never animate the outline (a ring fading in from black was
+   invisible on the dark canvas for its first frames). */
+.transition,
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+}
+
+/* Guided journeys from 1024px: the guide is a column beside the page (the page narrows; nothing is covered). */
+@media (min-width: 1024px) {
+  html.ri-guide-open body {
+    padding-right: 380px;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1535px) {
+  html.ri-guide-open .ri-guide-hide {
+    display: none;
+  }
+}

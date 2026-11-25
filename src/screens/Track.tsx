@@ -46,7 +46,7 @@ import {
   SimulatedAI,
   type Source,
 } from "../components/ui";
-import { FundingBar, FundingLine, MiniLine } from "../components/money";
+import { FundingBar, FundingLine } from "../components/money";
 import { docNumber, FictionalDocument, type DocSpec } from "../components/Document";
 import {
   ActionButton,
@@ -223,27 +223,29 @@ export function AgreementStages({
     />
   );
   if (!compact) return line;
-  // On phones a one-line summary replaces the tall vertical line (the money bar below shows the figures).
+  // On phones every stage keeps its plain name: one short row each, the next stage marked in lime.
   return (
     <>
-      <p className="flex flex-wrap items-center gap-3 md:hidden">
-        <MiniLine
-          total={nodes.length}
-          current={cur}
-          label={`Step ${cur + 1} of ${nodes.length}`}
-        />
-        <span className="text-small">
-          <span className="text-subtle">Now: </span>
-          <span className="font-medium">{nodes[cur].full}</span>
-          {nodes[cur].stat && nodes[cur].stat !== "Not yet"
-            ? ` · ${nodes[cur].stat}`
-            : ""}
-        </span>
-      </p>
-      <details className="md:hidden">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center text-small underline underline-offset-4">Show all steps</summary>
-        <div className="mt-3">{line}</div>
-      </details>
+      <div className="md:hidden">
+        <p className="text-small text-subtle">
+          {w.funders[fund.funderId].name} → {recipientName(w, g.recipientKind, g.recipientId, viewer)}
+        </p>
+        <ol className="mt-2 border-t border-line" aria-label="Funding Line">
+          {nodes.map((n, i) => {
+            const isNext = i === cur && !allDone;
+            return (
+              <li key={n.short} className="flex items-center justify-between gap-3 border-b border-line py-2 text-small" aria-current={isNext ? "step" : undefined}>
+                <span className="flex items-center gap-2.5">
+                  <span aria-hidden="true" className={cn("size-2.5 shrink-0 rounded-full", isNext ? "bg-signal" : i < cur || allDone ? "bg-ink" : "border border-line-strong")} />
+                  <span className={cn(isNext ? "font-medium text-ink" : i < cur || allDone ? "text-ink" : "text-muted")}>{n.full}</span>
+                  {isNext && <span className="text-signal">· next</span>}
+                </span>
+                <span className="text-right tabular-nums text-subtle">{n.stat}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
       <div className="hidden md:block">{line}</div>
     </>
   );
@@ -1723,7 +1725,8 @@ function SessionStrip({
   return (
     <div>
       <ol
-        className="flex flex-wrap gap-1"
+        className="grid max-w-[22rem] gap-[3px]"
+        style={{ gridTemplateColumns: `repeat(${summary.length}, minmax(0, 1fr))` }}
         aria-label={`${summary.filter((x) => x?.status === "delivered").length} ran, ${missed.length} couldn't run, ${p.sessionsPerSite - 1 - due > 0 ? p.sessionsPerSite - 1 - due : 0} still to come`}
       >
         {summary.map((x, i) => (
@@ -1738,7 +1741,7 @@ function SessionStrip({
                   : "To come"
             }
             className={cn(
-              "flex h-5 w-3.5 items-center justify-center rounded-[2px] text-[9px] font-bold",
+              "flex h-5 items-center justify-center rounded-[2px] text-[9px] font-bold",
               x?.status === "delivered"
                 ? "bg-ink"
                 : x?.status === "missed"

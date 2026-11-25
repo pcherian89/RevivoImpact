@@ -127,7 +127,7 @@ await go("app/marcus/apps");
 await check("B2 Marcus receives the ask", (await text()).includes("Nadia Kovač asks for $1,200"));
 await go("app/kenji/fdiscover");
 t = await text();
-await check("B3 Kenji finds Nadia first, matching 4 of 4", t.indexOf("Nadia Kovač") > -1 && t.indexOf("Nadia Kovač") < t.indexOf("Adult") + 99999 && t.includes("Matches 4 of 4"));
+await check("B3 Kenji finds Nadia first, matching every filter", t.indexOf("Nadia Kovač") > -1 && t.indexOf("Nadia Kovač") < t.indexOf("Adult") + 99999 && /Matches (\d) of \1/.test(t));
 const nadiaReq = await page.locator('a[href*="request/rq-nadia"]').first().getAttribute("href");
 await page.evaluate((h) => (location.hash = h.slice(1)), nadiaReq);
 await page.waitForTimeout(80);

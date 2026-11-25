@@ -114,7 +114,7 @@ export const policyText = (p: "Simple" | "Standard" | "Institutional") => (p ===
 export function Section({ title, children, aside, id }: { title: string; children: ReactNode; aside?: ReactNode; id?: string }) {
   const hid = id ?? title.toLowerCase().replace(/[^a-z]+/g, "-");
   return (
-    <section aria-labelledby={hid} className="mt-10">
+    <section aria-labelledby={hid} className="mt-10 max-w-[64rem]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
         <h2 id={hid} className="label text-subtle">
           {title}

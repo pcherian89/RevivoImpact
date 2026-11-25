@@ -24,7 +24,7 @@ for (const j of ["A", "B", "C", "E"]) {
     if (p3) continue;
     const load = guide.getByRole("button", { name: "Load the story to this step" });
     if (await load.count()) { await load.click(); await page.waitForTimeout(80); }
-    const show = guide.getByRole("button", { name: "Show me" });
+    const show = guide.getByRole("button", { name: "Show me", exact: true });
     if (await show.count()) {
       await show.click();
       await page.waitForTimeout(80);
@@ -33,7 +33,7 @@ for (const j of ["A", "B", "C", "E"]) {
       if (alert || !done) { bad++; console.log(`FAIL ${j}${i + 1} ${label}: ${alert ? await guide.locator('[role="alert"]').innerText() : "not marked done"}`); }
       else ok++;
     } else {
-      const openBtn = guide.getByRole("button", { name: /Open this screen/ });
+      const openBtn = guide.getByRole("button", { name: /Open this screen|Show me the screen/ });
       if (!(await openBtn.count())) { bad++; console.log(`FAIL ${j}${i + 1} ${label}: no button. ${(await guide.innerText()).slice(0, 400).replace(/\n/g, " | ")}`); continue; }
       ok++; // a "look" step: open the screen
       await openBtn.click();

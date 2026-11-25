@@ -18,16 +18,16 @@ export function PrototypeBar() {
     <div data-ri-print-hide className="sticky top-0 z-40 border-b border-line bg-canvas">
       <div className="flex min-h-12 items-center justify-between gap-2 px-3 sm:px-4">
         <a href="#/start" className="label shrink-0 text-signal">
-          <span className="hidden sm:inline">Revivo Impact · </span>Prototype
+          <span className="ri-guide-hide hidden sm:inline">Revivo Impact · </span>Prototype
         </a>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button type="button" onClick={() => setGuide({ open: !guide.open })} className={btn("secondary", pill)} aria-expanded={guide.open} aria-label="Guided journeys">
             <Footprints className="size-4" aria-hidden="true" />
-            <span className="hidden whitespace-nowrap lg:inline">{guide.open ? `Journey ${guide.journey} · step ${guide.step + 1}` : "Guided journeys"}</span>
+            <span className="ri-guide-hide hidden whitespace-nowrap lg:inline">{guide.open ? `Journey ${guide.journey} · step ${guide.step + 1}` : "Guided journeys"}</span>
           </button>
           <button type="button" onClick={() => go("roles")} aria-label="Explore by role" className={btn("secondary", pill)}>
             <LayoutGrid className="size-4" aria-hidden="true" />
-            <span className="hidden whitespace-nowrap lg:inline">Explore by role</span>
+            <span className="ri-guide-hide hidden whitespace-nowrap lg:inline">Explore by role</span>
           </button>
           <div className="relative">
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" className={btn("secondary", pill)}>
@@ -92,7 +92,7 @@ export function ThemeButtons({ withMotion = true }: { withMotion?: boolean }) {
       )}
       <button type="button" onClick={toggleTheme} aria-pressed={theme === "daylight"} aria-label={theme === "dark" ? "Daylight theme" : "Dark theme"} className={btn("secondary", "min-h-10 px-3 font-sans text-small font-medium tracking-normal")}>
         {theme === "dark" ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
-        <span className="hidden sm:inline">{theme === "dark" ? "Daylight" : "Dark"}</span>
+        <span className="ri-guide-hide hidden sm:inline">{theme === "dark" ? "Daylight" : "Dark"}</span>
       </button>
     </div>
   );
@@ -152,12 +152,12 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
                   </select>
                 </label>
               )}
-              <button type="button" onClick={() => go("roles")} className={btn("secondary", "min-h-11 max-w-[5.75rem] px-2.5 font-sans text-small font-medium tracking-normal sm:max-w-[18rem] sm:px-3")}>
-                <UserRound className="size-4 shrink-0 text-signal" aria-hidden="true" />
+              <button type="button" onClick={() => go("roles")} className={btn("secondary", "min-h-11 max-w-[7.5rem] shrink-0 px-3 font-sans text-small font-medium tracking-normal sm:max-w-[18rem]")}>
+                <UserRound className="hidden size-4 shrink-0 text-signal sm:block" aria-hidden="true" />
                 <span className="truncate">
-                  <span className="hidden sm:inline">Viewing as </span>
+                  <span className="ri-guide-hide hidden sm:inline">Viewing as </span>
                   {persona.name.split(" ")[0]}
-                  <span className="hidden sm:inline"> · Change</span>
+                  <span className="ri-guide-hide hidden sm:inline"> · Change</span>
                   <span className="sr-only sm:hidden"> (change person)</span>
                 </span>
               </button>
@@ -186,7 +186,6 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
             </ul>
           </nav>
         )}
-        <WhatChanged />
       </div>
     </ManagingCtx.Provider>
   );
@@ -205,19 +204,13 @@ function Notice() {
   );
 }
 
-/** "What changed": the records the last action changed (docs/03 §6). */
+/** "What changed": the records the last action changed (docs/03 §6), shown inside the guide so nothing covers it. */
 function WhatChanged() {
-  const { changed, clearChanged, guide } = useStore();
-  // Guided mode only (docs/03 P3 panel): in normal use each action's own message confirms it, and nothing covers the page.
-  if (!guide.open || !changed || changed.length === 0) return null;
+  const { changed } = useStore();
+  if (!changed || changed.length === 0) return null;
   return (
-    <div role="status" className="fixed right-3 bottom-20 z-40 w-[min(26rem,calc(100vw-1.5rem))] rounded-[10px] border border-line-strong bg-surface p-4 shadow-2xl md:right-6 md:bottom-6" data-ri-print-hide>
-      <div className="flex items-start justify-between gap-3">
-        <p className="label text-signal">What changed</p>
-        <button type="button" onClick={clearChanged} aria-label="Close what changed" className="rounded-full p-1 text-subtle hover:text-ink">
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      </div>
+    <div role="status" className="mt-3 rounded-[10px] border border-line p-3">
+      <p className="label text-signal">What changed</p>
       <ul className="mt-2 space-y-1.5 text-small">
         {changed.slice(-6).map((c, i) => (
           <li key={i} className="flex gap-2">
@@ -238,6 +231,11 @@ function WhatChanged() {
 export function GuidePanel() {
   const { guide, setGuide, go, showStep, loadStep, stepDone, moment } = useStore();
   const [err, setErr] = useState<string | null>(null);
+  // From 1024px the guide is a column beside the page, so the page narrows instead of being covered.
+  useEffect(() => {
+    document.documentElement.classList.toggle("ri-guide-open", guide.open);
+    return () => document.documentElement.classList.remove("ri-guide-open");
+  }, [guide.open]);
   if (!guide.open) return null;
   const journey = JOURNEYS.find((x) => x.id === guide.journey)!;
   const s = journey.steps[guide.step];
@@ -253,7 +251,7 @@ export function GuidePanel() {
     if (guide.step < journey.steps.length - 1) setGuide({ step: guide.step + 1 });
   };
   return (
-    <aside aria-label="Guided journeys" className="fixed inset-x-0 bottom-0 z-40 max-h-[72vh] overflow-y-auto border-t border-line-strong bg-surface p-5 md:top-[4.9rem] md:right-0 md:bottom-0 md:left-auto md:max-h-none md:w-[400px] md:border-t-0 md:border-l" data-ri-print-hide>
+    <aside aria-label="Guided journeys" className="fixed inset-x-0 bottom-0 z-40 max-h-[48vh] overflow-y-auto border-t border-line-strong bg-surface p-5 shadow-2xl md:top-[4.9rem] md:right-0 md:bottom-0 md:left-auto md:max-h-none md:w-[400px] md:border-t-0 md:border-l lg:top-0 lg:w-[380px] lg:shadow-none" data-ri-print-hide>
       <div className="flex items-center justify-between">
         <p className="label text-signal">
           Guided journeys <Map className="ml-1 inline size-3.5" aria-hidden="true" />
@@ -279,7 +277,7 @@ export function GuidePanel() {
         ))}
       </div>
 
-      {guide.step === 0 && <p className="mt-4 text-small text-muted">{journey.intro}</p>}
+      {guide.step === 0 && <p className="mt-4 hidden text-small text-muted md:block">{journey.intro}</p>}
       <div className="mt-5 rounded-[10px] border border-line-strong p-4">
         <p className="label text-subtle">
           {atDate.label} {s.phase && "· coming in the next build"}
@@ -298,9 +296,10 @@ export function GuidePanel() {
         )}
         {done && (
           <p className="mt-3 flex items-center gap-2 text-small text-signal">
-            <CheckCircle2 className="size-4" aria-hidden="true" /> Done. See &ldquo;What changed&rdquo;.
+            <CheckCircle2 className="size-4" aria-hidden="true" /> Done.
           </p>
         )}
+        {done && <WhatChanged />}
         <div className="mt-4 flex flex-wrap gap-2">
           {!done && (!sameDate || prevPending) ? (
             <button type="button" className={btn("primary")} onClick={() => (loadStep(journey.id, guide.step), open(), setErr(null))}>
@@ -325,8 +324,17 @@ export function GuidePanel() {
             </>
           ) : (
             <>
-              <button type="button" className={btn(done || !s.cmds.length ? "secondary" : "primary")} onClick={open}>
-                <CircleDot className="size-4" aria-hidden="true" /> Open this screen
+              {/* A "look" step has nothing to do, so "Show me" simply opens the screen as that person. */}
+              <button type="button" className={btn(!s.cmds.length && !done ? "primary" : "secondary")} onClick={open}>
+                {s.cmds.length ? (
+                  <>
+                    <CircleDot className="size-4" aria-hidden="true" /> Open this screen
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="size-4" aria-hidden="true" /> Show me the screen
+                  </>
+                )}
               </button>
               {guide.step < journey.steps.length - 1 && (
                 <button type="button" className={btn("primary")} onClick={next}>
@@ -339,8 +347,10 @@ export function GuidePanel() {
         {err && <p role="alert" className="mt-3 text-small text-amber">{err}</p>}
         <p className="mt-3 text-small text-subtle">&ldquo;Show me&rdquo; acts through the same rules as a click. &ldquo;I&rsquo;ll do it&rdquo; opens the screen; the step is marked done when the record exists.</p>
       </div>
+      {/* On phones the step comes first, so the sheet shows what to do without scrolling. */}
+      {guide.step === 0 && <p className="mt-4 text-small text-muted md:hidden">{journey.intro}</p>}
 
-      {guide.step === journey.steps.length - 1 && done && (
+      {guide.step === journey.steps.length - 1 && (done || !s.cmds.length) && (
         <div className="mt-5 border-l-2 border-signal pl-4">
           <p className="label text-signal">What you just saw</p>
           <ul className="mt-2 space-y-1.5 text-small">

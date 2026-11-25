@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
@@ -119,7 +119,7 @@ export function SeekerHome({ persona }: { persona: Person }) {
       ) : (
         <Section title={`Needs you · ${shown.length}`}>
           {shown.length === 0 ? (
-            <Empty>Nothing needs you right now. Find funding below, or publish a request so funders can find you.</Empty>
+            <Empty>{Object.values(w.requests).some((r) => r.status === "open" && (r.ownerId === ath?.id || r.ownerId === persona.orgId)) ? "Nothing needs you right now. Your funding request is published; you can also ask a sponsor directly from Discover." : "Nothing needs you right now. Find funding below, or publish a request so funders can find you."}</Empty>
           ) : (
             <ul>
               {shown.map((n, i) => (
@@ -712,6 +712,7 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
   const [statement, setStatement] = useState(existing?.statement ?? "");
   const [other, setOther] = useState(existing?.otherFunding ?? "");
   const [ai, setAi] = useState(false);
+  const [docState, setDocState] = useState<Record<string, "added" | "follow">>({});
   if (!o || !ath) return <Empty>Choose an athlete and an open opportunity first.</Empty>;
   const e = eligibility(w, o, ath);
   const isCoach = persona.role === "coach";
@@ -751,15 +752,30 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
             </button>
           </div>
           <ul className="mt-2 border-t border-line">
-            {docs.map((d) => (
-              <li key={d.t} className="flex items-start gap-3 border-b border-line py-3">
-                {d.ok ? <CircleCheck className="mt-0.5 size-5 text-signal" aria-label="Ready" /> : <CircleHelp className="mt-0.5 size-5 text-amber" aria-label="Missing" />}
-                <span>
-                  {d.t}
-                  {!d.ok && <span className="block text-small text-amber">{d.note}</span>}
-                </span>
-              </li>
-            ))}
+            {docs.map((d) => {
+              const st = d.ok ? "ok" : docState[d.t];
+              return (
+                <li key={d.t} className="flex items-start gap-3 border-b border-line py-3">
+                  {st === "ok" || st === "added" ? <CircleCheck className="mt-0.5 size-5 text-signal" aria-label="Ready" /> : st === "follow" ? <CircleHelp className="mt-0.5 size-5 text-muted" aria-label="To follow" /> : <CircleHelp className="mt-0.5 size-5 text-amber" aria-label="Missing" />}
+                  <span className="flex-1">
+                    {d.t}
+                    {!st && <span className="block text-small text-amber">{d.note}</span>}
+                    {st === "added" && <span className="block text-small text-subtle">Fictional copy added (simulated: no file is stored)</span>}
+                    {st === "follow" && <span className="block text-small text-subtle">Marked “to follow”: the funder sees that it is coming</span>}
+                    {!d.ok && (
+                      <span className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" aria-pressed={st === "added"} className={seg(st === "added")} onClick={() => setDocState({ ...docState, [d.t]: "added" })}>
+                          Add it now
+                        </button>
+                        <button type="button" aria-pressed={st === "follow"} className={seg(st === "follow")} onClick={() => setDocState({ ...docState, [d.t]: "follow" })}>
+                          To follow
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
           {ai && (
             <p className="mt-3 flex flex-wrap items-center gap-2 text-small text-subtle">
@@ -772,7 +788,7 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
           <Field label="Amount requested (USD)" hint={linkedReq ? `Linked to the funding request "${linkedReq.title}": ${fmt(remaining)} still needed; this amount is held while the funder decides` : "The panel awards one of the published levels"} htmlFor="req">
             <input id="req" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={requested} onChange={(e) => setRequested(Number(e.target.value.replace(/\D/g, "")))} />
           </Field>
-          <Field label="Other funding for the same costs" hint="Required. Declare current support so nothing is funded twice." htmlFor="other">
+          <Field label="Other funding for the same costs" hint="Required, so nothing is funded twice. Type “None” if you have no other support." htmlFor="other">
             <input id="other" className={inputCls} value={other} onChange={(e) => setOther(e.target.value)} placeholder="For example: club travel bursary, $300" />
           </Field>
         </li>
@@ -1207,7 +1223,7 @@ export function MyProfile({ persona }: { persona: Person }) {
 /* ================================================================ Publish */
 
 export function Publish({ persona }: { persona: Person }) {
-  const { world: w, go } = useStore();
+  const { world: w, go, setNotice } = useStore();
   const ath = useSubject(persona);
   const isOrg = persona.role === "organisation";
   const act = useAction(persona.id);
@@ -1272,7 +1288,7 @@ export function Publish({ persona }: { persona: Person }) {
         </button>
         <p className="mt-2 font-medium">Total {fmt(total)}</p>
       </fieldset>
-      <Field label="Needed by (month)" htmlFor="pr-month">
+      <Field label="Needed by (month)" hint="For example: September 2027" htmlFor="pr-month">
         <input id="pr-month" className={cn(inputCls, "max-w-[12rem]")} value={month} onChange={(e) => setMonth(e.target.value)} />
       </Field>
       {preview && ath && (
@@ -1295,7 +1311,10 @@ export function Publish({ persona }: { persona: Person }) {
         onClick={() => {
           if (!ownerId) return;
           const ok = act.run("publishRequest", { requestId: `rq-${ownerId}-${Date.now()}`, ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: verifiedLabel, tags: [] }, "Published. Funders can now find it.");
-          if (ok) go(`app/${persona.id}/funding`);
+          if (ok) {
+            setNotice(`Published: “${title}”, needed by ${month}. Sponsors and funders can now find it. Next: ask a sponsor who accepts direct requests (Discover → Sponsors & funders).`);
+            go(`app/${persona.id}/funding`);
+          }
         }}
       >
         Publish request
@@ -1312,7 +1331,7 @@ const REGION_CHOICES = ["Coastal Region", "Northern Region", "Central Region", "
 
 /** Join (screen 2): five independent routes; sign-in is simulated, so the "email code" is shown on screen. */
 export function Join() {
-  const { world: w, act, go } = useStore();
+  const { world: w, act, go, setNotice } = useStore();
   const [pick, setPick] = useState<string | null>(null);
   const [step, setStep] = useState<"details" | "code">("details");
   const [name, setName] = useState("");
@@ -1325,6 +1344,16 @@ export function Join() {
   const [org, setOrg] = useState("");
   const [orgType, setOrgType] = useState("Club");
   const [err, setErr] = useState<string | null>(null);
+  // Every missing answer at once, at the top, each linking to its field (the family error summary).
+  const [errs, setErrs] = useState<[string, string][]>([]);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (errs.length) summaryRef.current?.focus();
+  }, [errs]);
+  useEffect(() => {
+    headRef.current?.focus();
+  }, [step]);
   const amiraJoining = !w.athletes.amira;
   const options = [
     { id: "athlete", t: "An athlete aged 18 or over", d: "One sporting profile to find scholarships, grants and sponsors." },
@@ -1334,16 +1363,18 @@ export function Join() {
     { id: "individual", t: "An individual sponsor", d: "Support adults, teams and clubs personally, after a verification check." },
     { id: "coach", t: "A coach", d: "Athletes or guardians add you from their account, with the powers they choose." },
   ];
-  const check = () => {
-    if (!name.trim()) return "Add your name.";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return "Add an email address (nothing is sent in this demonstration).";
-    if (pick !== "company" && pick !== "individual" && !sport) return "Choose the sport.";
-    if ((pick === "athlete" || pick === "guardian" || pick === "organisation") && !region) return "Choose the region.";
-    if ((pick === "athlete" || pick === "guardian") && !cat) return "Choose women's or men's events.";
-    if (pick === "athlete" && !(Number(age) >= 18)) return Number(age) > 0 ? "Athletes under 18 are registered by a parent or guardian." : "Add your age.";
-    if (pick === "guardian" && (!child.trim() || !(Number(age) > 0))) return "Add the athlete's name and age.";
-    if ((pick === "organisation" || pick === "company") && !org.trim()) return "Add the organisation's name.";
-    return null;
+  const problems = () => {
+    const out: [string, string][] = [];
+    if (!name.trim()) out.push(["Add your name.", "j-name"]);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) out.push(["Add an email address (nothing is sent in this demonstration).", "j-email"]);
+    if (pick === "guardian" && !child.trim()) out.push(["Add the athlete's name.", "j-child"]);
+    if (pick === "athlete" && !(Number(age) >= 18)) out.push([Number(age) > 0 ? "Athletes under 18 are registered by a parent or guardian." : "Add your age.", "j-age"]);
+    if (pick === "guardian" && !(Number(age) > 0)) out.push(["Add the athlete's age.", "j-age"]);
+    if ((pick === "organisation" || pick === "company") && !org.trim()) out.push(["Add the organisation's name.", "j-org"]);
+    if (pick !== "company" && pick !== "individual" && !sport) out.push(["Choose the sport.", "j-sport"]);
+    if ((pick === "athlete" || pick === "guardian" || pick === "organisation") && !region) out.push(["Choose the region.", "j-region"]);
+    if ((pick === "athlete" || pick === "guardian") && !cat) out.push(["Choose women's or men's events.", "j-cat"]);
+    return out;
   };
   const create = () => {
     const pid = `u-${Date.now()}`;
@@ -1362,6 +1393,7 @@ export function Join() {
     } else {
       e = act(pid, "registerFunder", { personId: pid, name: name.trim(), orgName: org.trim() || name.trim(), type: pick === "individual" ? "Individual sponsor" : "Company", sports: sport });
       to = `app/${pid}/fdiscover`;
+      if (!e) setNotice(`Welcome. ${pick === "individual" ? "Your identity and safeguarding check is" : "Your organisation is"} being checked (simulated). Until then you can browse and shortlist; offers open once the check is done. An example fund of $10,000 (up to $2,000 per offer) is set up so you can try it.${sport ? ` Results show ${sport.toLowerCase()} first.` : ""}`);
     }
     setErr(e);
     if (!e) go(to);
@@ -1399,7 +1431,7 @@ export function Join() {
     return (
       <main id="main" className="container-site max-w-xl pb-20">
         <p className="label pt-10 text-signal">Join Revivo Impact</p>
-        <h1 className="text-title mt-2">Check your email</h1>
+        <h1 ref={headRef} tabIndex={-1} className="text-title mt-2">Check your email</h1>
         <p className="mt-3 text-muted">We would send a 6-digit code to {email}. In this demonstration nothing is sent: your code is <span className="font-medium text-ink tabular-nums">482 913</span>.</p>
         <Field label="Code" htmlFor="j-code">
           <input id="j-code" inputMode="numeric" className={cn(inputCls, "max-w-[12rem] text-lg tracking-widest")} defaultValue="482913" />
@@ -1424,14 +1456,28 @@ export function Join() {
         <ThemeButtons withMotion={false} />
       </div>
       <p className="label pt-10 text-signal">Join Revivo Impact</p>
-      <h1 className="text-title mt-2">Who are you registering as?</h1>
+      <h1 ref={headRef} tabIndex={-1} className="text-title mt-2">Who are you registering as?</h1>
       <p className="mt-3 text-muted">Free for athletes, families, coaches and clubs. No invitation needed, and no other Revivo account.</p>
+      {errs.length > 0 && (
+        <div ref={summaryRef} tabIndex={-1} role="alert" className="mt-6 rounded-[10px] border-2 border-amber p-4">
+          <p className="font-medium">{errs.length === 1 ? "One answer is missing" : `${errs.length} answers are missing`}</p>
+          <ul className="mt-2 space-y-1 text-small">
+            {errs.map(([m, id]) => (
+              <li key={id + m}>
+                <a href={`#${id}`} className="text-amber underline underline-offset-4" onClick={(e) => (e.preventDefault(), document.getElementById(id)?.focus())}>
+                  {m}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <fieldset className="mt-8">
         <legend className="sr-only">Who are you registering as?</legend>
         <div className="border-t border-line">
           {options.map((o) => (
             <label key={o.id} className="flex cursor-pointer items-start gap-4 border-b border-line py-4">
-              <input type="radio" name="who" value={o.id} checked={pick === o.id} onChange={() => (setPick(o.id), setErr(null))} className="mt-1 size-5 shrink-0 appearance-none rounded-full border-2 border-control bg-canvas checked:border-[6px] checked:border-signal" />
+              <input type="radio" name="who" id={o.id === "athlete" ? "j-who" : undefined} value={o.id} checked={pick === o.id} onChange={() => (setPick(o.id), setErr(null), setErrs([]))} className="mt-1 size-5 shrink-0 appearance-none rounded-full border-2 border-control bg-canvas checked:border-[6px] checked:border-signal" />
               <span>
                 <span className="block font-medium">{o.t}</span>
                 <span className="block text-small text-subtle">{o.d}</span>
@@ -1503,9 +1549,10 @@ export function Join() {
       {pick !== "coach" && (
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Button arrow onClick={() => {
-            const e = pick ? check() : "Choose who you are registering as.";
-            setErr(e);
-            if (!e) setStep("code");
+            const ps: [string, string][] = pick ? problems() : [["Choose who you are registering as.", "j-who"]];
+            setErrs(ps);
+            setErr(null);
+            if (!ps.length) setStep("code");
           }}>
             Continue
           </Button>
