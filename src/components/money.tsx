@@ -205,7 +205,7 @@ export function FundBar({ announced, committed, reserved, sources }: { announced
   ];
   return (
     <figure>
-      <div className="flex h-3 w-full gap-[3px]" aria-hidden="true">
+      <div className="flex h-4 w-full gap-[3px]" aria-hidden="true">
         {parts.map((p) => (p.v > 0 ? <div key={p.label} className={cn("h-full rounded-[3px]", p.cls)} style={{ width: `${(p.v / announced) * 100}%` }} /> : null))}
       </div>
       {committed + reserved === 0 && <p className="mt-2 text-small text-muted">Nothing committed or offered yet: all {fmt(announced)} is still available.</p>}

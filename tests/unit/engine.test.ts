@@ -562,3 +562,26 @@ describe("claims check (P5): wrong figures, misleading statements, changed recor
     expect(claimsCheck(sentence, w2, "ag-pe1")[0]).toMatch(/does not match|spent \(the records show/);
   });
 });
+
+describe("claims check (P5 review): true sentences pass, common overclaims are caught", () => {
+  const w = replay(checkpoint("jun30"));
+  const t = agreementTotals(w, "ag-pe1");
+  const pt = programmeTotals(w, "play-every-day");
+  const $ = (n: number) => "$" + n.toLocaleString("en-GB");
+  it("a money word after 'and' belongs to the next amount", () => {
+    expect(claimsCheck(`We received ${$(t.received)} and spent ${$(t.spent)}.`, w, "ag-pe1")).toEqual([]);
+  });
+  it("catches participants, sessions without 'of M', word families and percent", () => {
+    expect(claimsCheck(`We reached ${pt.participants + 140} children`, w, "ag-pe1")[0]).toMatch(/register shows/);
+    expect(claimsCheck(`We reached ${pt.participants} children`, w, "ag-pe1")).toEqual([]);
+    expect(claimsCheck("All sessions ran as planned", w, "ag-pe1")[0]).toMatch(/all sessions/);
+    expect(claimsCheck(`${pt.planned} sessions were delivered`, w, "ag-pe1")[0]).toMatch(/sessions delivered/);
+    expect(claimsCheck("Sessions improve confidence and boost fitness", w, "ag-pe1")).toEqual(expect.arrayContaining(["improve", "boost"]));
+    expect(claimsCheck("Attendance doubled", w, "ag-pe1")).toContain("doubled");
+    expect(claimsCheck("It rose by 40 percent", w, "ag-pe1")[0]).toMatch(/percent without/);
+  });
+  it("stops sending decisions while an application is still being reviewed", () => {
+    const w2 = replay(checkpoint("may06"));
+    expect(tryCmd(w2, { at: "may06", actor: "ingrid", type: "sendDecisions", args: { oppId: "eas" } })).toMatch(/still need|still needs/);
+  });
+});

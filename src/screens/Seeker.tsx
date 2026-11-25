@@ -3,7 +3,7 @@ import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, 
 import { useStore } from "../state/store";
 import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
 import { agreementsFor, agreementTotals, counts, nextInstalment, eligibility, type Criterion, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
-import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SimulatedAI, Tabs } from "../components/ui";
+import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SimulatedAI, Tabs, toDollars, MoneyHint } from "../components/ui";
 import { FundingBar, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
 import { ThemeButtons, useManaging } from "../components/Shell";
@@ -710,9 +710,10 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
             </Field>
             <Field label="Amount (USD)" hint={`Up to ${fmt(f.acceptsMax ?? 0)} with this funder`} htmlFor="ask-amt">
               <input id="ask-amt" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <MoneyHint value={amount} />
             </Field>
             <p className="mt-5 text-small text-subtle">{f.name.split(" ")[0]} will see: name, sport and region, verified facts and the request. Not your contact details.</p>
-            <Button className="mt-6" onClick={() => act.run("sendAsk", { askId: `ask-${Date.now()}`, requestId: reqId, funderId: f.id, lineId, amount: Number(amount.replace(/\D/g, "")), support }, "Ask sent (simulated).") && setOpen(false)}>
+            <Button className="mt-6" onClick={() => act.run("sendAsk", { askId: `ask-${Date.now()}`, requestId: reqId, funderId: f.id, lineId, amount: toDollars(amount), support }, "Ask sent (simulated).") && setOpen(false)}>
               Send ask
             </Button>
             <Message error={act.error} />
@@ -736,7 +737,8 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
   const linkedReq = ath && Object.values(w.requests).find((r) => r.ownerId === ath.id && r.status === "open");
   const remaining = linkedReq ? requestTotals(w, linkedReq.id).remaining : 0;
   const fundMax = w.funds[w.opps[oppId]?.fundId ?? ""]?.max ?? 4800;
-  const [requested, setRequested] = useState(existing?.requested ?? Math.min(fundMax, linkedReq ? remaining : 4800));
+  const [requestedText, setRequestedText] = useState(String(existing?.requested ?? Math.min(fundMax, linkedReq ? remaining : 4800)));
+  const requested = toDollars(requestedText);
   const [statement, setStatement] = useState(existing?.statement ?? "");
   const [other, setOther] = useState(existing?.otherFunding ?? "");
   const [ai, setAi] = useState(false);
@@ -814,7 +816,8 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
         <li>
           <Label>4 · Budget and other funding</Label>
           <Field label="Amount requested (USD)" hint={linkedReq ? `Linked to the funding request "${linkedReq.title}": ${fmt(remaining)} still needed; this amount is held while the funder decides` : "The panel awards one of the published levels"} htmlFor="req">
-            <input id="req" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={requested} onChange={(e) => setRequested(Number(e.target.value.replace(/\D/g, "")))} />
+            <input id="req" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={requestedText} onChange={(e) => setRequestedText(e.target.value)} />
+            <MoneyHint value={requestedText} />
           </Field>
           <Field label="Other funding for the same costs" hint="Required, so nothing is funded twice. Type “None” if you have no other support." htmlFor="other">
             <input id="other" className={inputCls} value={other} onChange={(e) => setOther(e.target.value)} placeholder="For example: club travel bursary, $300" />
@@ -866,12 +869,18 @@ export function SeekerApplications({ persona }: { persona: Person }) {
   const apps = Object.values(w.applications).filter((a) => a.applicantId === rid);
   // An offer reaches the recipient only once the funder's approvals are complete; a withdrawn one before acceptance is not shown.
   const offers = rid ? offersFor(w, kind, rid).filter((o) => !o.light && o.status !== "second-approval" && o.status !== "withdrawn") : [];
+  const lapsedByBlock = rid && kind === "athlete" ? offersFor(w, kind, rid).filter((o) => o.status === "withdrawn" && w.blocks.some((b) => b.athleteId === rid && b.funderId === w.funds[o.fundId].funderId)) : [];
   const asks = Object.values(w.asks).filter((a) => w.requests[a.requestId]?.ownerId === rid);
   const interests = Object.values(w.interests).filter((x) => x.athleteId === rid);
   return (
     <div className="pb-8">
       <PageHead eyebrow="Applications" title={`Where do ${persona.role === "athlete" ? "my" : isOrg ? "our" : `${ath?.name.split(" ")[0]}'s`} applications and offers stand?`} />
       <Section title={`Offers · ${offers.filter((o) => o.status === "held").length} to answer`}>
+        {lapsedByBlock.map((o) => (
+          <p key={o.id} className="mt-3 text-small text-muted">
+            {w.funders[w.funds[o.fundId].funderId].name}&rsquo;s offer of {fmt(o.amount)} lapsed because you blocked them. Agreements already accepted continue.
+          </p>
+        ))}
         {offers.length === 0 ? <Empty>No offers yet. Funders can make offers on your published requests or after an application.</Empty> : (
           <ul>
             {offers.map((o) => {
@@ -1258,7 +1267,7 @@ export function Publish({ persona }: { persona: Person }) {
   // Tiago's story values only (Journey E); everyone else starts empty: amounts come from the family's own quotes.
   const story = ath?.id === "tiago";
   const [title, setTitle] = useState(story ? "Competition travel" : "");
-  const [lines, setLines] = useState<{ label: string; amount: number }[]>(story ? [{ label: "Competition travel and entry", amount: 2400 }] : [{ label: "", amount: 0 }]);
+  const [lines, setLines] = useState<{ label: string; amount: number; raw?: string }[]>(story ? [{ label: "Competition travel and entry", amount: 2400 }] : [{ label: "", amount: 0 }]);
   const [month, setMonth] = useState(story ? "August" : "");
   const [helped, setHelped] = useState(false);
   /** Request help (Simulated AI): words from the profile, never amounts or achievements it cannot see. */
@@ -1308,7 +1317,10 @@ export function Publish({ persona }: { persona: Person }) {
         {lines.map((l, i) => (
           <div key={i} className="mt-3 grid grid-cols-[1fr_9rem] gap-3">
             <input aria-label={`Line ${i + 1} description`} className={inputCls} value={l.label} onChange={(e) => setLines(lines.map((x, k) => (k === i ? { ...x, label: e.target.value } : x)))} placeholder="Item" />
-            <input aria-label={`Line ${i + 1} amount`} inputMode="numeric" className={inputCls} value={l.amount || ""} onChange={(e) => setLines(lines.map((x, k) => (k === i ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) } : x)))} placeholder="$" />
+            <span>
+              <input aria-label={`Line ${i + 1} amount`} inputMode="numeric" className={inputCls} value={l.raw ?? (l.amount || "")} onChange={(e) => setLines(lines.map((x, k) => (k === i ? { ...x, raw: e.target.value, amount: toDollars(e.target.value) } : x)))} placeholder="$" />
+              <MoneyHint value={l.raw ?? ""} />
+            </span>
           </div>
         ))}
         <button type="button" className="mt-3 min-h-11 text-small text-muted underline" onClick={() => setLines([...lines, { label: "", amount: 0 }])}>

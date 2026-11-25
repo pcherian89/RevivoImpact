@@ -21,6 +21,8 @@ export function PrototypeBar() {
           <span className="ri-guide-hide hidden sm:inline">Revivo Impact · </span>Prototype
         </a>
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Phones: one "Demo" menu holds the guide, roles, date and reset; wider screens show each button. */}
+          <span className="hidden sm:contents">
           <button type="button" onClick={() => setGuide({ open: !guide.open })} className={btn("secondary", pill)} aria-expanded={guide.open} aria-label="Guided journeys">
             <Footprints className="size-4" aria-hidden="true" />
             <span className="ri-guide-hide hidden whitespace-nowrap lg:inline">{guide.open ? `Journey ${guide.journey} · step ${guide.step + 1}` : "Guided journeys"}</span>
@@ -29,15 +31,24 @@ export function PrototypeBar() {
             <LayoutGrid className="size-4" aria-hidden="true" />
             <span className="ri-guide-hide hidden whitespace-nowrap lg:inline">Explore by role</span>
           </button>
+          </span>
           <div className="relative">
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" className={btn("secondary", pill)}>
               <CalendarDays className="size-4" aria-hidden="true" />
               <span className="hidden whitespace-nowrap sm:inline">Demo date: {m.label.replace(" 2027", "")}</span>
-              <span className="whitespace-nowrap sm:hidden">{m.short}</span>
+              <span className="whitespace-nowrap sm:hidden">Demo · {m.short}</span>
               <ChevronDown className="size-3.5" aria-hidden="true" />
             </button>
             {open && (
               <div role="menu" className="absolute right-0 mt-2 w-72 rounded-[10px] border border-line-strong bg-surface p-2 shadow-xl">
+                <div className="mb-2 border-b border-line pb-2 sm:hidden">
+                  <button type="button" role="menuitem" onClick={() => (setOpen(false), setGuide({ open: true }))} className="flex w-full items-center gap-2 rounded-[6px] px-3 py-2 text-left hover:bg-surface-2">
+                    <Footprints className="size-4" aria-hidden="true" /> Guided journeys
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => (setOpen(false), go("roles"))} className="flex w-full items-center gap-2 rounded-[6px] px-3 py-2 text-left hover:bg-surface-2">
+                    <LayoutGrid className="size-4" aria-hidden="true" /> Explore by role
+                  </button>
+                </div>
                 <Label className="px-2 pt-1 pb-2">Demonstration date</Label>
                 {ownEvents > 0 && <p className="px-2 pb-2 text-small text-amber">Choosing another date loads the story at that date and replaces what you have changed.</p>}
                 {MOMENTS.map((x) => (

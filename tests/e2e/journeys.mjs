@@ -97,7 +97,7 @@ await go("app/ingrid/selection/eas");
 await click("Send decisions");
 await check("A9 sending all decisions asks for confirmation first", (await text()).includes("This can’t be undone"));
 await click("Yes, send them");
-await check("A9 Ingrid sends 46 offers", (await text()).includes("Decisions sent to all 143 applicants"));
+await check("A9 Ingrid sends 46 offers", (await text()).includes("Decisions sent. Every applicant has an answer"));
 await go("app/amira/applications");
 await click("Accept scholarship award");
 await check("A10 Amira accepts", await audited("Accepted a scholarship award of $4,500"));
@@ -287,8 +287,7 @@ await page.waitForTimeout(200);
 await page.getByRole("button", { name: "Not this time" }).first().click();
 await click("Send this decision");
 await check("Gap: one applicant decided on their own", (await text()).includes("Decision sent"));
-await go("app/amira/applications");
-await check("Gap: the applicant sees the funder's message", (await text()).includes("Thank you for applying"));
+await check("Gap: nobody is turned down while still being reviewed", (await text()).includes("Still being reviewed") && (await text()).includes("Nobody is turned down while they are being reviewed"));
 
 // ---- P3: track and review (30 Jun), by real clicks
 await page.goto(`${file}?moment=jun30&motion=reduced#/app/amira/home`);

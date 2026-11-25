@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { ArrowRight, ChevronRight, MessageCircleQuestion, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
-import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
-import { agreementTotals, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
-import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SeeSource, SimulatedAI, Tabs, type Source } from "../components/ui";
+import { BEHAVIOUR, DATE, REGIONS, type Fund, type Person, type World } from "../domain/model";
+import { agreementTotals, stillInReview, fmtIso, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
+import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SeeSource, SimulatedAI, Tabs, toDollars, MoneyHint, type Source } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
 import { FunderAskRevivo } from "./Track";
@@ -421,8 +421,11 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
   const act = useAction(persona.id);
   if (!r || !t) return <Empty>This request is not available.</Empty>;
   const mineAny = Object.values(w.offers).some((o) => o.requestId === id && w.funds[o.fundId].funderId === fid);
-  if (r.minor && !mayReachMinors(w, persona.id) && !mineAny) return <Empty>Requests for athletes under 18 are shown only to verified organisations and to individual sponsors with an enhanced safeguarding check.</Empty>;
-  if ((!r.discoverable || (r.ownerKind === "athlete" && w.blocks.some((b) => b.athleteId === r.ownerId && b.funderId === fid))) && !mineAny) return <Empty>This request is no longer in Discover.</Empty>;
+  const mineAccepted = Object.values(w.offers).some((o) => o.requestId === id && w.funds[o.fundId].funderId === fid && o.status === "accepted");
+  if (r.minor && !mayReachMinors(w, persona.id) && !mineAny) return <Empty>{w.funders[fid]?.accepts === "commercial" ? "Commercial sponsors never see requests for athletes under 18." : "Requests for athletes under 18 are shown only to verified organisations and to individual sponsors with an enhanced safeguarding check."}</Empty>;
+  // A block is never revealed: the funder sees the same note as for any request that left Discover (P5 review).
+  const blocked = r.ownerKind === "athlete" && w.blocks.some((b) => b.athleteId === r.ownerId && b.funderId === fid);
+  if ((blocked && !mineAccepted) || (!r.discoverable && !mineAny)) return <Empty>This request is no longer in Discover.</Empty>;
   const fund = w.funds[fundId] as Fund | undefined;
   const label = r.ownerKind === "org" ? w.orgs[r.ownerId].name : r.minor ? `${r.sport === "Swimming" ? "Swimmer" : r.sport} · ${r.ageGroup}` : w.athletes[r.ownerId].name;
   const ftot = fund ? fundTotals(w, fund.id) : null;
@@ -478,7 +481,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
           <p className="mt-2 text-small text-muted">{r.minor ? "This offer goes to the athlete's guardian. You cannot contact the athlete directly; you see the first name only if the guardian accepts." : "They can accept or decline. Contact details are shared only once they accept."}</p>
           {mine.map((o) => (
             <p key={o.id} role="status" className="mt-4 flex gap-2 text-signal">
-              <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {fmt(o.amount)} offered · {o.status === "held" ? "waiting for acceptance" : o.status === "accepted" ? "accepted" : o.status === "safeguarding" ? "in platform safeguarding review" : o.status === "second-approval" ? "waiting for a second approver at your organisation" : o.status === "withdrawn" ? "withdrawn" : "declined"}
+              <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {fmt(o.amount)} offered · {o.status === "held" ? "waiting for acceptance" : o.status === "accepted" ? "accepted" : o.status === "safeguarding" ? "in platform safeguarding review" : o.status === "second-approval" ? "waiting for a second approver at your organisation" : o.status === "withdrawn" ? (w.blocks.some((b) => b.athleteId === o.recipientId && b.funderId === fid) ? "no longer open" : "withdrawn") : "declined"}
             </p>
           ))}
           {funds.length === 0 || t.remaining === 0 ? (
@@ -521,7 +524,8 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
         )}
         <Field label="Amount (USD)" hint={`Still needed on this line: ${fmt(line?.remaining ?? 0)}. Offers are capped at what is still needed.`} htmlFor="of-amt">
           <input id="of-amt" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className={cn(inputCls, "max-w-[12rem]")} />
-          {fund?.delegatedLimit && Number(amount.replace(/\D/g, "")) > fund.delegatedLimit && <p className="mt-2 text-small text-amber">Above your {fmt(fund.delegatedLimit)} limit: a colleague with Approve must agree before it is sent.</p>}
+          <MoneyHint value={amount} />
+          {fund?.delegatedLimit && toDollars(amount) > fund.delegatedLimit && <p className="mt-2 text-small text-amber">Above your {fmt(fund.delegatedLimit)} limit: a colleague with Approve must agree before it is sent.</p>}
           {fund && fund.policy !== "Simple" && <p className="mt-2 text-small text-subtle">This fund needs a second person with Approve to agree before any offer is sent.</p>}
         </Field>
         <Field label="Reason, linked to the fund's published criteria" htmlFor="of-reason" hint="Required: it becomes part of the selection record.">
@@ -532,7 +536,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
             </button>
           )}
         </Field>
-        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: `of-${fid}-${Date.now()}`, fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: Number(amount.replace(/\D/g, "")), reason }, "Offer sent (simulated).") && setOpen(false)}>
+        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: `of-${fid}-${Date.now()}`, fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: toDollars(amount), reason }, "Offer sent (simulated).") && setOpen(false)}>
           Send offer
         </Button>
         <Message error={act.error} />
@@ -619,6 +623,7 @@ export function AthleteForFunder({ persona, id }: { persona: Person; id: string 
       <Panel open={open} onClose={() => setOpen(false)} title="Sponsorship agreement" eyebrow={`${comFund?.name} · commercial`}>
         <Field label="Amount for 12 months (USD)" htmlFor="sp-amt">
           <input id="sp-amt" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <MoneyHint value={amount} />
         </Field>
         <p className="mt-4 font-medium">Deliverables (up to 3)</p>
         <ul className="mt-1 space-y-1 text-small text-muted">
@@ -627,7 +632,7 @@ export function AthleteForFunder({ persona, id }: { persona: Person; id: string 
           <li>· One content day by Fri 31 Mar 2028</li>
         </ul>
         <p className="mt-3 text-small text-subtle">Payments: half on signing, half after deliverables 1 and 2 are accepted. Reported only in commercial totals.</p>
-        <Button className="mt-6" onClick={() => comFund && act.run("makeOffer", { offerId: `of-${fid}-${id}`, fundId: comFund.id, recipientKind: "athlete", recipientId: id, amount: Number(amount.replace(/\D/g, "")), reason: "Adult national-level athlete whose season plan fits our partnerships.", deliverables: ["Wear partner kit at 4 meets", "One coaching clinic by Thu 30 Sep", "One content day by Fri 31 Mar 2028"] }, "Proposal sent.") && setOpen(false)}>
+        <Button className="mt-6" onClick={() => comFund && act.run("makeOffer", { offerId: `of-${fid}-${id}`, fundId: comFund.id, recipientKind: "athlete", recipientId: id, amount: toDollars(amount), reason: "Adult national-level athlete whose season plan fits our partnerships.", deliverables: ["Wear partner kit at 4 meets", "One coaching clinic by Thu 30 Sep", "One content day by Fri 31 Mar 2028"] }, "Proposal sent.") && setOpen(false)}>
           Send proposal
         </Button>
         <Message error={act.error} />
@@ -746,13 +751,17 @@ export function FunderApplications({ persona }: { persona: Person }) {
   const fid = persona.funderId!;
   const q = new URLSearchParams(location.hash.split("?")[1] ?? "");
   const opps = Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === fid && o.status !== "awaiting");
-  const [oppId, setOppId] = useState(q.get("opp") ?? opps[0]?.id ?? "");
+  // Start on the round with the most applications (the main round), not simply the first one listed.
+  const busiest = [...opps].sort((a, b) => Object.values(w.applications).filter((x) => x.oppId === b.id).length - Object.values(w.applications).filter((x) => x.oppId === a.id).length)[0];
+  const [oppId, setOppId] = useState(q.get("opp") ?? busiest?.id ?? "");
   const [filter, setFilter] = useState<string>("all");
   const apps = Object.values(w.applications).filter((a) => a.oppId === oppId);
   const asks = Object.values(w.asks).filter((a) => a.funderId === fid);
   const offers = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && !o.light);
   const counts = (s: string[]) => apps.filter((a) => s.includes(a.status)).length;
-  const shown = apps.filter((a) => filter === "all" || a.status === filter).sort((a, b) => Number(!!a.light) - Number(!!b.light));
+  const groups: Record<string, string[]> = { submitted: ["submitted", "info"], offered: ["offered", "accepted"] };
+  const shown = apps.filter((a) => filter === "all" || (groups[filter] ?? [filter]).includes(a.status)).sort((a, b) => Number(!!a.light) - Number(!!b.light));
+  const [limit, setLimit] = useState(40);
   const isIndividual = w.funders[fid].type === "Individual sponsor";
   return (
     <div className="pb-8">
@@ -802,12 +811,12 @@ export function FunderApplications({ persona }: { persona: Person }) {
             );
           })()}
           <ul className="mt-3 border-t border-line md:hidden">
-            {shown.slice(0, 40).map((a) => (
+            {shown.slice(0, limit).map((a) => (
               <li key={a.id} className="border-b border-line py-3">
                 <div className="flex items-start justify-between gap-3">
                   <span>
                     <span className="block font-medium">{recipientName(w, a.applicantKind, a.applicantId, persona)}</span>
-                    <span className="block text-small text-subtle">{fmt(a.requested)} requested · scores {a.scores.map((s) => s.total).join(" · ") || "—"}</span>
+                    <span className="block text-small text-subtle">{fmt(a.requested)} requested · scores {a.scores.map((s) => s.total).join(" and ") || "none yet"}{a.scores.length ? " of 16" : ""}</span>
                   </span>
                   <AppStatus s={a.status} funderView />
                 </div>
@@ -815,27 +824,27 @@ export function FunderApplications({ persona }: { persona: Person }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-small text-subtle">Athletes under 18 appear by first name only once their guardian has accepted, otherwise without names. {apps.some((a) => a.light) ? `In this demonstration, ${apps.filter((a) => !a.light).length} applications open in full, one or more at every stage; the other ${apps.filter((a) => a.light).length} are summary rows with real scores and statuses.` : ""}</p>
+          <p className="mt-2 text-small text-subtle">Athletes under 18 appear by first name only once their guardian has accepted, otherwise without names. {apps.some((a) => a.light) ? `In this demonstration, ${apps.filter((a) => !a.light).length} applications can be opened; the others show their scores and status only.` : ""}</p>
           <div className="relative mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[44rem] text-table">
               <thead>
                 <tr className="label-data border-b border-line text-left text-subtle">
                   <th className="py-3 pr-4">Applicant</th>
                   <th className="py-3 pr-4">Requested</th>
-                  <th className="py-3 pr-4">Scores</th>
+                  <th className="py-3 pr-4">Reviewers&rsquo; scores</th>
                   <th className="py-3 pr-4">Status</th>
                   <th className="py-3" />
                 </tr>
               </thead>
               <tbody>
-                {shown.slice(0, 40).map((a) => (
+                {shown.slice(0, limit).map((a) => (
                   <tr key={a.id} className="h-12 border-b border-line">
                     <td className="pr-4">
                       {recipientName(w, a.applicantKind, a.applicantId, persona)}
                       {a.nominatedBy && <span className="block text-small text-subtle">Nominated by {a.nominatedBy}</span>}
                     </td>
                     <td className="pr-4 tabular-nums">{fmt(a.requested)}</td>
-                    <td className="pr-4 tabular-nums">{a.scores.map((s) => s.total).join(" · ") || "—"}</td>
+                    <td className="pr-4 tabular-nums">{a.scores.length ? `${a.scores.map((s) => s.total).join(" and ")} of 16` : "None yet"}</td>
                     <td className="pr-4">
                       <AppStatus s={a.status} funderView />
                     </td>
@@ -844,7 +853,12 @@ export function FunderApplications({ persona }: { persona: Person }) {
                 ))}
               </tbody>
             </table>
-            {shown.length > 40 && <p className="mt-2 text-small text-subtle">Showing 40 of {shown.length}.</p>}
+            {shown.length > limit && (
+              <button type="button" className={btn("secondary", "mt-3")} onClick={() => setLimit(shown.length)}>
+                Show all {shown.length}
+              </button>
+            )}
+            {apps.length === 0 && <p className="mt-3 text-muted">No applications yet. They appear here as soon as people apply.</p>}
           </div>
         </>
       )}
@@ -884,7 +898,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
                   {fmt(o.amount)} to <span className="font-medium">{recipientName(w, o.recipientKind, o.recipientId, persona)}</span> · {w.funds[o.fundId].name}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Chip kind={o.status === "accepted" ? "verified" : o.status === "held" ? "awaiting" : o.status === "second-approval" ? "attention" : "info"}>{o.status === "held" ? "Awaiting acceptance" : o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "Platform safeguarding review" : o.status === "second-approval" ? "Needs a second approver" : o.status === "withdrawn" ? "Withdrawn" : "Declined"}</Chip>
+                  <Chip kind={o.status === "accepted" ? "verified" : o.status === "held" ? "awaiting" : o.status === "second-approval" ? "attention" : "info"}>{o.status === "held" ? "Awaiting acceptance" : o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "Platform safeguarding review" : o.status === "second-approval" ? "Needs a second approver" : o.status === "withdrawn" ? (w.blocks.some((b) => b.athleteId === o.recipientId && b.funderId === w.funds[o.fundId].funderId) ? "No longer open" : "Withdrawn") : "Declined"}</Chip>
                   {o.status === "second-approval" && persona.perms.includes("Approve") && o.by !== persona.id && (
                     <ActionButton actor={persona.id} type="approveOffer" args={{ offerId: o.id }} success="Second approval given. The offer has been sent.">
                       Give second approval
@@ -1034,6 +1048,7 @@ function DecideOne({ persona, appId }: { persona: Person; appId: string }) {
         ))}
       </div>
       {!can && !a.pendingFact && <p className="mt-2 text-small text-subtle">An offer becomes possible once the reviewers shortlist this application.</p>}
+      {a.pendingFact && <p className="mt-2 text-small text-subtle">No offer yet: one fact still needs checking, so the waiting list is the choice for now.</p>}
       {d && (
         <>
           <label htmlFor={`note-${appId}`} className="mt-3 block text-small text-subtle">
@@ -1063,6 +1078,17 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
   const t = fundTotals(w, fund.id);
   const proposed = sum(offerable.map((a) => a.recommendedTier!));
   const byTier = (fund.tiers ?? []).map((tier) => ({ tier: tier.amount, n: offerable.filter((a) => a.recommendedTier === tier.amount).length }));
+  const inReview = stillInReview(w, id);
+  const reviewed = apps.filter((a) => ["submitted", "info"].includes(a.status)).length - inReview.length;
+  const alreadyTold = apps.filter((a) => ["noteligible", "incomplete"].includes(a.status)).length;
+  // Shortlisted people first, then everyone else who can still be decided.
+  const rank = (s: string) => (s === "shortlisted" ? 0 : ["submitted", "info"].includes(s) ? 1 : 2);
+  if (apps.length === 0)
+    return (
+      <div className="pb-8">
+        <PageHead eyebrow={`Selection & decisions · ${o.title}`} title="Who should we fund?" lead={`No applications yet. ${oppStatusAt(w, o) === "upcoming" ? `The round opens ${fmtIso(o.opens)}.` : "They appear here as soon as people apply."}`} />
+      </div>
+    );
   return (
     <div className="pb-8">
       <PageHead eyebrow={`Selection & decisions · ${o.title}`} title="Who should we fund?" lead={`${apps.length} applications · minimum score ${o.minScore ?? "—"} of 16 · ${policyText(fund.policy).toLowerCase()}`} />
@@ -1070,40 +1096,49 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
         <div className="mt-4">
           <FundBar announced={t.announced} committed={t.committed} reserved={t.held + (o.status === "decided" ? 0 : proposed)} />
         </div>
-        {o.status !== "decided" && <p className="mt-3 text-small text-muted">If you send these decisions: {offerable.length} offers ({byTier.map((b) => `${b.n} × ${fmt(b.tier)}`).join(" + ")} = {fmt(proposed)}) held until accepted; {fmt(t.available - proposed)} stays available.</p>}
+        {o.status !== "decided" && <p className="mt-3 text-small text-muted">If you press &ldquo;Send decisions&rdquo;: {offerable.length} offers ({byTier.map((b) => `${b.n} × ${fmt(b.tier)}`).join(" + ")} = {fmt(proposed)}) held until accepted; {fmt(t.available - proposed)} stays available.</p>}
       </Section>
       <Section title={o.status === "decided" ? `Decisions sent · ${apps.filter((a) => a.status === "offered" || a.status === "accepted").length} offers · ${apps.filter((a) => a.status === "waiting").length} on the waiting list` : `Still to decide · ${short.length} shortlisted`}>
         <ul>
-          {apps.filter((a) => !a.light && ["shortlisted", "submitted", "info", "offered", "waiting", "notselected"].includes(a.status)).map((a) => (
+          {apps.filter((a) => !a.light && ["shortlisted", "submitted", "info", "offered", "waiting", "notselected"].includes(a.status)).sort((a, b) => rank(a.status) - rank(b.status)).map((a) => (
             <li key={a.id} className="border-b border-line py-4">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <span>
                   <span className="font-medium">{athleteLabel(w, a.applicantId, persona)}</span> · requested {fmt(a.requested)} · reviewers' scores {a.scores.map((s) => `${s.total} of 16`).join(" and ") || "none yet"}
                 </span>
-                <span className="text-small">{a.recommendedTier ? `Recommended: ${fmt(a.recommendedTier)} (the published level, not the amount requested)` : "Not shortlisted"}</span>
+                <span className="text-small">{a.recommendedTier ? `Recommended: ${fmt(a.recommendedTier)} (the published level, not the amount requested)` : inReview.includes(a) ? "Still being reviewed" : "Not shortlisted"}</span>
               </div>
               {o.status !== "decided" && ["shortlisted", "submitted", "info"].includes(a.status) && persona.perms.includes("Approve") ? <DecideOne persona={persona} appId={a.id} /> : ["offered", "waiting", "notselected", "accepted"].includes(a.status) && <p className="mt-2 text-small text-subtle">Decision sent: <AppStatus s={a.status} funderView />{a.decisionNote ? ` · “${a.decisionNote}”` : ""}</p>}
             </li>
           ))}
-          <Row>
+          {o.status !== "decided" && <Row>
             <span className="text-muted">{short.some((a) => !a.light) ? "+ " : ""}{plural(short.filter((a) => a.light).length, short.some((a) => !a.light) ? "more recommendation" : "recommendation")} from the two reviewers (summarised)</span>
             <span className="text-small text-subtle">{short.filter((a) => a.pendingFact).length} with one fact still to verify → waiting list</span>
-          </Row>
+          </Row>}
         </ul>
       </Section>
       <div className="mt-8">
         {o.status === "decided" ? (
-          <p className="flex gap-2"><CircleCheck className="size-5 shrink-0 text-signal" aria-hidden="true" /> Decisions sent to all {apps.length} applicants. Every unsuccessful message links to other open opportunities.</p>
+          <p className="flex gap-2"><CircleCheck className="size-5 shrink-0 text-signal" aria-hidden="true" /> Decisions sent. Every applicant has an answer, and every unsuccessful message links to other open opportunities.</p>
         ) : (
           <>
-            {!confirming ? (
+            {inReview.length > 0 ? (
+              <p className="flex gap-2 text-amber" role="status">
+                <CircleHelp className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                <span>
+                  {inReview.length === 1 ? "One application still needs" : `${inReview.length} applications still need`} the reviewers&rsquo; scores ({inReview.slice(0, 3).map((a) => athleteLabel(w, a.applicantId, persona)).join(", ")}). Nobody is turned down while they are being reviewed: send decisions once every application is reviewed, or decide shortlisted people one at a time above.
+                </span>
+              </p>
+            ) : short.length === 0 && reviewed === 0 ? (
+              <p className="text-muted">Nothing to send yet. Shortlisted applications appear here.</p>
+            ) : !confirming ? (
               <Button onClick={() => setConfirming(true)} arrow>
                 Send decisions
               </Button>
             ) : (
               <div className="rounded-[10px] border border-line-strong p-4">
                 <p className="font-medium">
-                  Send {offerable.length} offers, {short.filter((a) => a.pendingFact).length} waiting-list places and a respectful message to the other {apps.filter((a) => ["submitted", "info"].includes(a.status)).length} applicants?
+                  Send {offerable.length} offers, {short.filter((a) => a.pendingFact).length} waiting-list places and a respectful message to the {reviewed} reviewed applicants below the minimum score?{alreadyTold ? ` The ${alreadyTold} who were not eligible or did not finish were told when they applied.` : ""}
                 </p>
                 <p className="mt-1 text-small text-subtle">This can&rsquo;t be undone. Offers are held until each person accepts.</p>
                 <div className="mt-3 flex flex-wrap gap-3">
@@ -1139,17 +1174,19 @@ export function Portfolio({ persona }: { persona: Person }) {
       return { fund: f, n: gs.length, committed: sum(gs.map((g) => g.amount)), released: sum(gs.map((g) => released(w, g.id))) };
     })
     .filter((e) => e.n > 0);
-  const cash = mine.filter((g) => counts(g) && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
+  // Development and programme cash only: commercial sponsorship and in-kind support are counted apart (I6, I7).
+  const cash = mine.filter((g) => counts(g) && !["inkind", "commercial"].includes(BEHAVIOUR[w.funds[g.fundId].type]));
+  const commercialTotal = sum(mine.filter((g) => counts(g) && BEHAVIOUR[w.funds[g.fundId].type] === "commercial").map((g) => g.amount));
   const money = cash.map((g) => agreementTotals(w, g.id));
   const kits = mine.filter((g) => g.kits);
   const delivered = w.kitDeliveries.reduce((a, d) => a + d.items, 0);
   const toCheck = Object.values(w.expenses).filter((e) => mine.some((g) => g.id === e.agreementId) && e.status === "reported" && e.receipt);
   const reports = Object.values(w.reports).filter((r) => mine.some((g) => g.id === r.agreementId) && r.status !== "draft");
   const programmes = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));
-  const byFund = (k: "committed" | "paid" | "checked") => ({ title: k === "committed" ? "Committed, by fund" : k === "paid" ? "Paid, by fund" : "Spending checked, by fund", rows: funds.filter((f) => BEHAVIOUR[f.type] !== "inkind").map((f) => ({ label: f.name, value: fmt(sum(cash.filter((g) => g.fundId === f.id).map((g) => agreementTotals(w, g.id)[k]))) })).filter((r) => r.value !== "$0") });
+  const byFund = (k: "committed" | "paid" | "checked") => ({ title: k === "committed" ? "Committed, by fund" : k === "paid" ? "Paid, by fund" : "Spending checked, by fund", rows: funds.filter((f) => !["inkind", "commercial"].includes(BEHAVIOUR[f.type])).map((f) => ({ label: f.name, value: fmt(sum(cash.filter((g) => g.fundId === f.id).map((g) => agreementTotals(w, g.id)[k]))) })).filter((r) => r.value !== "$0") });
   const solo = w.funders[fid].type === "Individual sponsor";
   const answers = [
-    { q: solo ? "How much have you committed?" : "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: "Accepted by both sides", src: byFund("committed") },
+    { q: solo ? "How much have you committed?" : "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: commercialTotal ? `Development and programme funding. Plus ${fmt(commercialTotal)} commercial sponsorship, kept apart` : "Accepted by both sides", src: byFund("committed") },
     { q: solo ? "How much have you paid?" : "How much have we paid?", a: fmt(sum(money.map((m) => m.paid))), d: `${fmt(sum(money.map((m) => m.stillToPay)))} still to pay`, src: byFund("paid") },
     { q: "How much spending is checked?", a: fmt(sum(money.map((m) => m.checked))), d: `${fmt(sum(money.map((m) => m.waiting)))} waiting to be checked`, src: byFund("checked") },
   ];
@@ -1337,9 +1374,13 @@ function UpcomingPayments({ persona, cash }: { persona: Person; cash: World["agr
   const act = useAction(persona.id);
   const canPay = persona.perms.includes("Finance");
   // A grouped line of payments due now is recorded in one step: one recorded payment per agreement, each through the same rules.
+  // Several payments are recorded only after a short confirmation that shows the total and the date paid.
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const [paidOn, setPaidOn] = useState(DATE[w.moment]);
   const payAll = (ids: string[]) => {
     const due = ids.map((id) => ({ id, x: scheduleOf(w, id).find((i) => i.status === "due" || i.status === "part-paid") })).filter((d) => d.x);
-    due.every((d, k) => act.run("recordRelease", { agreementId: d.id, amount: d.x!.amount - d.x!.paid, ref: `PAY-${d.id.toUpperCase()}-${d.x!.n}`, entryId: `le-${d.id}-${Date.now()}-${k}` }, k === due.length - 1 ? `${due.length} payments recorded (simulated). Each recipient confirms when the money arrives.` : undefined));
+    const ok = due.every((d, k) => act.run("recordRelease", { agreementId: d.id, amount: d.x!.amount - d.x!.paid, paidOn, entryId: `le-${d.id}-${Date.now()}-${k}` }, k === due.length - 1 ? `${due.length} payments recorded (simulated). Each recipient confirms when the money arrives.` : undefined));
+    if (ok) setConfirmKey(null);
   };
   const rows = new Map<string, Row>();
   for (const g of cash) {
@@ -1369,10 +1410,26 @@ function UpcomingPayments({ persona, cash }: { persona: Person; cash: World["agr
             <span className="col-start-1 row-start-2 sm:col-start-2 sm:row-start-1">
               {r.href ? <a className="hover:text-signal" href={r.href}>{r.who}</a> : r.who}
               <span className="block text-small text-subtle">{r.note}</span>
-              {!r.href && r.due && canPay && (
-                <button type="button" className={btn("secondary", "mt-2 min-h-10 px-4 font-sans text-small font-medium tracking-normal")} onClick={() => payAll(r.ids)}>
+              {!r.href && r.due && canPay && confirmKey !== r.key && (
+                <button type="button" className={btn("secondary", "mt-2 min-h-10 px-4 font-sans text-small font-medium tracking-normal")} onClick={() => (setConfirmKey(r.key), setPaidOn(DATE[w.moment]))}>
                   Record these {r.ids.length} payments
                 </button>
+              )}
+              {confirmKey === r.key && (
+                <span className="mt-2 block rounded-[10px] border border-line-strong p-3">
+                  <span className="block font-medium">Record {r.ids.length} payments, {fmt(r.amount)} in total?</span>
+                  <label htmlFor={`bulk-on-${r.key}`} className="mt-2 block text-small text-subtle">
+                    Date paid
+                  </label>
+                  <input id={`bulk-on-${r.key}`} type="date" max={DATE[w.moment]} className={cn(inputCls, "mt-1 max-w-[11rem]")} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+                  <span className="mt-3 flex flex-wrap gap-2">
+                    <Button onClick={() => payAll(r.ids)}>Yes, record them</Button>
+                    <button type="button" className={btn("secondary")} onClick={() => setConfirmKey(null)}>
+                      Not yet
+                    </button>
+                  </span>
+                  <span className="mt-2 block text-small text-subtle">Records what your finance team paid. Revivo Impact never moves money.</span>
+                </span>
               )}
             </span>
             <span className="row-span-2 text-right font-medium tabular-nums sm:row-span-1">{fmt(r.amount)}</span>
@@ -1422,20 +1479,23 @@ function AddExisting({ persona, open, onClose }: { persona: Person; open: boolea
       </Field>
       <div className="grid gap-x-4 sm:grid-cols-3">
         <Field label="Amount agreed" htmlFor="ex-amt">
-          <input id="ex-amt" inputMode="numeric" className={inputCls} value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} />
+          <input id="ex-amt" inputMode="numeric" className={inputCls} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <MoneyHint value={amount} />
         </Field>
         <Field label="Already paid" htmlFor="ex-paid">
-          <input id="ex-paid" inputMode="numeric" className={inputCls} value={paid} onChange={(e) => setPaid(e.target.value.replace(/\D/g, ""))} />
+          <input id="ex-paid" inputMode="numeric" className={inputCls} value={paid} onChange={(e) => setPaid(e.target.value)} />
+          <MoneyHint value={paid} />
         </Field>
         <Field label="Already spent" htmlFor="ex-spent">
-          <input id="ex-spent" inputMode="numeric" className={inputCls} value={spent} onChange={(e) => setSpent(e.target.value.replace(/\D/g, ""))} />
+          <input id="ex-spent" inputMode="numeric" className={inputCls} value={spent} onChange={(e) => setSpent(e.target.value)} />
+          <MoneyHint value={spent} />
         </Field>
       </div>
       <Button
         className="mt-6"
         onClick={() => {
           const id = `ag-ex-${org}-${Date.now()}`;
-          if (act.run("addExistingFunding", { agreementId: id, fundId, orgId: org, amount: Number(amount), purpose, paid: Number(paid || 0), spent: Number(spent || 0), nextUpdate: "Next update due Thu 30 Sep" }, "Added. A second person with Approve now confirms it.")) {
+          if (act.run("addExistingFunding", { agreementId: id, fundId, orgId: org, amount: toDollars(amount), purpose, paid: paid.trim() ? toDollars(paid) : 0, spent: spent.trim() ? toDollars(spent) : 0, nextUpdate: "Next update due Thu 30 Sep" }, "Added. A second person with Approve now confirms it.")) {
             onClose();
             go(`app/${persona.id}/agreement/${id}`);
           }

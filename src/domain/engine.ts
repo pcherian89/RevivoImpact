@@ -171,6 +171,23 @@ export function claimsCheck(text: string, w?: World, agreementId?: string) {
   const t = text.toLowerCase();
   const esc = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const out = CLAIMS.filter((c) => new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t));
+  // Word families that claim change the records cannot show (P5 review): improve, transform, boost, increase, double…
+  for (const [re, label] of [
+    [/\bimprov(?:e|es|ing)\b/, "improve"],
+    [/\btransform(?:s|ing)\b/, "transforms"],
+    [/\bboost(?:s|ed|ing)?\b/, "boost"],
+    [/\bincreas(?:e|ed|es|ing)\b/, "increased"],
+    [/\bdoubl(?:e|ed|es|ing)\b/, "doubled"],
+    [/\btripl(?:e|ed|es|ing)\b/, "tripled"],
+    [/\bout of trouble\b/, "out of trouble"],
+    [/\bfitter\b|\bfitness (?:rose|improved|went up)\b/, "fitter"],
+  ] as [RegExp, string][])
+    if (re.test(t) && !out.some((o) => o.startsWith(label.slice(0, 5)))) out.push(label);
+  // "40 percent" needs its sample just like "40%".
+  for (const m of t.matchAll(/(\d+(?:\.\d+)?)\s?per ?cent/g)) {
+    const around = t.slice(Math.max(0, m.index! - 120), m.index! + 120);
+    if (!/answered|responded|self-reported/.test(around)) out.push(`${m[1]} percent without saying how many answered`);
+  }
   // A percentage needs its sample: "71% (212 of 460 answered)" passes; "rose by 40%" does not.
   for (const m of t.matchAll(/(\d+(?:\.\d+)?)\s?%/g)) {
     const around = t.slice(Math.max(0, m.index! - 120), m.index! + 120);
@@ -182,6 +199,14 @@ export function claimsCheck(text: string, w?: World, agreementId?: string) {
     const pt = programmeTotals(w, p.id);
     for (const m of t.matchAll(/(\d+) (?:out )?of (?:the )?(\d+) (?:planned |scheduled )?sessions/g)) if (Number(m[1]) !== pt.delivered || Number(m[2]) !== pt.planned) out.push(`${m[1]} of ${m[2]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
     for (const m of t.matchAll(/all (?:the )?(\d+) (?:planned |scheduled )?sessions/g)) if (pt.delivered !== Number(m[1]) || pt.delivered !== pt.planned) out.push(`all ${m[1]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
+    // "All sessions ran" and "120 sessions were delivered" without "of M".
+    if (/\ball (?:the |our )?sessions\b/.test(t) && !/all \d+ /.test(t) && pt.delivered !== pt.planned) out.push(`all sessions (the records show ${pt.delivered} of ${pt.planned})`);
+    for (const m of t.matchAll(/(?<!of )(?<!out of )\b(\d+) (?:planned |scheduled )?sessions (?:were |have been )?(?:delivered|ran|run|held|took place)/g)) if (Number(m[1]) !== pt.delivered) out.push(`${m[1]} sessions delivered (the records show ${pt.delivered})`);
+    // People reached must match the register: "we reached 600 children" when the register holds 460.
+    for (const m of t.matchAll(/(?:reached|registered|enrolled|worked with|supported|engaged|involved)\s+(?:over |more than |almost |nearly |about |around )?([\d,]+)\s+(?:children|young people|participants|players|kids|girls|boys|people)/g)) {
+      const n = Number(m[1].replace(/,/g, ""));
+      if (n !== pt.participants) out.push(`${m[1]} ${m[0].split(/\s+/).pop()} (the register shows ${pt.participants})`);
+    }
   }
   // Money in the narrative must be a figure the records contain (founder, P4): flag any amount that is not.
   if (w && agreementId) {
@@ -222,7 +247,7 @@ export function claimsCheck(text: string, w?: World, agreementId?: string) {
       let next: { at: number; want: number; label: string } | null = null;
       for (const [re, want, label] of words)
         for (const k of after.matchAll(re)) if (!next || k.index! < next.at || (k.index === next.at && label.length > next.label.length)) next = { at: k.index!, want, label };
-      if (next && !/[.;:,]/.test(after.slice(0, next.at))) {
+      if (next && !/[.;:,]|\band\b|\bbut\b|\bthen\b/.test(after.slice(0, next.at))) {
         if (v !== next.want) out.push(`${m[0].trim()} ${next.label} (the records show ${fmt(next.want)} ${next.label})`);
         continue;
       }
@@ -237,6 +262,13 @@ export function claimsCheck(text: string, w?: World, agreementId?: string) {
     }
   }
   return out;
+}
+
+/** Applications still waiting for the reviewers' scores this fund's rules require (they cannot be turned down yet). */
+export function stillInReview(w: World, oppId: string) {
+  const fund = w.funds[w.opps[oppId].fundId];
+  const need2 = fund.policy === "Institutional" ? 2 : 1;
+  return Object.values(w.applications).filter((x) => x.oppId === oppId && ["submitted", "info"].includes(x.status) && x.scores.length < need2);
 }
 
 /** Every money figure a report may quote: the totals, each expense, each budget line, each scheduled payment. */
@@ -724,10 +756,10 @@ export const commands = {
     const app = c.w.applications[a.appId];
     need(memberOf(c.w, c.actor, funderOfApp(c.w, app), "Review"), "Only a reviewer at the funder this application was sent to can score it.");
     need(["submitted", "info"].includes(app.status), "This application is no longer being scored.");
-    need(Number.isInteger(a.total) && a.total >= 4 && a.total <= 16, "A rubric total is between 4 and 16.");
+    need(Number.isInteger(a.total) && a.total >= 4 && a.total <= 16, "Enter a total score from 4 to 16.");
     need(!app.scores.some((s) => s.by === c.actor), "You have already scored this application.");
     app.scores.push({ by: c.actor, total: a.total });
-    audit(c, `Scored the rubric (${a.total} of 16)`, c.w.athletes[app.applicantId]?.name ?? a.appId);
+    audit(c, `Scored the application (${a.total} of 16)`, c.w.athletes[app.applicantId]?.name ?? a.appId);
   },
 
   shortlist(c: Ctx, a: { appId: string; tier: number }) {
@@ -751,6 +783,9 @@ export const commands = {
     need(o.status !== "decided", "Decisions for this opportunity have already been sent.");
     const apps = Object.values(c.w.applications).filter((x) => x.oppId === a.oppId);
     const shortlisted = apps.filter((x) => x.status === "shortlisted");
+    // Nobody is turned down while their application is still being reviewed (P5 review).
+    const inReview = stillInReview(c.w, a.oppId);
+    need(inReview.length === 0, `${inReview.length === 1 ? "One application still needs" : `${inReview.length} applications still need`} the reviewers' scores. Send decisions once every application has been reviewed, or decide shortlisted people one at a time.`);
     need(!shortlisted.some((x) => x.scores.some((s) => s.by === c.actor)), "You scored some of these applications. A different person must approve them.");
     const offerable = shortlisted.filter((x) => !x.pendingFact);
     const total = sum(offerable.map((x) => x.recommendedTier!));
@@ -782,6 +817,7 @@ export const commands = {
     need(!x.scores.some((s) => s.by === c.actor), "You scored this application. A different person must decide it.");
     need(["submitted", "info", "shortlisted"].includes(x.status), "This application already has a decision.");
     need(a.note?.trim().length > 10, "Write a short, respectful message to the applicant.");
+    need(x.status === "shortlisted" || !stillInReview(c.w, x.oppId).includes(x), "This application is still being reviewed. Decide once the reviewers have scored it.");
     if (a.decision === "offer") {
       need(x.status === "shortlisted" && x.recommendedTier, "Only a shortlisted application with a recommended amount can be offered.");
       need(!x.pendingFact, "One fact still needs checking. Put it on the waiting list instead.");
@@ -917,7 +953,7 @@ export const commands = {
     need(c.w.funders[p!.funderId!].verified, "Your organisation is waiting for verification (simulated). Interest opens once the platform has checked you.");
     need(!ath.minor, "Interest in athletes under 18 goes only through a guardian's anonymised request.");
     need(ath.discoverable, "This athlete is not discoverable.");
-    need(!c.w.blocks.some((b) => b.athleteId === a.athleteId && b.funderId === p!.funderId), "This athlete has blocked contact from your organisation.");
+    need(!c.w.blocks.some((b) => b.athleteId === a.athleteId && b.funderId === p!.funderId), "This request is no longer in Discover.");
     fresh(c.w.interests, a.interestId);
     need(a.reason.trim().length > 10, "Choose or write the reason, linked to what you support.");
     need(!Object.values(c.w.interests).some((x) => x.funderId === p!.funderId && x.athleteId === a.athleteId && x.status === "sent"), "Your interest is already waiting for this athlete's answer.");
@@ -960,7 +996,7 @@ export const commands = {
       need(!(funder.type === "Individual sponsor" && !c.w.people[c.actor]?.enhancedCheck), "Individual sponsors need an enhanced safeguarding check to support athletes under 18.");
       need(mayReachMinors(c.w, c.actor), "Only verified organisations, and individual sponsors with an enhanced safeguarding check, can offer to athletes under 18.");
     }
-    if (a.recipientKind === "athlete") need(!c.w.blocks.some((b) => b.athleteId === a.recipientId && b.funderId === fund.funderId), "This athlete has blocked contact from your organisation.");
+    if (a.recipientKind === "athlete") need(!c.w.blocks.some((b) => b.athleteId === a.recipientId && b.funderId === fund.funderId), "This request is no longer in Discover.");
     if (r) {
       const line = requestTotals(c.w, r.id).lines.find((l) => l.id === (a.lineId ?? r.lines[0].id))!;
       need(a.amount <= line.remaining, `This exceeds the ${fmt(line.remaining)} still needed by ${fmt(a.amount - line.remaining)}. Offers are capped at what is still needed.`);
@@ -1072,7 +1108,7 @@ export const commands = {
     need(ag.origin === "Existing agreement" || paidOn >= DATE[ag.acceptedAt], `The payment date can't be before the agreement was accepted (${fmtIso(DATE[ag.acceptedAt])}).`);
     const ref = (a.ref ?? "").trim() || `PAY-${ag.id.toUpperCase()}-${c.w.ledger.filter((l) => l.agreementId === ag.id && l.kind === "release").length + 1}`;
     need(ref.length <= 40, "Keep the payment reference to 40 characters or fewer.");
-    need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === ref), `Payment ${ref} is already recorded.`);
+    need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref.toLowerCase() === ref.toLowerCase()), `Payment ${ref} is already recorded.`);
     need(released(c.w, ag.id) + a.amount <= ag.amount, "You can't pay more than was committed.");
     const sched = scheduleOf(c.w, ag.id);
     const dueNow = sum(sched.filter((x) => x.status === "due" || x.status === "part-paid").map((x) => x.amount - x.paid));

@@ -16,6 +16,20 @@ import {
 
 export const cn = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
+/**
+ * Money typed by a person: whole dollars only ("1200", "1,200" or "$1,200"). Anything else (decimals, minus signs,
+ * letters) is NaN, which the rules refuse with a plain message. Nothing is silently changed (P5 review).
+ */
+export const toDollars = (s: string) => {
+  const t = s.trim().replace(/^\$/, "").replace(/,(?=\d{3}(?:\D|$))/g, "");
+  return /^\d+$/.test(t) ? Number(t) : NaN;
+};
+/** Shown under a money field while what is typed is not whole dollars. */
+export function MoneyHint({ value }: { value: string }) {
+  if (!value.trim() || !Number.isNaN(toDollars(value))) return null;
+  return <p className="mt-1 text-small text-amber">Whole dollars only, for example 1200. No cents or minus signs.</p>;
+}
+
 /** One selected state for every choice (consent, decisions, update types): ink fill with a tick; never lime for an answer. */
 export const seg = (on: boolean) => cn("inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-small disabled:opacity-50", on ? "border-ink bg-ink font-medium text-canvas before:content-['✓']" : "border-line-strong text-ink hover:border-ink");
 

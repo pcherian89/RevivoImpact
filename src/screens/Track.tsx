@@ -45,6 +45,8 @@ import {
   Panel,
   SeeSource,
   SimulatedAI,
+  toDollars,
+  MoneyHint,
   type Source,
 } from "../components/ui";
 import { FundingBar, FundingLine } from "../components/money";
@@ -857,10 +859,16 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
   const halves = ["Scholarship award", "Sponsorship agreement"].includes(
     w.funds[g.fundId].type,
   );
-  // The amount starts at what the schedule says is next (never the whole balance).
+  // The amount starts at what the schedule says is due now (never the whole balance), and only when nothing asks
+  // finance to hold: a review that did not say "Continue" leaves it empty for a person to decide (P5 review).
   const nx = nextInstalment(w, g.id);
+  const sched = scheduleOf(w, g.id);
+  const dueNow = sched.filter((x) => x.status === "due" || x.status === "part-paid").reduce((a, x) => a + x.amount - x.paid, 0);
+  const waitingFor = sched.find((x) => x.status !== "paid" && x.status !== "due" && x.status !== "part-paid");
+  const lastReview = Object.values(w.reviews).filter((r) => r.agreementId === g.id).pop();
+  const hold = !!lastReview && lastReview.decision !== "Continue";
   const [amount, setAmount] = useState(
-    String(nx ? nx.amount - nx.paid : halves && t.paid === 0 ? g.amount / 2 : t.stillToPay),
+    hold ? "" : String(dueNow || (nx ? nx.amount - nx.paid : halves && t.paid === 0 ? g.amount / 2 : t.stillToPay)),
   );
   const act = useAction(persona.id);
   const [paidOn, setPaidOn] = useState(DATE[w.moment]);
@@ -868,6 +876,16 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
   const cond = Object.values(w.reviews)
     .filter((r) => r.agreementId === g.id)
     .pop();
+  if (dueNow === 0 && t.stillToPay > 0)
+    return (
+      <div className="mt-6 border-t border-line pt-5">
+        <Label>Record a payment (simulated)</Label>
+        <p className="mt-2 text-muted">
+          Nothing is due yet.{" "}
+          {waitingFor ? `The next payment, ${fmt(waitingFor.amount - waitingFor.paid)} (${waitingFor.dueLabel}), ${waitingFor.condition && !waitingFor.conditionMet ? `waits until ${waitingFor.condition}` : "is not due yet"}.` : ""}
+        </p>
+      </div>
+    );
   return (
     <div className="mt-6 border-t border-line pt-5">
       <Label>Record a payment (simulated)</Label>
@@ -881,8 +899,9 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
             inputMode="numeric"
             className={cn(inputCls, "mt-1 max-w-[10rem]")}
             value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => setAmount(e.target.value)}
           />
+          <MoneyHint value={amount} />
         </div>
         <div>
           <label htmlFor={`pay-on-${g.id}`} className="block text-small text-subtle">
@@ -915,7 +934,7 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
           onClick={() =>
             act.run(
               "recordRelease",
-              { agreementId: g.id, amount: Number(amount), ref, paidOn, entryId: `le-${g.id}-${Date.now()}` },
+              { agreementId: g.id, amount: toDollars(amount), ref, paidOn, entryId: `le-${g.id}-${Date.now()}` },
               "Payment recorded. The recipient confirms when it arrives.",
             )
           }
@@ -1272,14 +1291,14 @@ function SpendingForm({
               expenseId: `ex-${g.id}-${Date.now()}`,
               agreementId: g.id,
               what,
-              amount: Number(amount),
+              amount: toDollars(amount),
               paidOn: day(paidOn),
               receipt,
             },
             "Added.",
           )
         ) {
-          setNotice(`${what.trim()} · ${fmt(Number(amount))} added. ${receipt ? "Waiting to be checked by the funder." : "Add the receipt when you have it."}`);
+          setNotice(`${what.trim()} · ${fmt(toDollars(amount))} added. ${receipt ? "Waiting to be checked by the funder." : "Add the receipt when you have it."}`);
           onDone();
         }
       }}
@@ -1303,8 +1322,9 @@ function SpendingForm({
             inputMode="numeric"
             className={inputCls}
             value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => setAmount(e.target.value)}
           />
+          <MoneyHint value={amount} />
         </Field>
         <Field label="When did you pay?" htmlFor="sp-date">
           <input
@@ -2192,6 +2212,8 @@ export function reportFigures(w: World, agreementIds: string[]) {
     committed: add("committed"),
     paid: add("paid"),
     carriedPaid: add("carriedPaid"),
+    carriedSpent: add("carriedSpent"),
+    query: add("query"),
     received: add("received"),
     spent: add("spent"),
     checked: add("checked"),
@@ -2209,10 +2231,10 @@ function figureRows(f: ReturnType<typeof reportFigures>) {
     ["Agreed", f.committed, "Committed by both sides"],
     ["Paid", f.paid, f.carriedPaid ? `Includes ${fmt(f.carriedPaid)} paid before joining Revivo Impact` : "Payments recorded by the funder (simulated)"],
     ["Received", f.received, ["Arrival confirmed by the recipient", ...(f.paid - f.received - f.carriedPaid > 0 ? [`${fmt(f.paid - f.received - f.carriedPaid)} paid is waiting for the recipient to confirm it arrived`] : []), ...(f.carriedPaid ? [`${fmt(f.carriedPaid)} was paid before joining Revivo Impact, so it is not counted here`] : [])].join("; ")],
-    ["Spending reported", f.spent, "What the money was spent on"],
-    ["Spending checked", f.checked, "Checked against receipts by the funder"],
+    ["Spending reported", f.spent, ["What the money was spent on", ...(f.carriedSpent ? [`includes ${fmt(f.carriedSpent)} spent before joining Revivo Impact, which is not checked here`] : [])].join("; ")],
+    ["Spending checked", f.checked, ["Checked against receipts by the funder", ...(f.query ? [`${fmt(f.query)} has a question from the funder`] : [])].join("; ")],
     ["Waiting to be checked", f.waiting, "Usually waiting for a receipt"],
-    ["Not yet spent", f.notYetSpent, "Paid but not yet accounted for"],
+    ["Not yet spent", f.notYetSpent, "Paid but not yet accounted for. Most updates are due at the end of each quarter"],
   ] as const;
 }
 
@@ -2303,8 +2325,8 @@ function ReportFigures({ f, viewer }: { f: ReturnType<typeof reportFigures>; vie
 }
 
 /** "Download the figures": a CSV made in the browser from the same figures (nothing is sent anywhere). */
-function downloadCsv(name: string, f: ReturnType<typeof reportFigures>) {
-  const lines = [["Figure", "Amount (USD)"], ...figureRows(f).map(([k, v]) => [k, String(v)]), ...f.progs.map(({ p, t }) => [`${p.name}: sessions ran of planned`, `${t.delivered} of ${t.planned}`])];
+function downloadCsv(name: string, f: ReturnType<typeof reportFigures>, extra: string[][] = []) {
+  const lines = [["Figure", "Amount (USD)"], ...figureRows(f).map(([k, v]) => [k, String(v)]), ...f.progs.map(({ p, t }) => [`${p.name}: sessions ran of planned`, `${t.delivered} of ${t.planned}`]), ...extra];
   const blob = new Blob([lines.map((l) => l.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -2314,13 +2336,13 @@ function downloadCsv(name: string, f: ReturnType<typeof reportFigures>) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function ExportButtons({ name, f }: { name: string; f: ReturnType<typeof reportFigures> }) {
+function ExportButtons({ name, f, extra }: { name: string; f: ReturnType<typeof reportFigures>; extra?: string[][] }) {
   return (
     <div className="mt-6 flex flex-wrap gap-3" data-ri-print-hide>
       <button type="button" className={btn("secondary")} onClick={() => window.print()}>
         <Printer className="size-4" aria-hidden="true" /> Print or save as PDF
       </button>
-      <button type="button" className={btn("quiet")} onClick={() => downloadCsv(name, f)}>
+      <button type="button" className={btn("quiet")} onClick={() => downloadCsv(name, f, extra)}>
         <FileText className="size-4" aria-hidden="true" /> Download the figures (CSV)
       </button>
     </div>
@@ -2443,6 +2465,18 @@ export function FunderReportPage({ persona }: { persona: Person }) {
     return { sp, n: gs.length, athletes: gs.filter((g) => g.recipientKind === "athlete").length, committed: ff.committed, paid: ff.paid };
   }).sort((a, b) => b.committed - a.committed);
   const name = w.funders[fid].name;
+  // The CSV carries the same two tables as the page: by fund and by sport.
+  const byFund = funds
+    .map((x) => ({ x, ff: reportFigures(w, all.filter((g) => g.fundId === x.id).map((g) => g.id)) }))
+    .filter(({ ff }) => ff.committed > 0);
+  const csvExtra: string[][] = [
+    [],
+    ["By fund", "Committed (USD)", "Paid (USD)", "Checked (USD)"],
+    ...byFund.map(({ x, ff }) => [x.name, String(ff.committed), String(ff.paid), String(ff.checked)]),
+    [],
+    ["By sport", "Athletes", "Organisations", "Committed (USD)", "Paid (USD)"],
+    ...sports.map((x) => [x.sp, String(x.athletes), String(x.n - x.athletes), String(x.committed), String(x.paid)]),
+  ];
   return (
     <div className="max-w-3xl pb-10">
       <PageHead eyebrow={`Funding report · ${name}`} title="What has our funding done so far?" lead={`Everything ${name} funds on Revivo Impact, as at ${({ apr12: "Mon 12 Apr", may06: "Thu 6 May", jun30: "Wed 30 Jun" } as const)[w.moment]} 2027 · calculated from the records each time it opens`} />
@@ -2507,7 +2541,7 @@ export function FunderReportPage({ persona }: { persona: Person }) {
           </p>
         </>
       )}
-      <ExportButtons name={`${name} funding report`} f={f} />
+      <ExportButtons name={`${name} funding report`} f={f} extra={csvExtra} />
       <p className="mt-8 text-small text-subtle">{HONESTY}</p>
     </div>
   );
