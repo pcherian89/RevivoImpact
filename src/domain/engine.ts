@@ -6,6 +6,8 @@
 import {
   AMIRA_PROFILE,
   BEHAVIOUR,
+  sessionDate,
+  seedSessions,
   type Agreement,
   type Application,
   type Athlete,
@@ -14,6 +16,9 @@ import {
   type Moment,
   type Offer,
   type Opportunity,
+  type Progress,
+  type ReviewDecision,
+  type Session,
   type Person,
   type RequestLine,
   type Visibility,
@@ -32,7 +37,9 @@ export type Event = { n: number; at: Moment; actor: string; type: CommandName; a
 
 export const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 export const person = (w: World, id: string) => w.people[id] as Person | undefined;
-export const agreementsOf = (w: World, fundId: string) => Object.values(w.agreements).filter((a) => a.fundId === fundId);
+/** An existing-funding draft counts only once a second person approves it (docs/03 Journey D). */
+export const counts = (g: Agreement) => g.status !== "awaiting-approval";
+export const agreementsOf = (w: World, fundId: string) => Object.values(w.agreements).filter((a) => a.fundId === fundId && counts(a));
 export const released = (w: World, agreementId: string) => sum(w.ledger.filter((l) => l.agreementId === agreementId && (l.kind === "release" || l.kind === "carried-in")).map((l) => l.amount));
 export const received = (w: World, agreementId: string) => sum(w.ledger.filter((l) => l.agreementId === agreementId && l.kind === "receipt").map((l) => l.amount));
 
@@ -45,6 +52,72 @@ export function fundTotals(w: World, fundId: string) {
   const rel = sum(ags.map((a) => released(w, a.id)));
   const rec = sum(ags.map((a) => received(w, a.id)));
   return { announced: f.announced, committed, held, available: f.announced - committed - held, released: rel, received: rec, outstanding: committed - rel, count: ags.length };
+}
+
+/**
+ * One agreement's money, in the five states that never blur (docs/02 §6; words in docs/04 §6):
+ * committed (agreed) → paid → received → spent (reported) → checked. Carried-in money is labelled apart and never checked.
+ */
+export function agreementTotals(w: World, agreementId: string) {
+  const g = w.agreements[agreementId];
+  const ex = Object.values(w.expenses).filter((e) => e.agreementId === agreementId);
+  const paid = released(w, agreementId);
+  const carriedPaid = sum(w.ledger.filter((l) => l.agreementId === agreementId && l.kind === "carried-in").map((l) => l.amount));
+  const spent = sum(ex.map((e) => e.amount));
+  const checked = sum(ex.filter((e) => e.status === "checked").map((e) => e.amount));
+  const carriedSpent = sum(ex.filter((e) => e.status === "carried-in").map((e) => e.amount));
+  const query = sum(ex.filter((e) => e.status === "query").map((e) => e.amount));
+  return { committed: g.amount, paid, carriedPaid, received: received(w, agreementId), spent, checked, carriedSpent, waiting: spent - checked - carriedSpent, query, notYetSpent: Math.max(0, paid - spent), stillToPay: g.amount - paid };
+}
+
+/** Programme status per site (docs/05 §6): ≥95% on track, 85–94% needs attention, <85% behind; alert after two missed in a row. */
+export const LAST_SLOT: Record<Moment, number> = { apr12: 1, may06: 9, jun30: 19 };
+export function siteStatus(w: World, programmeId: string, siteId: string) {
+  const ss = Object.values(w.sessions).filter((x) => x.programmeId === programmeId && x.siteId === siteId).sort((a, b) => a.slot - b.slot);
+  const delivered = ss.filter((x) => x.status === "delivered").length;
+  const missed = ss.filter((x) => x.status === "missed");
+  const due = LAST_SLOT[w.moment] + 1;
+  const share = due ? delivered / due : 1;
+  const status = share >= 0.95 ? "On track" : share >= 0.85 ? "Needs attention" : "Behind";
+  let run = 0;
+  let alert = false;
+  for (const x of ss) {
+    run = x.status === "missed" ? run + 1 : 0;
+    if (run >= 2) alert = true;
+  }
+  const plan = Object.values(w.recoveryPlans).filter((r) => r.programmeId === programmeId && r.siteId === siteId).pop();
+  return { sessions: ss, delivered, missed: missed.length, weather: missed.filter((x) => x.reason === "weather").length, coach: missed.filter((x) => x.reason === "coach availability").length, due, status, alert, plan, checked: ss.filter((x) => x.status === "delivered" && x.checked).length, toCheck: ss.filter((x) => x.status === "delivered" && !x.checked).length };
+}
+export function programmeTotals(w: World, programmeId: string) {
+  const p = w.programmes[programmeId];
+  const sites = p.sites.map((s) => ({ site: s, ...siteStatus(w, programmeId, s.id) }));
+  return { sites, delivered: sum(sites.map((s) => s.delivered)), missed: sum(sites.map((s) => s.missed)), weather: sum(sites.map((s) => s.weather)), coach: sum(sites.map((s) => s.coach)), checked: sum(sites.map((s) => s.checked)), toCheck: sum(sites.map((s) => s.toCheck)), due: sum(sites.map((s) => s.due)), planned: p.sessionsPerSite * p.sites.length, participants: sum(p.sites.map((s) => s.participants)) };
+}
+
+/** Claims check for reports (docs/02 §10): words that claim more than records show. Deterministic. */
+const CLAIMS = ["improved confidence", "transformed", "changed lives", "life-changing", "proven", "proves", "guaranteed", "impact on wellbeing", "caused", "because of the programme"];
+export function claimsCheck(text: string) {
+  const t = text.toLowerCase();
+  return CLAIMS.filter((c) => t.includes(c));
+}
+
+/** Simulated AI report draft (AI C): built only from the records, every figure from a selector. */
+export function draftReportText(w: World, agreementId: string) {
+  const g = w.agreements[agreementId];
+  const p = Object.values(w.programmes).find((x) => x.agreementId === agreementId);
+  const t = agreementTotals(w, agreementId);
+  if (p) {
+    const pt = programmeTotals(w, p.id);
+    const behind = pt.sites.filter((s) => s.status !== "On track");
+    return [
+      `Sessions: ${pt.delivered} of ${pt.planned} planned sessions ran this quarter across ${p.sites.length} sites; ${pt.missed} could not run (${pt.weather} weather, ${pt.coach} coach availability).`,
+      `Participants: ${pt.participants} registered.`,
+      behind.length ? `Behind or needing attention: ${behind.map((s) => `${s.site.name} (${s.delivered} of ${s.due})`).join(", ")}.${behind.some((s) => s.plan?.status === "approved") ? " A recovery plan is in place for Greenpark." : ""}` : "Every site is on track.",
+      `Money: ${fmt(t.paid)} paid; ${fmt(t.spent)} spent, of which ${fmt(t.checked)} checked by the funder and ${fmt(t.waiting)} waiting to be checked; ${fmt(t.notYetSpent)} not yet spent.`,
+      "[What participants and coaches told you, in your own words. Say who answered and how.]",
+    ].join("\n\n");
+  }
+  return `Money: ${fmt(t.paid)} paid; ${fmt(t.spent)} spent; ${fmt(t.checked)} checked. ${g.purpose ?? ""}`;
 }
 
 /** Per line: pledged (agreements), offered (held offers), held for pending applications, other sources, remaining (I4). */
@@ -75,6 +148,7 @@ export function requestTotals(w: World, requestId: string) {
 export function platformTotals(w: World) {
   const by = { development: { committed: 0, released: 0 }, programme: { committed: 0, released: 0 }, commercial: { committed: 0, released: 0 }, inkind: { committed: 0, released: 0 } };
   for (const a of Object.values(w.agreements)) {
+    if (!counts(a)) continue;
     const b = BEHAVIOUR[w.funds[a.fundId].type];
     by[b].committed += a.amount;
     by[b].released += released(w, a.id);
@@ -237,6 +311,19 @@ function canActForAthlete(w: World, actor: string, athleteId: string, power: "su
   return false;
 }
 
+/** Who may add spending or send updates on an agreement: the recipient, a minor's guardian, a coach with the update power, or the receiving organisation. */
+function mayUpdate(w: World, actor: string, g: Agreement) {
+  if (g.recipientKind === "org") {
+    const p = w.people[actor];
+    return p?.orgId === g.recipientId && p.perms.some((x) => x === "Admin" || x === "Approve" || x === "Finance");
+  }
+  const ath = w.athletes[g.recipientId];
+  if (!ath) return false;
+  if (!ath.minor && actor === ath.id) return true;
+  if (ath.guardianId === actor) return true;
+  return w.authorisations.some((z) => z.athleteId === ath.id && z.coachId === actor && z.powers.includes("updates"));
+}
+
 function markAskOffered(w: World, o: Offer) {
   const fid = w.funds[o.fundId].funderId;
   const ask = Object.values(w.asks).find((x) => x.requestId === o.requestId && x.funderId === fid && x.status === "sent");
@@ -281,6 +368,40 @@ export const commands = {
     c.w.athletes[a.personId] = base ?? { id: a.personId, name: a.name, age: a.age, minor: false, gender: a.gender, sport: a.sport, discipline: a.sport, level: "Not yet added", levelRank: 1, region: a.region, discoverable: false, currentSupport: [], tags: [a.sport.toLowerCase(), a.region], createdAt: c.at, facts: [] };
     if (!c.w.people[a.personId]) c.w.people[a.personId] = { id: a.personId, name: a.name, role: "athlete", title: `Athlete, ${a.age} · ${a.sport.toLowerCase()}`, athleteId: a.personId, perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: true };
     audit(c, "Registered as an adult athlete (simulated email code)", a.name);
+  },
+
+  /** A club, academy, federation or programme operator registers itself (docs/02 §3.2); verification is simulated. */
+  registerOrganisation(c: Ctx, a: { personId: string; name: string; orgId: string; orgName: string; type: string; sport: string; region: string }) {
+    need(a.personId && !c.w.people[a.personId] && !c.w.orgs[a.orgId], "This account already exists.");
+    need(a.name?.trim() && a.orgName?.trim().length > 2, "Add your name and the organisation's name.");
+    need(SPORT_WORDS.some((x) => `${a.sport} ${a.type}`.toLowerCase().includes(x)), "Revivo Impact is for sport. Name the sport your organisation runs.");
+    c.w.orgs[a.orgId] = { id: a.orgId, name: a.orgName.trim(), type: a.type, region: a.region, sport: a.sport, verified: false };
+    c.w.people[a.personId] = { id: a.personId, name: a.name.trim(), role: "organisation", title: `${a.type} · ${a.orgName.trim()}`, orgId: a.orgId, perms: ["Admin", "Approve", "Finance"], group: "Seeking funding", journeys: "", tasks: [], persona: true };
+    audit(c, "Registered an organisation; verification requested (simulated)", a.orgName.trim());
+  },
+
+  /** A parent or guardian registers and adds a young athlete they represent (docs/02 §7). */
+  registerGuardian(c: Ctx, a: { personId: string; name: string; childId: string; childName: string; age: number; sport: string; region: string; gender: "woman" | "man" }) {
+    need(a.personId && !c.w.people[a.personId] && !c.w.athletes[a.childId], "This account already exists.");
+    need(a.name?.trim() && a.childName?.trim(), "Add your name and the athlete's name.");
+    need(Number.isInteger(a.age) && a.age >= 8 && a.age < 18, "A guardian registers athletes aged 8 to 17. Athletes 18 or over register themselves.");
+    need(SPORT_WORDS.some((x) => a.sport.toLowerCase().includes(x)) || a.sport.trim().length > 2, "Choose the athlete's sport.");
+    c.w.athletes[a.childId] = { id: a.childId, name: a.childName.trim(), age: a.age, minor: true, gender: a.gender, guardianId: a.personId, sport: a.sport, discipline: a.sport, level: "Not yet added", levelRank: 1, region: a.region, discoverable: false, currentSupport: [], tags: [a.sport.toLowerCase(), a.region], createdAt: c.at, facts: [] };
+    c.w.people[a.personId] = { id: a.personId, name: a.name.trim(), role: "guardian", title: `Guardian of ${a.childName.trim().split(" ")[0]} (${a.age})`, perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: true };
+    audit(c, "Registered as a guardian and added a young athlete (never discoverable)", "Athlete under 18");
+  },
+
+  /** Build a profile one fact at a time: every fact starts self-reported, with the owner choosing who sees it. */
+  addFact(c: Ctx, a: { athleteId: string; factId: string; label: string; value: string; kind: Fact["kind"]; visibility: Visibility }) {
+    const ath = c.w.athletes[a.athleteId] ?? fail("That athlete does not exist.");
+    need(c.actor === ath.id || ath.guardianId === c.actor, "Only the athlete or their guardian edits this profile.");
+    need(!(ath.minor && a.visibility === "discoverable"), "Athletes under 18 are never discoverable.");
+    need(!ath.facts.some((f) => f.id === a.factId), "That record already exists. Nothing was changed.");
+    need(a.value?.trim().length > 1, "Add the detail.");
+    ath.facts.push({ id: a.factId, label: a.label, value: a.value.trim(), kind: a.kind, state: "self", visibility: a.visibility });
+    if (a.kind === "club") ath.club = a.value.trim();
+    if (a.kind === "result" && ath.level === "Not yet added") ath.level = "Competing";
+    audit(c, `Added to profile: ${a.label.toLowerCase()} (self-reported)`, ath.minor ? "Athlete under 18" : ath.name);
   },
 
   registerFunder(c: Ctx, a: { personId: string; name: string; orgName: string; type: "Company" | "Individual sponsor"; sports: string }) {
@@ -460,6 +581,32 @@ export const commands = {
     for (const x of apps.filter((y) => ["submitted", "info"].includes(y.status))) x.status = "notselected";
     o.status = "decided";
     audit(c, `Sent decisions to all ${apps.length} applicants: ${offerable.length} offers (${fmt(total)})`, o.title);
+  },
+
+  /** One applicant at a time (docs/02 §9): the same rules as sending all decisions, with a personal message. */
+  decideApplication(c: Ctx, a: { appId: string; decision: "offer" | "waiting" | "notselected"; note: string }) {
+    const x = c.w.applications[a.appId] ?? fail("That application does not exist.");
+    const o = c.w.opps[x.oppId];
+    const fund = c.w.funds[o.fundId];
+    need(isApprover(c.w, c.actor, fund.funderId), "Only someone with Approve decides.");
+    need(o.status !== "decided", "Decisions for this opportunity have already been sent.");
+    need(!x.scores.some((s) => s.by === c.actor), "You scored this application. A different person must decide it.");
+    need(["submitted", "info", "shortlisted"].includes(x.status), "This application already has a decision.");
+    need(a.note?.trim().length > 10, "Write a short, respectful message to the applicant.");
+    if (a.decision === "offer") {
+      need(x.status === "shortlisted" && x.recommendedTier, "Only a shortlisted application with a recommended amount can be offered.");
+      need(!x.pendingFact, "One fact still needs checking. Put it on the waiting list instead.");
+      const t = fundTotals(c.w, fund.id);
+      need(x.recommendedTier! <= t.available, `This would exceed the money available by ${fmt(x.recommendedTier! - t.available)}.`);
+      need(!fund.awards || t.count + Object.values(c.w.offers).filter((y) => y.fundId === fund.id && y.status === "held").length < fund.awards, `This fund publishes at most ${fund.awards} awards.`);
+      const oid = `of-${x.id}`;
+      fresh(c.w.offers, oid);
+      const req = x.linked ? c.w.requests[x.linked.requestId] : undefined;
+      c.w.offers[oid] = { id: oid, fundId: fund.id, by: c.actor, recipientKind: "athlete", recipientId: x.applicantId, applicationId: x.id, requestId: req?.id, lineId: req ? req.lines[req.lines.length - 1].id : undefined, amount: x.recommendedTier!, reason: a.note.trim(), status: "held", at: c.at, light: x.light };
+      x.status = "offered";
+    } else x.status = a.decision;
+    x.decisionNote = a.note.trim();
+    audit(c, a.decision === "offer" ? `Offered ${fmt(x.recommendedTier!)} with a personal message` : a.decision === "waiting" ? "Placed on the waiting list, with a message" : "Not selected this time, with a message", c.w.athletes[x.applicantId]?.minor ? "Athlete under 18" : c.w.athletes[x.applicantId]?.name ?? o.title);
   },
 
   publishRequest(c: Ctx, a: { requestId: string; ownerKind: "athlete" | "org"; ownerId: string; title: string; sport: string; lines: { label: string; amount: number }[]; visibility: FundingRequest["visibility"]; neededBy: string; neededMonth: string; verifiedLabel: string; tags: string[] }) {
@@ -663,6 +810,11 @@ export const commands = {
     const fund = c.w.funds[o.fundId];
     c.w.agreements[a.agreementId] = { id: a.agreementId, offerId: o.id, fundId: o.fundId, recipientKind: o.recipientKind, recipientId: o.recipientId, amount: o.amount, acceptedBy: c.actor, acceptedAt: c.at, origin: o.applicationId ? "Application" : "Offer", requestId: o.requestId, lineId: o.lineId, light: o.light };
     if (o.applicationId) c.w.applications[o.applicationId].status = "accepted";
+    (o.deliverables ?? []).forEach((label, k) => {
+      const did = `${a.agreementId}-d${k + 1}`;
+      const n = /(\d+) meets?/.exec(label);
+      c.w.deliverables[did] = { id: did, agreementId: a.agreementId, label, due: /by (.+)$/.exec(label)?.[1] ?? "During the agreement", target: n ? Number(n[1]) : 1, done: 0, pending: 0, status: "scheduled" };
+    });
     audit(c, `Accepted a ${fund.type.toLowerCase()} of ${fmt(o.amount)}`, fund.name);
   },
 
@@ -740,6 +892,250 @@ export const commands = {
     audit(c, `Blocked a funder (existing agreements continue${lapsed.length ? `; ${lapsed.length} open offer${lapsed.length > 1 ? "s" : ""} lapsed` : ""}; administrator told)`, c.w.funders[a.funderId].name);
   },
 
+  /* ================================================ P3: track and review */
+
+  addExpense(c: Ctx, a: { expenseId: string; agreementId: string; what: string; amount: number; paidOn: string; receipt: boolean; category?: string }) {
+    const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
+    need(mayUpdate(c.w, c.actor, g), "Only the athlete, their guardian, an authorised coach or the organisation that received the money can add spending.");
+    fresh(c.w.expenses, a.expenseId);
+    positive(a.amount);
+    need(a.what?.trim().length >= 3, "Say what the money was spent on.");
+    sportingCheck(a.what);
+    const t = agreementTotals(c.w, g.id);
+    need(t.spent + a.amount <= t.paid, `Only ${fmt(t.paid - t.spent)} of the money paid is not yet accounted for. Spending can't be more than was paid.`);
+    c.w.expenses[a.expenseId] = { id: a.expenseId, agreementId: g.id, what: a.what.trim(), amount: a.amount, paidOn: a.paidOn, receipt: a.receipt, category: a.category, by: c.actor, at: c.at, status: "reported" };
+    audit(c, `Added spending ${fmt(a.amount)}: ${a.what.trim()}${a.receipt ? " (receipt uploaded)" : " (no receipt yet)"}`, c.w.funds[g.fundId].name);
+  },
+
+  addReceipt(c: Ctx, a: { expenseId: string }) {
+    const e = c.w.expenses[a.expenseId] ?? fail("That expense does not exist.");
+    need(mayUpdate(c.w, c.actor, c.w.agreements[e.agreementId]), "Only the person who received the money adds the receipt.");
+    need(!e.receipt, "This expense already has a receipt.");
+    e.receipt = true;
+    if (e.status === "query") e.status = "reported";
+    audit(c, "Uploaded a receipt (simulated)", e.what);
+  },
+
+  checkExpense(c: Ctx, a: { expenseId: string }) {
+    const e = c.w.expenses[a.expenseId] ?? fail("That expense does not exist.");
+    const g = c.w.agreements[e.agreementId];
+    const fid = c.w.funds[g.fundId].funderId;
+    need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Review"), "Only someone at the funder with Finance or Review checks spending.");
+    need(e.by !== c.actor, "You added this expense. Someone else must check it.");
+    need(e.status === "reported" || e.status === "query", e.status === "checked" ? "This expense is already checked." : "Money carried in from before is shown as reported, never checked.");
+    need(e.receipt, "There is no receipt yet. Ask for it instead of checking.");
+    e.status = "checked";
+    e.checkedBy = c.actor;
+    audit(c, `Checked spending ${fmt(e.amount)} against its receipt`, e.what);
+  },
+
+  queryExpense(c: Ctx, a: { expenseId: string; reason: string }) {
+    const e = c.w.expenses[a.expenseId] ?? fail("That expense does not exist.");
+    const fid = c.w.funds[c.w.agreements[e.agreementId].fundId].funderId;
+    need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Review"), "Only someone at the funder with Finance or Review asks about spending.");
+    need(e.status === "reported", "Only spending waiting to be checked can be asked about.");
+    need(a.reason?.trim().length > 3, "Say what you need, for example “Please add the receipt”.");
+    e.status = "query";
+    e.query = a.reason.trim();
+    audit(c, `Asked about spending: ${a.reason.trim()}`, e.what);
+  },
+
+  sendProgress(c: Ctx, a: { progressId: string; agreementId?: string; athleteId?: string; orgId?: string; kind: Progress["kind"]; text: string; proof: boolean; photo?: boolean }) {
+    fresh(c.w.progress, a.progressId);
+    need(a.text?.trim().length >= 3, "Say what happened, in a sentence.");
+    if (a.athleteId) {
+      const ath = c.w.athletes[a.athleteId] ?? fail("That athlete does not exist.");
+      const coach = c.w.authorisations.some((z) => z.athleteId === ath.id && z.coachId === c.actor && z.powers.includes("updates"));
+      need(c.actor === ath.id || ath.guardianId === c.actor || coach, "Only the athlete, their guardian or a coach allowed to send updates can do this.");
+      if (a.photo) need(c.w.consents.some((z) => z.athleteId === ath.id && z.purpose === "photos" && z.value), "Photos need consent first. The athlete (or guardian) can turn on “Photos and stories”.");
+    } else need(c.w.people[c.actor]?.orgId === a.orgId, "Only the organisation can send its update.");
+    c.w.progress[a.progressId] = { id: a.progressId, agreementId: a.agreementId, athleteId: a.athleteId, orgId: a.orgId, kind: a.kind, text: a.text.trim(), proof: a.proof, photo: a.photo, by: c.actor, at: c.at };
+    audit(c, `Sent a ${a.kind === "result" ? "result" : a.kind === "training" ? "training" : "progress"} update${a.photo ? " with a photo (consent on)" : ""}`, a.athleteId ? (c.w.athletes[a.athleteId].minor ? "Athlete under 18" : c.w.athletes[a.athleteId].name) : c.w.orgs[a.orgId!]?.name ?? "");
+  },
+
+  attestProgress(c: Ctx, a: { progressId: string }) {
+    const pr = c.w.progress[a.progressId] ?? fail("That update does not exist.");
+    const p = c.w.people[c.actor];
+    const ath = pr.athleteId ? c.w.athletes[pr.athleteId] : undefined;
+    need(p?.role === "coach" && ath && (p.orgId && c.w.orgs[p.orgId]?.name === ath.club), "Only the athlete's own coach can confirm training.");
+    need(pr.by !== c.actor, "You sent this update. Someone else must confirm it.");
+    pr.attestedBy = c.actor;
+    audit(c, "Confirmed training attendance (coach)", ath!.name);
+  },
+
+  submitDeliverable(c: Ctx, a: { deliverableId: string; evidence: string }) {
+    const d = c.w.deliverables[a.deliverableId] ?? fail("That deliverable does not exist.");
+    const g = c.w.agreements[d.agreementId];
+    need(c.actor === g.recipientId, "Only the sponsored athlete sends proof of a deliverable.");
+    need(d.done + d.pending < d.target, "Everything for this deliverable has already been sent.");
+    need(a.evidence?.trim().length > 3, "Say what the proof shows, for example “Kit worn at the Southern Open, photo attached”.");
+    d.pending += 1;
+    d.status = "in-progress";
+    audit(c, `Sent proof: ${a.evidence.trim()}`, d.label);
+  },
+
+  acceptDeliverable(c: Ctx, a: { deliverableId: string }) {
+    const d = c.w.deliverables[a.deliverableId] ?? fail("That deliverable does not exist.");
+    const fid = c.w.funds[c.w.agreements[d.agreementId].fundId].funderId;
+    need(memberOf(c.w, c.actor, fid, "Approve") || memberOf(c.w, c.actor, fid, "Review"), "Only the sponsor accepts deliverables.");
+    need(d.pending > 0, "There is no proof waiting to be accepted.");
+    d.pending -= 1;
+    d.done += 1;
+    d.status = d.done >= d.target ? "complete" : "in-progress";
+    audit(c, `Accepted proof (${d.done} of ${d.target})`, d.label);
+  },
+
+  recordReview(c: Ctx, a: { reviewId: string; agreementId: string; decision: ReviewDecision["decision"]; conditions?: string }) {
+    const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
+    const fid = c.w.funds[g.fundId].funderId;
+    need(memberOf(c.w, c.actor, fid, "Review") || memberOf(c.w, c.actor, fid, "Approve"), "Only someone at the funder with Review or Approve records a review.");
+    fresh(c.w.reviews, a.reviewId);
+    need(a.decision === "Continue" || a.conditions?.trim(), a.decision === "Continue with conditions" ? "Write the conditions." : "Give the reason.");
+    c.w.reviews[a.reviewId] = { id: a.reviewId, agreementId: g.id, decision: a.decision, conditions: a.conditions?.trim(), by: c.actor, at: c.at };
+    audit(c, `Review: ${a.decision}${a.conditions ? `: ${a.conditions.trim()}` : ""}`, c.w.funds[g.fundId].name);
+  },
+
+  recordSession(c: Ctx, a: { sessionId: string; programmeId: string; siteId: string; slot: number; status: "delivered" | "missed"; attendance?: number; reason?: Session["reason"]; note?: string }) {
+    const p = c.w.programmes[a.programmeId] ?? fail("That programme does not exist.");
+    const person = c.w.people[c.actor];
+    need(person?.orgId === p.orgId, "Only the programme's own coaches and staff record sessions.");
+    const site = p.sites.find((x) => x.id === a.siteId) ?? fail("That site is not part of this programme.");
+    need(Number.isInteger(a.slot) && a.slot >= 0 && a.slot <= LAST_SLOT[c.at], "You can record only sessions that have already happened.");
+    need(!Object.values(c.w.sessions).some((x) => x.siteId === a.siteId && x.slot === a.slot && x.programmeId === p.id), "This session has already been recorded.");
+    fresh(c.w.sessions, a.sessionId);
+    if (a.status === "delivered") need(Number.isInteger(a.attendance) && a.attendance! > 0 && a.attendance! <= site.participants, `Enter how many came (1 to ${site.participants}).`);
+    else need(a.reason, "Choose why it couldn't run.");
+    c.w.sessions[a.sessionId] = { id: a.sessionId, programmeId: p.id, siteId: site.id, slot: a.slot, date: sessionDate(a.slot), status: a.status, attendance: a.status === "delivered" ? a.attendance : undefined, reason: a.status === "missed" ? a.reason : undefined, note: a.note?.trim() || undefined, by: c.actor, at: c.at, checked: false };
+    audit(c, a.status === "delivered" ? `Recorded a session: ${a.attendance} came` : `Recorded a session that couldn't run (${a.reason})`, `${site.name} · ${sessionDate(a.slot)}`);
+  },
+
+  checkSession(c: Ctx, a: { sessionId: string }) {
+    const x = c.w.sessions[a.sessionId] ?? fail("That session does not exist.");
+    const p = c.w.programmes[x.programmeId];
+    need(c.w.people[c.actor]?.orgId === p.orgId && c.w.people[c.actor].perms.includes("Verify"), "Only a site coordinator with Verify checks sessions.");
+    need(x.by !== c.actor, "You recorded this session. Someone else must check it.");
+    need(x.status === "delivered" && !x.checked, "This session does not need checking.");
+    x.checked = true;
+    audit(c, "Checked a session against the register", `${p.sites.find((s) => s.id === x.siteId)!.name} · ${x.date}`);
+  },
+
+  assignAction(c: Ctx, a: { actionId: string; programmeId: string; siteId: string; text: string; assignedTo: string }) {
+    const p = c.w.programmes[a.programmeId] ?? fail("That programme does not exist.");
+    need(c.w.people[c.actor]?.orgId === p.orgId && c.w.people[c.actor].perms.some((x) => x === "Admin" || x === "Approve"), "Only the programme director assigns actions.");
+    need(c.w.people[a.assignedTo]?.orgId === p.orgId, "Assign it to someone at your organisation.");
+    fresh(c.w.actions, a.actionId);
+    need(a.text?.trim().length > 3, "Say what needs doing.");
+    c.w.actions[a.actionId] = { id: a.actionId, programmeId: p.id, siteId: a.siteId, text: a.text.trim(), assignedTo: a.assignedTo, by: c.actor, at: c.at, status: "open" };
+    audit(c, `Assigned an action to ${c.w.people[a.assignedTo].name}: ${a.text.trim()}`, p.name);
+  },
+
+  submitRecoveryPlan(c: Ctx, a: { planId: string; programmeId: string; siteId: string; text: string }) {
+    const p = c.w.programmes[a.programmeId] ?? fail("That programme does not exist.");
+    need(c.w.people[c.actor]?.orgId === p.orgId, "Only the programme's staff write a recovery plan.");
+    fresh(c.w.recoveryPlans, a.planId);
+    need(a.text?.trim().length > 10, "Say how the missed sessions will be made up.");
+    c.w.recoveryPlans[a.planId] = { id: a.planId, programmeId: p.id, siteId: a.siteId, text: a.text.trim(), by: c.actor, at: c.at, status: "submitted" };
+    Object.values(c.w.actions).filter((x) => x.programmeId === p.id && x.siteId === a.siteId && x.assignedTo === c.actor).forEach((x) => (x.status = "done"));
+    audit(c, "Sent a recovery plan for approval", `${p.sites.find((s) => s.id === a.siteId)?.name}`);
+  },
+
+  decideRecoveryPlan(c: Ctx, a: { planId: string; approve: boolean; reason?: string }) {
+    const r = c.w.recoveryPlans[a.planId] ?? fail("That plan does not exist.");
+    const p = c.w.programmes[r.programmeId];
+    need(c.w.people[c.actor]?.orgId === p.orgId && c.w.people[c.actor].perms.includes("Approve"), "Only someone with Approve at the organisation decides.");
+    need(r.by !== c.actor, "You wrote this plan. Someone else must approve it.");
+    need(r.status === "submitted", "This plan has already been decided.");
+    need(a.approve || a.reason?.trim(), "Returning a plan needs a reason.");
+    r.status = a.approve ? "approved" : "returned";
+    r.decidedBy = c.actor;
+    r.reason = a.reason?.trim();
+    audit(c, a.approve ? "Approved a recovery plan (four-eyes)" : `Returned a recovery plan: ${a.reason}`, p.sites.find((s) => s.id === r.siteId)!.name);
+  },
+
+  draftReport(c: Ctx, a: { reportId: string; agreementId: string; period: string }) {
+    const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
+    need(g.recipientKind === "org" && c.w.people[c.actor]?.orgId === g.recipientId, "Only the organisation that received the funding writes its report.");
+    fresh(c.w.reports, a.reportId);
+    c.w.reports[a.reportId] = { id: a.reportId, agreementId: g.id, period: a.period, text: draftReportText(c.w, g.id), by: c.actor, at: c.at, status: "draft" };
+    audit(c, "Drafted a report from the records (Simulated AI)", a.period);
+  },
+
+  submitReport(c: Ctx, a: { reportId: string; text: string }) {
+    const r = c.w.reports[a.reportId] ?? fail("That report does not exist.");
+    need(c.w.people[c.actor]?.orgId === c.w.agreements[r.agreementId].recipientId, "Only the organisation submits its report.");
+    need(r.status === "draft" || r.status === "returned", "This report has already been sent.");
+    need(!a.text.includes("[What participants"), "Replace the gap marked in square brackets with your own words, or delete it.");
+    const flags = claimsCheck(a.text);
+    need(!flags.length, `“${flags[0]}” claims more than your records show. Say what was measured instead, for example what participants said in the survey.`);
+    r.text = a.text;
+    r.status = "submitted";
+    audit(c, "Sent a report to the funder (claims check passed)", r.period);
+  },
+
+  decideReport(c: Ctx, a: { reportId: string; accept: boolean; reason?: string }) {
+    const r = c.w.reports[a.reportId] ?? fail("That report does not exist.");
+    const fid = c.w.funds[c.w.agreements[r.agreementId].fundId].funderId;
+    need(memberOf(c.w, c.actor, fid, "Review") || memberOf(c.w, c.actor, fid, "Approve"), "Only the funder accepts or returns a report.");
+    need(r.status === "submitted", "This report is not waiting for a decision.");
+    need(a.accept || a.reason?.trim(), "Returning a report needs a reason.");
+    r.status = a.accept ? "accepted" : "returned";
+    r.decidedBy = c.actor;
+    r.reason = a.reason?.trim();
+    audit(c, a.accept ? "Accepted a report" : `Returned a report: ${a.reason}`, r.period);
+  },
+
+  addExistingFunding(c: Ctx, a: { agreementId: string; fundId: string; orgId: string; amount: number; purpose: string; paid: number; spent: number; nextUpdate: string }) {
+    const fund = c.w.funds[a.fundId] ?? fail("That fund does not exist.");
+    need(c.w.people[c.actor]?.funderId === fund.funderId, "Only people at this funder add its existing funding.");
+    need(c.w.orgs[a.orgId], "Choose a registered organisation (otherwise an invitation would be sent).");
+    fresh(c.w.agreements, a.agreementId);
+    positive(a.amount);
+    need(Number.isInteger(a.paid) && a.paid >= 0 && a.paid <= a.amount, "Already paid must be between $0 and the agreed amount.");
+    need(Number.isInteger(a.spent) && a.spent >= 0 && a.spent <= a.paid, "Already spent can't be more than already paid.");
+    need(a.purpose?.trim().length > 3, "Say what the funding is for.");
+    sportingCheck(a.purpose);
+    need(a.amount <= fundTotals(c.w, fund.id).available, `This fund has ${fmt(fundTotals(c.w, fund.id).available)} available.`);
+    c.w.agreements[a.agreementId] = { id: a.agreementId, fundId: fund.id, recipientKind: "org", recipientId: a.orgId, amount: a.amount, acceptedBy: a.orgId, acceptedAt: c.at, origin: "Existing agreement", status: "awaiting-approval", preparedBy: c.actor, purpose: a.purpose.trim(), nextUpdate: a.nextUpdate };
+    c.w.carriedIn ??= {};
+    c.w.carriedIn[a.agreementId] = { paid: a.paid, spent: a.spent };
+    audit(c, `Prepared existing funding of ${fmt(a.amount)} (paid before: ${fmt(a.paid)}; spent before: ${fmt(a.spent)})`, c.w.orgs[a.orgId].name);
+  },
+
+  approveExistingFunding(c: Ctx, a: { agreementId: string }) {
+    const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
+    const fid = c.w.funds[g.fundId].funderId;
+    need(isApprover(c.w, c.actor, fid), "Only someone with Approve at the funder approves the commitment.");
+    need(g.status === "awaiting-approval", "This is not waiting for approval.");
+    need(g.preparedBy !== c.actor, "You prepared this. A different person must approve it.");
+    need(g.amount <= fundTotals(c.w, g.fundId).available, "The fund no longer has this much available.");
+    g.status = "awaiting-recipient";
+    g.approvedBy = c.actor;
+    const ci = c.w.carriedIn?.[g.id] ?? { paid: 0, spent: 0 };
+    if (ci.paid) c.w.ledger.push({ id: `${g.id}-ci`, agreementId: g.id, kind: "carried-in", amount: ci.paid, by: c.actor, at: c.at, ref: "Paid before joining Revivo Impact" });
+    if (ci.spent) c.w.expenses[`${g.id}-ci`] = { id: `${g.id}-ci`, agreementId: g.id, what: "Spending reported before joining Revivo Impact", amount: ci.spent, paidOn: "Before 30 Jun", receipt: false, by: c.actor, at: c.at, status: "carried-in" };
+    audit(c, `Approved the commitment of ${fmt(g.amount)} (four-eyes); carried-in figures wait for the recipient`, c.w.orgs[g.recipientId].name);
+  },
+
+  confirmExistingFunding(c: Ctx, a: { agreementId: string; agree: boolean; reason?: string }) {
+    const g = c.w.agreements[a.agreementId] ?? fail("That funding agreement does not exist.");
+    const p = c.w.people[c.actor];
+    need(p?.orgId === g.recipientId && p.perms.some((x) => x === "Approve" || x === "Admin"), "Only someone with Approve or Admin at the receiving organisation confirms.");
+    need(g.status === "awaiting-recipient", "This is not waiting for your confirmation.");
+    need(a.agree || a.reason?.trim(), "Say which figure is wrong and why.");
+    g.status = a.agree ? "active" : "disputed";
+    g.disputeReason = a.reason?.trim();
+    audit(c, a.agree ? "Confirmed the agreement and the figures carried in" : `Disputed the figures carried in: ${a.reason}`, c.w.funds[g.fundId].name);
+  },
+
+  saveOpportunity(c: Ctx, a: { oppId: string }) {
+    need(c.w.opps[a.oppId], "That opportunity does not exist.");
+    const list = (c.w.saved[c.actor] ??= []);
+    const i = list.indexOf(a.oppId);
+    if (i >= 0) list.splice(i, 1);
+    else list.push(a.oppId);
+    audit(c, i >= 0 ? "Removed a saved opportunity" : "Saved an opportunity for later", c.w.opps[a.oppId].title);
+  },
+
   /* ---- seeded world activity between demo moments (actor "system") ---- */
   arrivals(c: Ctx, a: { to: Moment }) {
     seedArrivals(c.w, a.to);
@@ -803,6 +1199,9 @@ function seedArrivals(w: World, to: Moment) {
       w.offers[oid] = { id: oid, fundId: "wsdf", by: "lucy", recipientKind: "org", recipientId: `lt-${k + 1}`, amount: amt, reason: "Women's team development (published criteria).", status: "held", at: "may06", light: true };
     });
     void REGIONS;
+    // Play Every Day: sessions up to Tue 4 May, plus Thu 6 May at the sites Sam does not cover (he records his in Journey C).
+    if (w.programmes["play-every-day"]) seedSessions(w, 2, 9, (site, slot) => slot === 9 && (site === "greenpark" || site === "westbrook"));
+    w.kitDeliveries.push({ at: "may06", items: 12 });
   }
   if (to === "jun30") {
     // 44 seeded EAS offers accepted; 1 (a 17-year-old's) still held, window extended to Thu 15 Jul; instalment 1 (50%) released and received
@@ -833,6 +1232,14 @@ function seedArrivals(w: World, to: Moment) {
     light("crsc-tb", [...Array(12).fill(1500), ...Array(8).fill(1200), ...Array(4).fill(800)], "athlete");
     light("verran-pe", [...Array(6).fill(2500), ...Array(2).fill(2000)], "athlete");
     light("ardent-hp", Array(9).fill(1200), "athlete");
+    // Play Every Day, weeks 6–10: sessions, checks (4 still to check at Westbrook and Northgate) and quarter spending.
+    if (w.programmes["play-every-day"]) {
+      seedSessions(w, 10, 19);
+      for (const x of Object.values(w.sessions)) if (x.status === "delivered") x.checked = !((x.siteId === "westbrook" || x.siteId === "northgate") && x.slot >= 18);
+      const spend: [string, string, number][] = [["Coaching", "Coaches' session fees (108 sessions × $60)", 6480], ["Equipment", "Balls, bibs and cones", 1200], ["Venue and transport", "Hall hire and minibus", 1068], ["Monitoring", "Participant survey and registers", 1020]];
+      spend.forEach(([cat, what, amount], k) => (w.expenses[`ex-pe-${k + 1}`] = { id: `ex-pe-${k + 1}`, agreementId: "ag-pe1", what, amount, paidOn: "Apr–Jun", receipt: true, category: cat, by: "maya", at: "jun30", status: "checked", checkedBy: "priya" }));
+    }
+    w.kitDeliveries.push({ at: "jun30", items: 12 });
   }
 }
 

@@ -180,6 +180,8 @@ export type Application = {
   status: AppStatus;
   requested: number;
   recommendedTier?: number;
+  /** The plain message sent with an individual decision */
+  decisionNote?: string;
   scores: { by: string; total: number }[];
   info?: { status: "open" | "answered"; text: string; by: string };
   otherFunding: string;
@@ -226,7 +228,31 @@ export type Agreement = {
   requestId?: string;
   lineId?: string;
   light?: boolean;
+  /** Existing funding (Journey D): prepared → approved by a second person → confirmed by the recipient. */
+  status?: "awaiting-approval" | "awaiting-recipient" | "active" | "disputed";
+  preparedBy?: string;
+  approvedBy?: string;
+  purpose?: string;
+  /** Plain-language schedule, e.g. "Next update due Thu 30 Sep" */
+  nextUpdate?: string;
+  /** In-kind (equipment) agreements: items, never cash */
+  kits?: { items: number; declaredValue: number };
+  disputeReason?: string;
 };
+
+/** What the money was spent on (docs/02 §6). Reported by the recipient; checked by a person at the funder. */
+export type Expense = { id: string; agreementId: string; what: string; amount: number; paidOn: string; receipt: boolean; category?: string; by: string; at: Moment; status: "reported" | "checked" | "query" | "carried-in"; checkedBy?: string; query?: string };
+/** Sporting progress: a result, training or a milestone, with or without proof. */
+export type Progress = { id: string; agreementId?: string; athleteId?: string; orgId?: string; kind: "result" | "training" | "milestone"; text: string; proof: boolean; attestedBy?: string; photo?: boolean; by: string; at: Moment };
+/** Commercial sponsorship deliverables: separate from money, never a cash bar. */
+export type Deliverable = { id: string; agreementId: string; label: string; due: string; target: number; done: number; pending: number; status: "scheduled" | "in-progress" | "complete" };
+export type ReviewDecision = { id: string; agreementId: string; decision: "Continue" | "Continue with conditions" | "Pause" | "Close"; conditions?: string; by: string; at: Moment };
+export type Site = { id: string; name: string; participants: number };
+export type Programme = { id: string; name: string; orgId: string; agreementId: string; sport: string; purpose: string; sites: Site[]; sessionsPerSite: number; budget: { line: string; amount: number }[] };
+export type Session = { id: string; programmeId: string; siteId: string; slot: number; date: string; status: "delivered" | "missed"; attendance?: number; reason?: "weather" | "coach availability" | "venue unavailable"; note?: string; by: string; at: Moment; checked: boolean };
+export type RecoveryPlan = { id: string; programmeId: string; siteId: string; text: string; by: string; at: Moment; status: "submitted" | "approved" | "returned"; decidedBy?: string; reason?: string };
+export type ActionItem = { id: string; programmeId: string; siteId: string; text: string; assignedTo: string; by: string; at: Moment; status: "open" | "done" };
+export type Report = { id: string; agreementId: string; period: string; text: string; by: string; at: Moment; status: "draft" | "submitted" | "accepted" | "returned"; decidedBy?: string; reason?: string };
 export type LedgerEntry = { id: string; agreementId: string; kind: "release" | "receipt" | "carried-in"; amount: number; by: string; at: Moment; ref: string };
 export type Authorisation = { athleteId: string; coachId: string; powers: ("prepare" | "updates")[]; by: string };
 export type Consent = { athleteId: string; purpose: "photos" | "progress" | "discoverable"; value: boolean; by: string };
@@ -253,6 +279,21 @@ export type World = {
   consents: Consent[];
   blocks: { athleteId: string; funderId: string }[];
   concerns: { id: string; athleteId: string; funderId?: string; about: string; by: string; at: Moment; status: "open" | "reviewed" }[];
+  expenses: Record<string, Expense>;
+  progress: Record<string, Progress>;
+  deliverables: Record<string, Deliverable>;
+  reviews: Record<string, ReviewDecision>;
+  programmes: Record<string, Programme>;
+  sessions: Record<string, Session>;
+  recoveryPlans: Record<string, RecoveryPlan>;
+  actions: Record<string, ActionItem>;
+  reports: Record<string, Report>;
+  /** Opportunities a seeker saved for later */
+  saved: Record<string, string[]>;
+  /** In-kind kits delivered (count, never cash) */
+  kitDeliveries: { at: Moment; items: number }[];
+  /** Existing funding: figures entered before approval (become ledger entries on approval) */
+  carriedIn?: Record<string, { paid: number; spent: number }>;
   audit: AuditRow[];
   seq: number;
 };
@@ -279,7 +320,8 @@ const PEOPLE: Person[] = [
   P({ id: "jonas", name: "Jonas Becker", role: "coach", title: "Head swim coach · 6 athletes", orgId: "saltmere", perms: [], group: "Seeking funding", journeys: "E", tasks: ["Prepare an application (you cannot submit it)", "See only athletes who authorised you"] }),
   P({ id: "maya", name: "Maya Torres", role: "organisation", title: "Programme director", orgId: "lanternfield", perms: ["Admin", "Approve"], group: "Delivering programmes", journeys: "C", tasks: ["Find programme funding", "See what your organisation can apply for"] }),
   P({ id: "ewan", name: "Morag Linden", role: "organisation", title: "Club secretary · Admin", orgId: "highland", perms: ["Admin", "Approve", "Finance"], group: "Seeking funding", journeys: "C", tasks: ["See your request and the offer you received"], persona: true }),
-  P({ id: "sam", name: "Sam Rivera", role: "programme-coach", title: "Coach · Greenpark and Westbrook", orgId: "lanternfield", perms: [], group: "Delivering programmes", journeys: "C", tasks: ["Record a session (next build)"] }),
+  P({ id: "lena", name: "Lena Novak", role: "organisation", title: "Greenpark site coordinator · Lanternfield", orgId: "lanternfield", perms: ["Verify"], group: "Delivering programmes", journeys: "C", tasks: ["Submit a recovery plan for Greenpark", "Check sessions at your site"] }),
+  P({ id: "sam", name: "Sam Rivera", role: "programme-coach", title: "Coach · Greenpark and Westbrook", orgId: "lanternfield", perms: [], group: "Delivering programmes", journeys: "C", tasks: ["Record today's session", "Mark a session that couldn't run"] }),
   P({ id: "ingrid", name: "Ingrid Solberg", role: "funder", title: "Director of Programmes · Approve", orgId: "tallwater", funderId: "tallwater", perms: ["Approve", "Admin"], group: "Providing funding", journeys: "A", tasks: ["Publish Daniel's draft", "Decide the scholarship offers", "Try to approve your own draft"] }),
   P({ id: "daniel", name: "Daniel Osei", role: "funder", title: "Programme officer · Review, Verify", orgId: "tallwater", funderId: "tallwater", perms: ["Review", "Verify"], group: "Providing funding", journeys: "A, C, D", tasks: ["Verify a fact against a document", "Request information", "Score and shortlist"] }),
   P({ id: "priya", name: "Priya Nair", role: "funder", title: "Finance officer · Finance", orgId: "tallwater", funderId: "tallwater", perms: ["Finance"], group: "Providing funding", journeys: "A, C", tasks: ["Record a release", "See that you cannot approve awards"] }),
@@ -291,6 +333,7 @@ const PEOPLE: Person[] = [
   // Non-persona people (appear in records and the audit)
   P({ id: "reviewer2", name: "Second reviewer", role: "funder", title: "Reviewer · Tallwater", orgId: "tallwater", funderId: "tallwater", perms: ["Review"], group: "Providing funding", journeys: "", tasks: [], persona: false }),
   P({ id: "ardent-officer", name: "Results officer", role: "funder", title: "Ardent Judo Federation · Verify", orgId: "ardent", funderId: "ardent", perms: ["Verify"], group: "Providing funding", journeys: "", tasks: [], persona: false }),
+  P({ id: "oriel-approver", name: "Second approver", role: "sponsor", title: "Oriel Freight Group · Approve", orgId: "oriel", funderId: "oriel", perms: ["Approve"], group: "Providing funding", journeys: "", tasks: [], persona: false }),
   P({ id: "keiko", name: "Keiko Mori", role: "coach", title: "Judo coach · Saltmere", orgId: "saltmere", perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: false }),
   P({ id: "system", name: "Revivo Impact", role: "admin", title: "Seeded world", perms: [], group: "Platform", journeys: "", tasks: [], persona: false }),
 ];
@@ -401,6 +444,17 @@ export function baseWorld(): World {
     consents: [],
     blocks: [],
     concerns: [],
+    expenses: {},
+    progress: {},
+    deliverables: {},
+    reviews: {},
+    programmes: {},
+    sessions: {},
+    recoveryPlans: {},
+    actions: {},
+    reports: {},
+    saved: {},
+    kitDeliveries: [],
     audit: [],
     seq: 0,
   };
@@ -524,5 +578,65 @@ export function baseWorld(): World {
   AG("ag-pe2", "cspg", "org", "saltmere", 45000, undefined, 9000);
   AG("ag-pe3", "cspg", "org", "ashgrove", 40000, undefined, 8000);
   for (const k of ["ag-lakeside", "ag-pe1", "ag-pe2", "ag-pe3"]) w.agreements[k].origin = "Application";
+
+  // Play Every Day (docs/05 §6): Lanternfield's programme, funded by Tallwater's Community Sports Programme Grant.
+  Object.assign(w.agreements["ag-pe1"], { light: false, purpose: "Play Every Day: free after-school multi-sport sessions at 6 sites", nextUpdate: "Quarterly report due Wed 30 Jun" });
+  w.programmes["play-every-day"] = {
+    id: "play-every-day",
+    name: "Play Every Day",
+    orgId: "lanternfield",
+    agreementId: "ag-pe1",
+    sport: "Community multi-sport",
+    purpose: "Free after-school multi-sport sessions, Tuesdays and Thursdays",
+    sessionsPerSite: 20,
+    sites: [
+      { id: "riverside", name: "Riverside School", participants: 90 },
+      { id: "hillview", name: "Hillview Academy", participants: 80 },
+      { id: "eastfield", name: "Eastfield Centre", participants: 70 },
+      { id: "greenpark", name: "Greenpark School", participants: 75 },
+      { id: "westbrook", name: "Westbrook Centre", participants: 70 },
+      { id: "northgate", name: "Northgate School", participants: 75 },
+    ],
+    budget: [
+      { line: "Coaching", amount: 7200 },
+      { line: "Equipment", amount: 1800 },
+      { line: "Venue and transport", amount: 1800 },
+      { line: "Monitoring", amount: 1200 },
+    ],
+  };
+  seedSessions(w, 0, 1);
+
+  // Oriel Kit Scheme: 8 in-kind agreements, 60 kits declared at $9,000; never counted as cash (docs/05 §9.3).
+  [10, 10, 8, 8, 6, 6, 6, 6].forEach((items, k) => {
+    const id = `ag-kit-${k + 1}`;
+    w.agreements[id] = { id, fundId: "kit", recipientKind: "org", recipientId: `kit-club-${k + 1}`, amount: items * 150, acceptedBy: "system", acceptedAt: "apr12", origin: "Application", light: true, kits: { items, declaredValue: items * 150 } };
+  });
+  w.kitDeliveries = [{ at: "apr12", items: 12 }];
   return w;
+}
+
+/* ------------------------------------------------------------ programme */
+
+/** Session slot → date (Tuesdays and Thursdays from Tue 6 Apr 2027, 10 weeks). */
+export function sessionDate(slot: number) {
+  const d = new Date(Date.UTC(2027, 3, 6 + Math.floor(slot / 2) * 7 + (slot % 2) * 2));
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).replace(",", "");
+}
+/** Missed sessions per site and slot (docs/05 §6): 8 weather, 4 coach availability. */
+export const MISSED: Record<string, Record<number, "weather" | "coach availability">> = {
+  greenpark: { 8: "weather", 9: "coach availability", 10: "coach availability", 11: "weather", 12: "coach availability", 13: "coach availability" },
+  hillview: { 8: "weather", 14: "weather" },
+  westbrook: { 8: "weather", 11: "weather", 15: "weather" },
+  northgate: { 8: "weather" },
+};
+/** Seed the sessions for slots [from, to] at every site, except those a journey step records itself. */
+export function seedSessions(w: World, from: number, to: number, skip: (site: string, slot: number) => boolean = () => false) {
+  const pe = w.programmes["play-every-day"];
+  for (const site of pe.sites)
+    for (let slot = from; slot <= to; slot++) {
+      if (skip(site.id, slot)) continue;
+      const reason = MISSED[site.id]?.[slot];
+      const id = `ss-${site.id}-${slot}`;
+      w.sessions[id] = { id, programmeId: pe.id, siteId: site.id, slot, date: sessionDate(slot), status: reason ? "missed" : "delivered", attendance: reason ? undefined : Math.round(site.participants * (0.7 + ((slot * 7 + site.name.length) % 20) / 100)), reason, by: "system", at: slot <= 1 ? "apr12" : slot <= 9 ? "may06" : "jun30", checked: !reason };
+    }
 }

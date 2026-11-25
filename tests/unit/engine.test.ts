@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { baseWorld } from "../../src/domain/model";
-import { apply, fundTotals, platformTotals, requestTotals, RuleError, type Event } from "../../src/domain/engine";
+import { agreementTotals, apply, claimsCheck, counts, fundTotals, platformTotals, programmeTotals, requestTotals, RuleError, type Event } from "../../src/domain/engine";
 import { checkpoint, JOURNEYS, stepEvents } from "../../src/domain/story";
 
 const replay = (evs: Event[]) => {
@@ -246,5 +246,70 @@ describe("end-to-end regressions", () => {
     expect(w.offers.d1.status).toBe("declined");
     expect(fundTotals(w, "oas").held).toBe(fundTotals(replay(checkpoint("may06")), "oas").held);
     expect(tryCmd(w, { at: "may06", actor: "daniel", type: "scoreApplication", args: { appId: "app-amira", total: 13, noConflict: false } })).toMatch(/conflict of interest/);
+  });
+});
+
+/* P3: every journey step at every date, checked against docs/05 §9 (all steps done). */
+describe("P3 reconciliation (30 Jun, all journey steps done)", () => {
+  const full = () => {
+    const w = replay(checkpoint("jun30"));
+    for (const j of JOURNEYS) for (const s of j.steps.filter((x) => x.when === "jun30")) for (const e of stepEvents(s)) apply(w, e);
+    return w;
+  };
+  it("platform totals: development 352,700 committed and 216,200 paid (12,000 carried in); programme and commercial apart", () => {
+    const t = platformTotals(full());
+    expect(t.development).toEqual({ committed: 352700, released: 216200 });
+    expect(t.programme).toEqual({ committed: 145000, released: 29000 });
+    expect(t.commercial).toEqual({ committed: 14000, released: 7000 });
+    expect(t.inkind.committed).toBe(9000);
+  });
+  it("124 agreements; 36 of 60 kits delivered; Federation Development Grants 24,000 committed", () => {
+    const w = full();
+    expect(Object.values(w.agreements).filter(counts).length).toBe(124);
+    expect(w.kitDeliveries.reduce((a, b) => a + b.items, 0)).toBe(36);
+    expect(fundTotals(w, "fdg").committed).toBe(24000);
+    expect(agreementTotals(w, "ag-ostral")).toMatchObject({ paid: 12000, carriedPaid: 12000, carriedSpent: 10400, checked: 0, stillToPay: 12000 });
+  });
+  it("Amira: spent 1,930 · checked 1,720 · waiting 210 · not yet spent 320 · still to pay 2,250", () => {
+    expect(agreementTotals(full(), "ag-amira")).toMatchObject({ spent: 1930, checked: 1720, waiting: 210, notYetSpent: 320, stillToPay: 2250 });
+  });
+  it("Nadia: 600 still needed; Oriel 2,000 spent and checked; Halvorsen 50 not yet spent", () => {
+    const w = full();
+    expect(requestTotals(w, "rq-nadia").remaining).toBe(600);
+    expect(agreementTotals(w, "ag-oriel-nadia")).toMatchObject({ spent: 2000, checked: 2000, notYetSpent: 0 });
+    expect(agreementTotals(w, "ag-hal-nadia")).toMatchObject({ spent: 1150, checked: 1150, notYetSpent: 50 });
+  });
+  it("Jonah: 2 of 4 kit meets accepted; review Continue", () => {
+    const w = full();
+    expect(w.deliverables["ag-cv-jonah-d1"]).toMatchObject({ done: 2, target: 4 });
+    expect(w.reviews["rv-jonah"].decision).toBe("Continue");
+  });
+  it("Play Every Day: 108 of 120 delivered, 12 missed (8 weather, 4 coach), 104 checked, 460 participants; Greenpark 14", () => {
+    const w = full();
+    const t = programmeTotals(w, "play-every-day");
+    expect(t).toMatchObject({ delivered: 108, missed: 12, weather: 8, coach: 4, checked: 104, toCheck: 4, participants: 460, planned: 120 });
+    const g = t.sites.find((s) => s.site.id === "greenpark")!;
+    expect(g).toMatchObject({ delivered: 14, status: "Behind", alert: true });
+    expect(g.plan?.status).toBe("approved");
+  });
+  it("programme money: 10,800 spent, 10,368 checked, 432 waiting, 1,200 not yet spent; report accepted", () => {
+    const w = full();
+    expect(agreementTotals(w, "ag-pe1")).toMatchObject({ paid: 12000, spent: 10800, checked: 10368, waiting: 432, notYetSpent: 1200 });
+    expect(w.reports["rep-pe-q1"].status).toBe("accepted");
+  });
+  it("the claims check stops unsupported claims; spending can't exceed what was paid; photos need consent", () => {
+    const w = full();
+    expect(claimsCheck("Participants showed improved confidence")).toEqual(["improved confidence"]);
+    expect(tryCmd(w, { at: "jun30", actor: "amira", type: "addExpense", args: { expenseId: "x1", agreementId: "ag-amira", what: "Coaching", amount: 400, paidOn: "Tue 29 Jun", receipt: true } })).toMatch(/can't be more than was paid/);
+    expect(tryCmd(w, { at: "jun30", actor: "jonas", type: "sendProgress", args: { progressId: "x2", athleteId: "tiago", kind: "training", text: "Training week", proof: false, photo: true } })).toMatch(/Photos need consent/);
+    expect(tryCmd(w, { at: "jun30", actor: "priya", type: "checkExpense", args: { expenseId: "ex-am-4" } })).toMatch(/no receipt/);
+    expect(tryCmd(w, { at: "jun30", actor: "lena", type: "recordSession", args: { sessionId: "x3", programmeId: "play-every-day", siteId: "greenpark", slot: 19, status: "delivered", attendance: 20 } })).toMatch(/already been recorded/);
+  });
+  it("existing funding: the preparer cannot approve it, and it does not count until approved", () => {
+    const w = replay(checkpoint("jun30"));
+    apply(w, { n: 0, at: "jun30", actor: "daniel", type: "addExistingFunding", args: { agreementId: "e1", fundId: "fdg", orgId: "ostral", amount: 24000, purpose: "Regional swimming coach development", paid: 12000, spent: 10400, nextUpdate: "Thu 30 Sep" } });
+    expect(fundTotals(w, "fdg").committed).toBe(0);
+    w.people.danielApprove = { ...w.people.daniel, id: "danielApprove" };
+    expect(tryCmd(w, { at: "jun30", actor: "daniel", type: "approveExistingFunding", args: { agreementId: "e1" } })).toMatch(/Approve/);
   });
 });
