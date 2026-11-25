@@ -34,8 +34,8 @@ State at **Wed 30 Jun 2027** unless stated. "Accepts requests" is what the funde
 | | Community Sports Programme Grant Round 2 · Programme grant | 200,000 | — | — | — | **Upcoming**: opens Mon 6 Sep 2027 |
 | | Facilities Small Grants · Programme grant (infrastructure) | 80,000 | — | — | — | **Upcoming**: opens Mon 2 Aug 2027; up to 10,000 each |
 | **Corvane Sportswear** (sports brand) · accepts support asks: commercial proposals only (adult athletes and clubs) | **Women's Sporting Development Fund** · Development grant (women's team sports and coaching) | 40,000 | 38,000 (8 × 3,000 + 4 × 3,500) | 19,000 | 2,000 | 18 applications from clubs, teams and coaches; deadline Fri 16 Apr; 12 offers held Thu 6 May, all accepted by Thu 20 May; the I1 block in Explore |
-| | **Corvane Athlete Partnerships** · Sponsorship agreement (commercial) | 30,000 | 14,000 | 7,000 | 16,000 | Jonah Reyes 6,000 (Journey B); Lakeside Women's FC team sponsorship 8,000 (Jan–Dec 2027; 4,000 released); Lucy approves, a finance colleague records releases |
-| **Oriel Freight Group** (logistics company; CSR team) · accepts support asks: equipment and competition travel, any region, up to $2,000 | **Oriel Athlete Support** · Development grant (equipment and competition travel); delegated offer limit 2,000; Kenji approves, a finance colleague records releases | 20,000 | 11,900 | 11,900 | 8,100 | 6 seeded agreements 8,400 (§5.5) + Nadia 2,000 + Tiago 1,500 |
+| | **Corvane Athlete Partnerships** · Sponsorship agreement (commercial) | 30,000 | 14,000 | 7,000 | 16,000 | Jonah Reyes 6,000 (Journey B); Lakeside Women's FC team sponsorship 8,000 (Jan–Dec 2027; 4,000 released); Approval: Simple (Lucy) |
+| **Oriel Freight Group** (logistics company; CSR team) · accepts support asks: equipment and competition travel, any region, up to $2,000 | **Oriel Athlete Support** · Development grant (equipment and competition travel); delegated offer limit 2,000; Approval: Simple (Kenji approves and records releases) | 20,000 | 11,900 | 11,900 | 8,100 | 6 seeded agreements 8,400 (§5.5) + Nadia 2,000 + Tiago 1,500 |
 | | **Oriel Kit Scheme** · Equipment support (in-kind) | 60 kits · declared 9,000 | 60 kits to 8 clubs (decided Mar) | 12 kits delivered by 12 Apr, 24 by 6 May, 36 by 30 Jun | — | 15 applications; never in cash totals |
 | **Coastal Region Sports Council** (fictional government sports body of the fictional Coastal Region) · only through opportunities | **Athlete Travel Bursary 2027** · Competition funding | 36,000 | 30,800 (12 × 1,500 + 8 × 1,200 + 4 × 800) | 30,800 | 5,200 | Open Thu 1 Apr – Fri 14 May; 40 applications; decisions Fri 28 May |
 | **Verran Sports Trust** (foundation for para and women's sport) · only through opportunities | **Para Athlete Equipment Grant** · Development grant | 25,000 | 19,000 (6 × 2,500 + 2 × 2,000) | 19,000 | 6,000 | Open until Fri 28 May; 11 applications |
@@ -72,9 +72,9 @@ State at **Wed 30 Jun 2027** unless stated. "Accepts requests" is what the funde
 | **Jonah Reyes**, 22, sprinter (200m) | Independent adult athlete, open to commercial partners | phone | B | Accept a sponsorship agreement; submit deliverable evidence; see it kept apart from development funding |
 | **Rosa Esteves** | Guardian of **Tiago** (16, swimming) and **Inês** (13, football) | phone | E | Switch athletes; publish an anonymised request; withdraw photo consent; block a funder |
 | **Jonas Becker** | Saltmere · head swim coach; authorised for 6 athletes | tablet | E | Prepare an application (you cannot submit it); submit an update; nominate an adult athlete |
-| **Kenji Arakawa** | Oriel Freight Group · CSR manager (Approve, Review; $2,000 delegated limit) | laptop | B, E | Search with a plain-language brief; meet the offer cap; look at in-kind equipment |
+| **Kenji Arakawa** | Oriel Freight Group · CSR manager (Approve, Review, Finance; $2,000 delegated limit; Simple policy) | laptop | B, E | Search with a plain-language brief; meet the offer cap; look at in-kind equipment |
 | **Lucy Adeyemi** | Corvane Sportswear · Partnerships (Approve, Review) | laptop | B | Try to approve a $3,000 Women's Fund grant (I1 blocks it); accept a deliverable; see commercial totals apart |
-| **Marcus Halvorsen** | Verified individual sponsor | phone / laptop | B | Answer a funding request; see that minors' requests are not shown to individual sponsors |
+| **Marcus Halvorsen** | Verified individual sponsor (enhanced safeguarding check, simulated) | phone / laptop | B, C | Answer a support ask; offer to a young badminton player without a club through her guardian (platform safeguarding review first) |
 | **Maya Torres** | Lanternfield · Programme director (Manage programme, Approve, Admin) | laptop | C | Find programme funding; ask "Why is Greenpark behind?"; draft a report through the claims check |
 | **Lena Novak** | Lanternfield · Greenpark site coordinator (Manage programme for her site, Verify sessions) | tablet | C | Submit a recovery plan; verify sessions |
 | **Sam Rivera** | Lanternfield · coach at Greenpark and Westbrook (Record sessions) | phone | C | Record a session; mark "Couldn't run" |
@@ -84,8 +84,8 @@ State at **Wed 30 Jun 2027** unless stated. "Accepts requests" is what the funde
 Non-persona people: **Keiko Mori** (judo coach at Saltmere; attests Amira's training; referee); **Jo Adebayo** (relief
 coach at Greenpark from week 8); **Elif Demir** (adult rower, Halvorsen agreement); Tallwater's two other reviewers
 (each application is scored by two of three); a results officer at Ardent Judo Federation (Verify; confirms Amira's
-bronze); Oriel's second approver (offers above $2,000) and finance colleague (records releases); Corvane's reviewer
-(prepares the Women's Fund recommendations Lucy approves) and finance colleague; Highland Cycling Club's club
+bronze); Oriel's second approver (offers above $2,000); Corvane's reviewer (prepares the Women's Fund recommendations
+Lucy approves); Highland Cycling Club's club
 secretary (Admin).
 
 ## 4. Main opportunity: Emerging Athletes Scholarship (Tallwater)
@@ -145,7 +145,7 @@ is added; invite to renew in March."
 Funding request (Thu 6 May; Public), two line items: racing wheels 3,400 + Continental Para Athletics Series travel
 1,800 = **5,200**. Support ask to Marcus Halvorsen (6 May) for 1,200 of the travel line. Oriel offer 2,000 for the
 wheels line (Kenji first tries 2,500: above his delegated limit); Halvorsen offer 1,200 for travel; both accepted,
-released (Oriel's by its finance colleague) and received on 6 May. Pledged 3,200; remaining 2,000 at 6 May (Partly
+released and received on 6 May. Pledged 3,200; remaining 2,000 at 6 May (Partly
 funded). Update 30 Jun: wheels invoice 3,400, allocated 2,000 to the Oriel agreement (verified by Oriel's reviewer) and
 1,400 to "covered from other sources" (her own money), which closes the wheels line; travel 1,150 allocated to the
 Halvorsen agreement (verified by Marcus); remaining 600 (travel line) at 30 Jun; progress: 3rd place, 800m T54, Continental Para Athletics Series, Lakes Region round (results document).
@@ -168,8 +168,8 @@ the Ostral National Age-Group Championships, August 2027, **2,400** (flights 1,3
 kit levy 250; funders see only the category total); qualification verified by an Ostral document (funders see
 "verified by a national federation", never the document); visibility "Verified funders only"; anonymised card
 "Swimmer · 16–17 · Coastal Region · competition travel · needed in August · qualification verified" (identifiability
-check: 23 registered athletes share swimming, 16–17, Coastal Region). Oriel offers 1,500 (an attempt at 2,600 is
-blocked by I4); Rosa accepts; Oriel's finance colleague records the release; Rosa confirms; remaining 900. Application
+check: 29 registered athletes share swimming, 16–17, Coastal Region). Oriel offers 1,500 (an attempt at 2,600 is
+blocked by I4); Rosa accepts; Kenji records the release; Rosa confirms; remaining 900. Application
 to Ostral's Competition Travel Grant for 900, prepared by Jonas, submitted by Rosa, other funding declared: Oriel 1,500
 (decision Fri 16 Jul); the application **holds** the 900, so remaining open to offers is 0. On 30 Jun Rosa withdraws
 photo consent and hides the request from discovery.
@@ -259,12 +259,12 @@ P1 name check (25 Nov 2026, web searches; "no match" means nothing prominent fou
 
 | Records | Count |
 |---|---|
-| Athlete profiles | 240: 30 rich, 210 light; about 45% minors (108), managed by 76 guardian accounts; 60 adults discoverable. The seed fills every anonymised card's cell with at least 10 athletes: swimming 16–17 Coastal Region 23; cycling 16–17 Northern Region 12; badminton 14–15 (region widened to "Any region") 11 |
+| Athlete profiles | 240: 30 rich, 210 light; about 45% minors (108), managed by 76 guardian accounts; 60 adults discoverable. The seed fills every anonymised card's cell with at least 10 athletes: swimming 16–17 Coastal Region 29; cycling 16–17 Northern Region 12; badminton 14–15 (region widened to "Any region") 11 |
 | Funders | 9 (§2.1), including 1 verified individual sponsor |
 | Seeking organisations | 7 named (§2.2) + 30 light; 6 Play Every Day sites (not accounts) |
 | Opportunities | 12: 8 open or decided in 2027 (EAS, Programme Grant, Women's Fund, Kit Scheme, Travel Bursary, Para Equipment, High Performance Camp, Ostral Competition Travel), 3 upcoming (Programme Round 2, Facilities, Coach Education), 1 closed (Winter Para Camp Places) |
 | Applications | Emerging Athletes Scholarship **143** · Athlete Travel Bursary 40 · Ostral Competition Travel Grant 24 · Women's Sporting Development Fund 18 · Oriel Kit Scheme 15 · High Performance Camp Support 14 · Para Athlete Equipment Grant 11 · Community Sports Programme Grant 7 · **total 272** |
-| Funding requests | **16**: at 30 Jun, 6 partly funded (Nadia, Tiago, Highland Cycling Club, and 3 in §5.5), 2 fully pledged (Eastbrook, adult canoeist), 6 open with no pledge (Saltmere racing chairs, Lakeside, and 4 light: adult fencer travel 1,400; adult archer equipment 2,200; badminton player 14–15 (anonymised) coaching 750; adult triathlete race entries 900), 2 closed |
+| Funding requests | **16**: at 30 Jun, 6 partly funded (Nadia, Tiago, Highland Cycling Club, and 3 in §5.5), 2 fully pledged (Eastbrook, adult canoeist), 6 open with no pledge (Saltmere racing chairs, Lakeside, and 4 light: adult fencer travel 1,400; adult archer equipment 2,200; badminton player 14–15 (anonymised) coaching 750; adult triathlete race entries 900; the badminton player has no club and is represented by her guardian), 2 closed |
 | Funding agreements | **124** (§9.3); an offer awaiting acceptance is not yet an agreement |
 | Expense lines | About 300 |
 | Progress records and deliverable evidence | About 80 |

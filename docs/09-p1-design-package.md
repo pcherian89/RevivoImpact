@@ -1,6 +1,7 @@
 # Revivo Impact — P1 design package (25 Nov 2026)
 
-**Status: complete, waiting for the founder's approval.** No functional prototype work (P2) starts until the founder
+**Status: approved by the founder on 25 Nov 2026** (product architecture and direction), with refinements recorded in
+`07` §"P1 approval and refinements" and applied to `02`, `03`, `05` and `06`. P2 is under way. No functional prototype work (P2) starts until the founder
 approves this package or asks for changes. Written for a non-technical reader; technical detail lives in the linked
 documents.
 

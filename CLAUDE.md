@@ -48,14 +48,16 @@ production software.
 - **Minors (under 18):** registered and represented by a guardian; never searchable or identifiable as profiles;
   funders reach them only through an anonymised funding request a guardian published (after the identifiability
   check, `docs/02` §7.3), an application the guardian authorised, or a nomination the guardian accepted; all offers,
-  questions and confirmations go to the guardian; individual sponsors never see minors' requests; a coach can never
-  accept offers, change consent or publish requests for a minor; block, report and consent withdrawal take effect at
-  once.
+  questions and confirmations go to the guardian; individual sponsors reach minors only through an authorised
+  representative, with an enhanced safeguarding check and a platform review of every offer (`docs/02` §5.6); no
+  commercial sponsorship of minors; a coach can never accept offers, change consent or publish requests for a minor;
+  block, report and consent withdrawal take effect at once.
 - **Sports only.** Every profile, opportunity, request, agreement and programme names a sport and a sporting purpose
   (`docs/02` §4.4). No general academic scholarships, non-sport charity or generic fundraising.
 - **Structured contact only.** No free messaging; support asks only to funders that accept them; limits against spam.
-- **Separation of duties.** Whoever approves an offer or commitment does not record its release; no double funding
-  (line-item requests, holds for pending applications).
+- **Approval policies** (`docs/02` §5.7): Simple, Standard or Institutional per Fund; never approving one's own
+  draft; under Institutional the approver does not record the release. No double funding (line-item requests, holds
+  for pending applications).
 - **Purpose-based access.** Funders see only what the purpose allows (`docs/02` §8). Programme-only funders see
   aggregates. Discovery shows only what the owner marked discoverable, and never claims to list every sponsor.
 - **Honesty line**, where impact is implied (chains, reports, About): "Delivery and spending records show what was

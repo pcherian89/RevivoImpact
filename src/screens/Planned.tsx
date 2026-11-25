@@ -1,7 +1,7 @@
 import { ArrowRight, PencilRuler } from "lucide-react";
 import { SCREENS } from "../data/structure";
 import { btn, Chip, Label } from "../components/ui";
-import type { Persona } from "../data/world";
+import type { Person as Persona } from "../domain/model";
 
 /** Screens designed in P1 but built in P2–P3: shown honestly with their question, layout and contents (docs/03 §4). */
 export function Planned({ n, persona }: { n: number; persona: Persona }) {

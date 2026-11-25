@@ -98,13 +98,9 @@ export function Label({ children, className }: { children: ReactNode; className?
 /** Every figure is a "See source" button (invariant I8). */
 export function SeeSource({ children, name, onClick }: { children: ReactNode; name: string; onClick?: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`See source: ${name}`}
-      className="tabular-nums underline decoration-dotted decoration-1 underline-offset-4 hover:text-signal"
-    >
+    <button type="button" onClick={onClick} title={`See source: ${name}`} className="tabular-nums underline decoration-dotted decoration-1 underline-offset-4 hover:text-signal">
       {children}
+      <span className="sr-only"> (see source: {name})</span>
     </button>
   );
 }
@@ -217,7 +213,7 @@ export function HeroBand({
           <ImageSlot file={file} caption={caption} className="hero-fade-phone w-full rounded-none" />
         </div>
       )}
-      <div className="relative md:flex md:min-h-[min(calc((100vw-5rem)*0.2925),24rem)] md:items-end">
+      <div className="relative md:flex md:min-h-[min(calc((100vw-5rem)*0.2925),20rem)] md:items-end">
         <div className={cn("relative z-10 pb-6 md:w-[62%] md:pt-10 md:pb-8", phone === "before" ? "-mt-14 md:mt-0" : "pt-6")}>{children}</div>
       </div>
     </div>

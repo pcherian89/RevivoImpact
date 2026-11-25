@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn, SeeSource } from "./ui";
-import { fmt } from "../data/world";
+import { fmt } from "../domain/engine";
 
 export type LineNode = { short: string; full: string; stat?: ReactNode; note?: string };
 

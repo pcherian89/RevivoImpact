@@ -134,6 +134,12 @@ Each fact has a **visibility** and a **verification state**.
 | Self-reported | "Self-reported" |
 | Imported (optional) | "Verified in Revivo Pathway · imported [date]" (Explore only, §11) |
 
+**Commercial profile (adults only, optional).** An adult athlete open to commercial partners can add: social media
+links (as text; no live integration), self-reported audience figures (always labelled "self-reported"), previous
+brand partnerships, available promotional activities and the deliverables they would agree to. It is shown only to
+sponsors in a commercial sponsorship context (Corvane, Fennick); it never affects eligibility, scholarship or
+development funding decisions, or the order of any Discover list; there are no automated valuations or analytics.
+
 There is no single "verified athlete" badge. A profile summary says, for example, "4 facts verified · 3 self-reported".
 No unnecessary sensitive data: no medical details, no financial documents beyond a statement of need and budget
 lines, no ID numbers (ID documents are viewable by Verify users only and never stored as numbers).
@@ -227,10 +233,10 @@ facilities · Commercial sports sponsorship · Dual-career education (sport-link
 | **Manage programme** | Run a programme: targets, sites, actions, recovery plans, updates and reports |
 | **Record sessions** | Record sessions and attendance counts for their own sessions only |
 
-Any member may draft. Anyone may hold several permissions, but **the person who approved an offer or commitment cannot
-record its release** (separation of duties). An individual sponsor holds Review, Approve and Finance over their own
-agreements; their releases are flagged "single-person sponsor", and the recipient's receipt confirmation is the
-second check.
+Any member may draft. Anyone may hold several permissions. How many people must be involved is set by the Fund's
+**approval policy** (§5.7), so a small company or an individual sponsor is not forced through a foundation's process.
+An individual sponsor holds Review, Approve and Finance over their own agreements; their releases are flagged
+"single-person sponsor", and the recipient's receipt confirmation is the second check.
 
 ### 5.3 Who can do what
 
@@ -289,12 +295,33 @@ agreements as a recipient) and what it gives (its Funds, applicants and portfoli
 
 ### 5.6 Verified individual sponsors (light)
 
-A verified adult (for example a former athlete or business owner) can publish a funder profile, accept requests and
-make structured offers to **adult athletes, teams, clubs and programmes**. In the prototype an individual sponsor
-**cannot see minors' anonymised requests or make offers to minors directly**; they can support young athletes only
-through an organisation (for example a club's youth equipment request) and then see the organisation's updates
-without photos of minors. They do not publish opportunities; their navigation is Overview · Discover · Asks & offers
-· Funding. No public solicitation, donations or crowdfunding; payments are simulated. Production identity checks, safeguarding vetting, tax and cross-border rules need separate validation.
+A verified adult (for example a former athlete or business owner) can publish a funder profile, accept support asks
+and make structured offers to **adult athletes, teams, clubs and programmes**. They do not publish opportunities;
+their navigation is Overview · Discover · Asks & offers · Funding.
+
+**Young athletes (founder's refinement, 25 Nov 2026).** Individual sponsors never have unrestricted or direct access
+to minors, but young athletes without a club are not excluded. An individual sponsor can support a minor only
+**through an authorised representative**: the parent or legal guardian (an anonymised funding request they
+published), or a club, academy, federation or recognised sports foundation acting for the athlete. To see minors'
+anonymised cards at all, the sponsor must hold an **enhanced safeguarding check** (simulated; Marcus Halvorsen holds
+one). Every offer from an individual sponsor to a minor first goes to a **platform safeguarding review** (simulated,
+by the platform administrator) and only then to the guardian; all contact stays structured and goes to the
+guardian; the sponsor learns the athlete's first name only after the guardian accepts and never receives photos of
+the minor. Commercial sponsorship of under-18s stays outside the prototype. No public solicitation, donations or crowdfunding; payments are simulated. Production identity checks, safeguarding vetting, tax and cross-border rules need separate validation.
+
+### 5.7 Approval policies (configurable per Fund)
+
+One funding workflow, three levels of control. The Fund's owner chooses a policy when creating the Fund; the
+interface shows it on every offer and agreement ("Approval: Institutional").
+
+| Policy | Who must act | Typical use | Prototype Funds |
+|---|---|---|---|
+| **Simple** | One person with Approve can offer, accept a deliverable and record a release; an optional delegated limit sends larger offers to a second approver; the recipient's receipt confirmation is the second check | Individual sponsors, small companies, straightforward athlete support, commercial sponsorship | Oriel Athlete Support ($2,000 limit), Halvorsen Athlete Support, Corvane Athlete Partnerships, Fennick Athlete Partnerships |
+| **Standard** | Publishing and award decisions need a second person (four-eyes); one reviewer per application; finance may be the approver | Company and federation funds, small grant rounds | Women's Sporting Development Fund, Ostral Competition Travel Grant, Coastal Region Athlete Travel Bursary, Ardent Camp Support, Verran grants, Oriel Kit Scheme |
+| **Institutional** | Two reviewers per application (gap flags), a different approver, and finance separate from the approver (the approver never records the release); existing funding needs Approve | Large foundation rounds and programme grants | Tallwater: Emerging Athletes Scholarship, Community Sports Programme Grant, Federation Development Grants |
+
+Under every policy: nobody approves their own draft or recommendation; every action is in the audit; caps, holds,
+the sports-only check and invariants I1–I13 always apply.
 
 ## 6. Financial state model
 
@@ -346,7 +373,8 @@ words.
 9. **I9** Per agreement: Received ≤ Released; a receipt confirmation always refers to one recorded release.
 10. **I10** Totals are grouped by currency and never add different currencies (§6.4).
 11. **I11** Four-eyes on events: no approval, verification or acceptance event is by the person who prepared the record
-    (§5.4); the person who approved an offer or commitment does not record its release (individual sponsors flagged).
+    (§5.4); under the Institutional policy the person who approved an offer or commitment does not record its release
+    (§5.7); single-person releases are flagged in the audit.
 12. **I12** In-kind: items delivered ≤ items pledged, per agreement and per Fund.
 13. **I13** An expense counts only if its date falls inside the agreement's cost period (for a scholarship, from
     acceptance to the end of the term); earlier costs are shown as "outside the cost period".
@@ -482,7 +510,8 @@ Consent is per purpose with equal Yes and No buttons, nothing pre-selected, and 
   decision; a funder monitoring a community programme sees aggregates only.
 - **No commercial sponsorship of minors in the prototype** (production: only through the guardian, subject to each
   jurisdiction's rules on contracts with minors).
-- Individual sponsors cannot see minors' anonymised requests (§5.6).
+- Individual sponsors see minors' anonymised requests only with an enhanced safeguarding check, and their offers to
+  minors pass a platform safeguarding review before reaching the guardian (§5.6).
 - Coaches act only within the powers a guardian granted (§5.4). Every view of a minor's record is audited.
 - Guardians can **withdraw consent**, **hide a request from discovery**, **block a funder** and **report a concern**
   at any time; each takes effect at once.
@@ -666,7 +695,7 @@ imported [date]" and can be removed at any time. Shared infrastructure with Path
 | Real payments, bank feeds, payment gateways, tax receipts, cross-border transfers | Releases are recorded, not processed |
 | E-signature and contract authoring | "Accept" records name, date and agreement version |
 | Multi-stage scoring panels, weighted committee scoring, appeals | One rubric and one conflict declaration; the decision letter says who to contact |
-| Sponsorship inventory, media valuation, activation analytics, sponsorship intelligence, audience or follower data | Commercial sponsorship gets payments plus up to 3 deliverables (audience data is an open founder decision, `09` §7) |
+| Sponsorship inventory, media valuation, activation analytics, sponsorship intelligence, live social media data | Commercial sponsorship gets payments, up to 3 deliverables and the optional self-reported commercial profile (§3.4) |
 | Recovery of unspent or returned funds, clawback | Shown as "Unspent, held by recipient"; workflows deferred |
 | Several currencies in the demonstration; exchange rates | The model supports currencies; the dataset is USD only (§6.4) |
 | Translations, native apps, offline sync, real logins, email or SMS | In-app notifications are simulated; English only, structure kept |

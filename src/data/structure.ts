@@ -1,4 +1,4 @@
-import type { RoleKey } from "./world";
+import type { RoleKey } from "../domain/model";
 
 /** Main navigation per role: at most five items (docs/03 §2). `screen` is the route segment. */
 export type NavItem = { label: string; screen: string };
@@ -6,68 +6,68 @@ export const NAV: Record<RoleKey, NavItem[]> = {
   athlete: [
     { label: "Home", screen: "home" },
     { label: "Discover", screen: "discover" },
-    { label: "Applications", screen: "s12" },
+    { label: "Applications", screen: "applications" },
     { label: "My Funding", screen: "funding" },
-    { label: "Profile", screen: "s4" },
+    { label: "Profile", screen: "me" },
   ],
   guardian: [
-    { label: "Home", screen: "s3" },
-    { label: "My Athletes", screen: "s22" },
+    { label: "Home", screen: "home" },
+    { label: "My Athletes", screen: "safety" },
     { label: "Discover", screen: "discover" },
-    { label: "Applications", screen: "s12" },
-    { label: "Funding & Updates", screen: "s16" },
+    { label: "Applications", screen: "applications" },
+    { label: "Funding & Updates", screen: "funding" },
   ],
   coach: [
-    { label: "Home", screen: "s3" },
-    { label: "My Athletes", screen: "s4" },
+    { label: "Home", screen: "home" },
+    { label: "My Athletes", screen: "me" },
     { label: "Discover", screen: "discover" },
-    { label: "Applications", screen: "s12" },
-    { label: "Funding & Updates", screen: "s18" },
+    { label: "Applications", screen: "applications" },
+    { label: "Funding & Updates", screen: "funding" },
   ],
   funder: [
     { label: "Overview", screen: "overview" },
     { label: "Discover", screen: "fdiscover" },
-    { label: "Opportunities", screen: "s9" },
-    { label: "Applications", screen: "s12" },
+    { label: "Opportunities", screen: "opps" },
+    { label: "Applications", screen: "apps" },
     { label: "Funding", screen: "portfolio" },
   ],
   sponsor: [
-    { label: "Overview", screen: "s3" },
+    { label: "Overview", screen: "overview" },
     { label: "Discover", screen: "fdiscover" },
-    { label: "Opportunities", screen: "s9" },
-    { label: "Applications", screen: "s12" },
-    { label: "Funding", screen: "s16" },
+    { label: "Opportunities", screen: "opps" },
+    { label: "Applications", screen: "apps" },
+    { label: "Funding", screen: "portfolio" },
   ],
   individual: [
-    { label: "Overview", screen: "s3" },
+    { label: "Overview", screen: "overview" },
     { label: "Discover", screen: "fdiscover" },
-    { label: "Asks & offers", screen: "s12" },
-    { label: "Funding", screen: "s16" },
+    { label: "Asks & offers", screen: "apps" },
+    { label: "Funding", screen: "portfolio" },
   ],
   organisation: [
-    { label: "Home", screen: "s3" },
+    { label: "Home", screen: "home" },
     { label: "Discover", screen: "discover" },
-    { label: "Applications", screen: "s12" },
-    { label: "Funding", screen: "s19" },
-    { label: "Organisation", screen: "s4" },
+    { label: "Applications", screen: "applications" },
+    { label: "Funding", screen: "funding" },
+    { label: "Organisation", screen: "me" },
   ],
   "programme-coach": [
     { label: "Today", screen: "s20" },
     { label: "Sessions", screen: "s19" },
   ],
-  admin: [{ label: "Audit & admin", screen: "s23" }],
+  admin: [{ label: "Audit & admin", screen: "admin" }],
 };
 
 export const HOME_SCREEN: Record<RoleKey, string> = {
   athlete: "home",
-  guardian: "s3",
-  coach: "s3",
+  guardian: "home",
+  coach: "home",
   funder: "overview",
-  sponsor: "fdiscover",
-  individual: "s3",
-  organisation: "s3",
+  sponsor: "overview",
+  individual: "overview",
+  organisation: "home",
   "programme-coach": "s20",
-  admin: "s23",
+  admin: "admin",
 };
 
 /** The 23 screens (docs/03 §4). `built` marks what the P1 shell shows as a representative design. */
@@ -98,81 +98,3 @@ export const SCREENS: ScreenDef[] = [
   { n: 23, name: "Audit & admin", question: "Who did what, when and why?", template: "T9 Audit", contents: "Audit table; verification, safeguarding checks and reports of concern for the platform admin.", phase: "P3" },
 ];
 
-/** Guided journeys (docs/03 §5). Each step names who acts and where; `to` opens that screen in the shell. */
-export type Step = { title: string; who: string; when: string; to: string; what: string };
-export type Journey = { id: string; name: string; minutes: string; steps: Step[] };
-export const JOURNEYS: Journey[] = [
-  {
-    id: "A",
-    name: "Find and secure a sports scholarship",
-    minutes: "10-minute signature",
-    steps: [
-      { title: "Tallwater publishes the scholarship", who: "Ingrid Solberg · Tallwater", when: "apr12", to: "app/ingrid/s9", what: "Ingrid publishes Daniel's draft (four-eyes) and copies the share link." },
-      { title: "Amira registers independently", who: "Amira Haddad · athlete", when: "apr12", to: "join", what: "No invitation and no Revivo Pathway: she joins as an adult athlete." },
-      { title: "She builds one sporting profile", who: "Amira", when: "apr12", to: "app/amira/s4", what: "Results, coach, current support; she chooses what is discoverable." },
-      { title: "She discovers opportunities from five organisations, and seven relevant sponsors", who: "Amira", when: "apr12", to: "app/amira/discover", what: "Eligibility by rule; two shown as not eligible, with reasons. Then the Sponsors & funders tab." },
-      { title: "She finds Tallwater's scholarship", who: "Amira", when: "apr12", to: "app/amira/opportunity/eas", what: "4 criteria met, 1 for the panel to check, 1 to add. AI A explains the match." },
-      { title: "Application help", who: "Amira", when: "apr12", to: "app/amira/s11", what: "AI B fills the form from her profile and flags a missing invoice." },
-      { title: "She submits", who: "Amira", when: "apr12", to: "app/amira/s12", what: "Shares the ticked fields; requests $4,800." },
-      { title: "Review and verification", who: "Daniel Osei · Tallwater", when: "may06", to: "app/daniel/s13", what: "Verifies her result and age against documents; requests the invoice; shortlists at $4,500." },
-      { title: "Human selection", who: "Ingrid", when: "may06", to: "app/ingrid/s14", what: "46 offers, $214,500 reserved; budget meter; respectful decisions to all 143." },
-      { title: "Amira accepts her scholarship award", who: "Amira", when: "may06", to: "app/amira/s15", what: "Reads what Tallwater will see; accepts. Committed $4,500." },
-      { title: "Payment recorded, receipt confirmed", who: "Priya Nair → Amira", when: "may06", to: "app/amira/funding", what: "Instalment 1, $2,250 (simulated); Amira confirms she received it." },
-      { title: "Spending and sporting progress", who: "Amira", when: "jun30", to: "app/amira/s18", what: "4 expenses (one missing a receipt); 5th place; 34 of 36 sessions attested." },
-      { title: "Funder review and renewal", who: "Priya, Daniel", when: "jun30", to: "app/amira/funding", what: "$1,720 verified, $210 queried; Continue with conditions; invite to renew." },
-    ],
-  },
-  {
-    id: "B",
-    name: "Two-way discovery, direct support and sponsorship",
-    minutes: "7 steps",
-    steps: [
-      { title: "Nadia publishes a funding request", who: "Nadia Kovač · athlete", when: "may06", to: "app/nadia/s10", what: "Racing wheels and travel, $5,200; Public." },
-      { title: "Nadia finds a sponsor that accepts requests", who: "Nadia", when: "may06", to: "app/nadia/profile/halvorsen", what: "Sponsors & funders tab → Marcus Halvorsen → ask for $1,200 towards travel." },
-      { title: "Oriel discovers Nadia", who: "Kenji Arakawa · Oriel", when: "may06", to: "app/kenji/fdiscover", what: "A plain-language brief becomes editable filters; ordered by rule, never by popularity." },
-      { title: "Two funders, partial funding", who: "Kenji, Marcus → Nadia", when: "may06", to: "app/kenji/request/nadia", what: "$2,000 (delegated limit) + $1,200; $2,000 still needed." },
-      { title: "Payments confirmed", who: "Nadia", when: "may06", to: "app/nadia/s17", what: "Both releases recorded and confirmed received." },
-      { title: "Corvane proposes a sponsorship agreement", who: "Lucy Adeyemi → Jonah Reyes", when: "may06", to: "app/lucy/fdiscover", what: "$6,000, three deliverables; kept apart from development totals." },
-      { title: "Updates and deliverables", who: "Nadia, Jonah", when: "jun30", to: "app/jonah/s17", what: "Spending verified; 2 of 4 kit meets accepted." },
-    ],
-  },
-  {
-    id: "C",
-    name: "Sports organisations: funding and programme monitoring",
-    minutes: "8 steps",
-    steps: [
-      { title: "A club funded by a sponsor it did not know", who: "Marcus Halvorsen → Highland Cycling Club", when: "may06", to: "app/marcus/fdiscover", what: "Youth club bikes: $2,500 of $5,000 offered and received; no minors' details shared." },
-      { title: "Lanternfield discovers programme funding", who: "Maya Torres", when: "may06", to: "app/maya/discover", what: "Saves Round 2 and Facilities Small Grants; opens Play Every Day." },
-      { title: "A coach records sessions", who: "Sam Rivera", when: "may06", to: "app/sam/s20", what: "One delivered; Greenpark couldn't run." },
-      { title: "An alert and a question", who: "Maya", when: "may06", to: "app/maya/s19", what: "Two missed in a row; AI C cites the reasons." },
-      { title: "Recovery plan approved", who: "Lena → Maya", when: "may06", to: "app/maya/s19", what: "Four-eyes approval; the funder sees aggregates." },
-      { title: "Expense verified across organisations", who: "Maya → Priya", when: "jun30", to: "app/maya/s18", what: "$600 verified; $432 claim awaits a receipt." },
-      { title: "An honest report", who: "Maya", when: "jun30", to: "app/maya/s21", what: "The claims check flags “improved confidence”." },
-      { title: "Funder drills down and reviews", who: "Daniel", when: "jun30", to: "app/daniel/s21", what: "108 → sites → sessions; report accepted." },
-    ],
-  },
-  {
-    id: "D",
-    name: "Bring existing funding onto Revivo Impact",
-    minutes: "4 steps",
-    steps: [
-      { title: "Add existing funding", who: "Daniel", when: "jun30", to: "app/daniel/portfolio", what: "Ostral, $24,000; no new application. Ingrid approves the commitment (four-eyes)." },
-      { title: "Carried-in figures", who: "Daniel", when: "jun30", to: "app/daniel/s15", what: "Released $12,000, reported $10,400, labelled." },
-      { title: "Recipient confirms", who: "Farid Rahimi · Ostral", when: "jun30", to: "app/farid/s15", what: "Confirms the agreement and opening figures." },
-      { title: "In the portfolio", who: "Daniel", when: "jun30", to: "app/daniel/portfolio", what: "Same chain; next update Thu 30 Sep." },
-    ],
-  },
-  {
-    id: "E",
-    name: "Coach, guardian and safeguarding",
-    minutes: "6 steps",
-    steps: [
-      { title: "One account, two athletes", who: "Rosa Esteves · guardian", when: "may06", to: "app/rosa/s3", what: "Switches between Tiago (16) and Inês (13)." },
-      { title: "A coach with limited powers", who: "Rosa → Jonas Becker", when: "may06", to: "app/rosa/s22", what: "Prepare applications and submit updates only." },
-      { title: "An anonymised funding request", who: "Rosa", when: "may06", to: "app/rosa/s10", what: "Swimmer · 16–17 · Coastal Region; identifiability check passes." },
-      { title: "An offer through the guardian", who: "Kenji → Rosa", when: "may06", to: "app/kenji/request/tiago", what: "$2,600 blocked by the cap; $1,500 goes to Rosa, not the athlete." },
-      { title: "Coach prepares, guardian submits", who: "Jonas → Rosa", when: "may06", to: "app/jonas/s11", what: "Application for the $900 still needed." },
-      { title: "Consent withdrawn, request hidden", who: "Rosa", when: "jun30", to: "app/rosa/s22", what: "Photo removed everywhere; card leaves Discover; agreement continues." },
-    ],
-  },
-];

@@ -142,7 +142,11 @@ founder's approval (`09`).**
 | **P4 Intelligence, reporting and polish** | 6–8 days | AI C (summaries, Ask Revivo, report drafting), images (placeholders until supplied), print and export, motion polish | Three outside viewers can explain the chain after one run of Journey A | Progress review (non-blocking): visual sign-off |
 | **P5 QA and packaging** | 4–5 days | Full Playwright suite; axe; 4 widths × 2 themes; the offline file; presenter guide (10-minute script plus B–E notes); limitations page; QA report with evidence | All acceptance criteria (§9) checked with evidence | **Approval gate: the founder approves before anything is published, linked or shared** |
 
-Total about 30–37 build-days (P2 10–12, P3 10–12, P4 6–8, P5 4–5); P2 and P3 are the critical path. At the end of every phase, report to the founder in
+**Reassessed after P1 approval (25 Nov 2026): about 18–24 build-days** (P2 6–8, P3 6–8, P4 3–5, P5 3). The founder
+confirmed this is a prototype: completeness of the experience, not of production infrastructure. So: one event log in
+the browser instead of a database; simulated sign-in, verification and payments; deterministic simulated AI; Pathway's
+proven patterns (one shared state, the guide with "Show me / I'll do it", checkpoints); tests focused on the rules
+that matter (money, access, minors, discovery order) and on every role's journey. P2 and P3 are the critical path. At the end of every phase, report to the founder in
 plain language: completed, remaining, tested (with screenshots at phone, tablet and laptop widths), limitations. Work
 on the branch `claude/festive-fermat-wzl8qa` (founder's instruction); never merge to `main` without approval.
 

@@ -258,3 +258,32 @@ earlier document disagrees, this wins).
     changes the connected fictional state.
 12. **Website.** The website is being restructured from 16 to 12 capabilities; the old 16-capability structure is not
     a requirement; nothing on the website is changed from here.
+
+## P1 approval and refinements (25 Nov 2026)
+
+The founder approved P1's product architecture and direction (standalone, sports-only, independent registration,
+two-way discovery, shared discovery with private workspaces, the nine-funder world, five journeys, one funding
+architecture with type names, financial accountability and no double funding, federation and coach confirmation, the
+Funding Line, Dark and Daylight, 23 screens if navigation stays simple, three simulated AI experiences, independence
+from Revivo Pathway, the name changes) and asked for these refinements before P2. Open points O1–O3 in `09` §7 are
+closed by them.
+
+1. **Young athletes and individual sponsors.** No unrestricted direct access to minors, but do not restrict support to
+   athletes in clubs: support through authorised representatives (parents and guardians, clubs, academies,
+   federations, recognised sports foundations), with safeguarding review, consent, controlled disclosure and
+   structured communication; no identifying information in public discovery; no real payments; commercial sponsorship
+   of under-18s stays out. Applied in `02` §5.6 and §7.2.
+2. **Configurable approval workflows.** One workflow with approval requirements set per Fund (Simple, Standard,
+   Institutional); strong controls in the main foundation journey, simpler ones for small funders and individuals.
+   Applied in `02` §5.7.
+3. **Commercial profile.** Optional for adults: social links, self-reported audience, previous partnerships,
+   promotional activities, deliverables; only for commercial sponsorship; never for eligibility or development
+   funding; no live integrations or valuations. Applied in `02` §3.4.
+4. **Two-way discovery stays fundamental** and both sides must be equally clear and functional; the product must not
+   feel like a foundation portal with discovery added.
+5. **Prototype only.** Reassess effort for a prototype (now 18–24 build-days, `06` §8); simulate infrastructure
+   convincingly; reuse Pathway's approach; never trade away visual quality or meaningful function.
+6. **Design.** Keep the family identity and premium quality; avoid unnecessary cards, admin terminology, clutter and
+   grey-heavy interfaces; design, UX, creative and accessibility perspectives in implementation reviews; placeholders
+   until the founder supplies images.
+7. **After P2:** an end-to-end review of every journey and a test of each role's view.

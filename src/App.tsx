@@ -1,22 +1,27 @@
 import { useStore } from "./state/store";
-import { AppFrame, GuidePanel, personaById, PrototypeBar } from "./components/Shell";
+import { AppFrame, GuidePanel, PrototypeBar } from "./components/Shell";
 import { Roles, Start } from "./screens/Start";
-import { AthleteHome, FunderProfile, FundingRecord, Join, OpportunityPage, SeekerDiscover } from "./screens/Seeker";
-import { FunderDiscover, FunderOverview, Portfolio, RequestPage } from "./screens/Funder";
+import { Apply, FunderProfile, Join, MyFunding, MyProfile, OpportunityPage, Publish, SeekerApplications, SeekerDiscover, SeekerHome } from "./screens/Seeker";
+import { AthleteForFunder, FunderApplications, FunderDiscover, FunderOpportunities, FunderOverview, Portfolio, RequestPage, ReviewPage, SelectionPage } from "./screens/Funder";
+import { Admin, Safety } from "./screens/Other";
 import { Planned } from "./screens/Planned";
 import { HOME_SCREEN } from "./data/structure";
-import { PERSONAS } from "./data/world";
+import type { Person } from "./domain/model";
 
 export default function App() {
-  const { route } = useStore();
+  const { route, world } = useStore();
   const [top, pid, screen, param] = route;
   let body;
   if (top === "roles") body = <Roles />;
   else if (top === "join") body = <Join />;
-  else if (top === "app") {
-    const persona = personaById(pid) ?? PERSONAS[0];
-    const sc = screen ?? HOME_SCREEN[persona.role];
-    body = <AppFrame persona={persona} active={sc}>{renderScreen(sc, param, persona)}</AppFrame>;
+  else if (top === "app" && world.people[pid]) {
+    const persona = world.people[pid];
+    const sc = (screen ?? HOME_SCREEN[persona.role]).split("?")[0];
+    body = (
+      <AppFrame persona={persona} active={sc}>
+        {renderScreen(sc, param?.split("?")[0], persona)}
+      </AppFrame>
+    );
   } else body = <Start />;
   return (
     <>
@@ -30,29 +35,52 @@ export default function App() {
   );
 }
 
-function renderScreen(sc: string, param: string | undefined, persona: (typeof PERSONAS)[number]) {
+function renderScreen(sc: string, param: string | undefined, p: Person) {
+  const funder = !!p.funderId && p.role !== "athlete";
   switch (sc) {
     case "home":
-      return <AthleteHome persona={persona} />;
-    case "discover":
-      return <SeekerDiscover persona={persona} />;
-    case "opportunity":
-      return <OpportunityPage persona={persona} id={param ?? "eas"} />;
-    case "profile":
-      return <FunderProfile persona={persona} id={param ?? "oriel"} />;
-    case "funding":
-      return persona.id === "amira" ? <FundingRecord persona={persona} /> : <Planned n={17} persona={persona} />;
+      return <SeekerHome persona={p} />;
     case "overview":
-      return <FunderOverview persona={persona} />;
+      return funder ? <FunderOverview persona={p} /> : <SeekerHome persona={p} />;
+    case "discover":
+      return <SeekerDiscover persona={p} />;
     case "fdiscover":
-      return <FunderDiscover persona={persona} />;
+      return funder ? <FunderDiscover persona={p} /> : <SeekerDiscover persona={p} />;
+    case "opportunity":
+      return <OpportunityPage persona={p} id={param ?? "eas"} />;
+    case "profile":
+      return <FunderProfile persona={p} id={param ?? "oriel"} />;
+    case "apply":
+      return <Apply persona={p} oppId={param ?? "eas"} />;
+    case "applications":
+      return <SeekerApplications persona={p} />;
+    case "funding":
+      return <MyFunding persona={p} />;
+    case "me":
+      return <MyProfile persona={p} />;
+    case "publish":
+      return <Publish persona={p} />;
+    case "safety":
+      return <Safety persona={p} />;
     case "request":
-      return <RequestPage persona={persona} id={param ?? "nadia"} />;
+      return <RequestPage persona={p} id={param ?? ""} />;
+    case "athlete":
+      return <AthleteForFunder persona={p} id={param ?? ""} />;
+    case "opps":
+      return <FunderOpportunities persona={p} />;
+    case "apps":
+      return <FunderApplications persona={p} />;
+    case "review":
+      return <ReviewPage persona={p} id={param ?? ""} />;
+    case "selection":
+      return <SelectionPage persona={p} id={param ?? "eas"} />;
     case "portfolio":
-      return <Portfolio persona={persona} />;
+      return funder ? <Portfolio persona={p} /> : <MyFunding persona={p} />;
+    case "admin":
+      return <Admin persona={p} />;
     default: {
       const n = Number(sc.replace(/^s/, ""));
-      return <Planned n={Number.isFinite(n) && n > 0 ? n : 3} persona={persona} />;
+      return <Planned n={Number.isFinite(n) && n > 0 ? n : 3} persona={p} />;
     }
   }
 }

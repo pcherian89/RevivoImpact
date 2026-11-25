@@ -4,8 +4,7 @@ import { ImpactLockup } from "../brand/RevivoLogo";
 import { pulseSegment, SIGNAL } from "../brand/signal";
 import { ThemeButtons } from "../components/Shell";
 import { btn, Chip, ImageSlot, Label } from "../components/ui";
-import { JOURNEYS } from "../data/structure";
-import { PERSONAS } from "../data/world";
+import type { Person } from "../domain/model";
 
 function Pulse() {
   const y = 22;
@@ -34,11 +33,12 @@ const STEPS = [
 ];
 
 export function Start() {
-  const { go, setGuideOpen, setMoment } = useStore();
+  const { go, setGuide, loadStep, world } = useStore();
+  const PERSONAS = Object.values(world.people).filter((p) => p.persona);
   const startGuide = () => {
-    setMoment("apr12");
-    setGuideOpen(true);
-    go(JOURNEYS[0].steps[0].to);
+    loadStep("A", 0);
+    setGuide({ open: true, journey: "A", step: 0 });
+    go("app/ingrid/overview");
   };
   return (
     <main id="main" className="container-site pb-20">
@@ -198,12 +198,13 @@ export function Start() {
 }
 
 export function Roles() {
-  const { go } = useStore();
+  const { go, world } = useStore();
+  const PERSONAS: Person[] = Object.values(world.people).filter((p) => p.persona);
   const groups = ["Seeking funding", "Providing funding", "Delivering programmes", "Platform"] as const;
   return (
     <main id="main" className="container-site pb-20">
       <div className="flex items-center justify-between py-6">
-        <a href="#/start" aria-label="Back to the start screen">
+        <a href="#/start" aria-label="Revivo Impact: back to the start screen">
           <ImpactLockup />
         </a>
         <ThemeButtons withMotion={false} />
@@ -231,7 +232,7 @@ export function Roles() {
                     <span className="min-w-0">
                       <span className="block font-medium text-ink group-hover:text-signal">{p.name}</span>
                       <span className="block text-small text-muted">
-                        {p.title} · {p.org}
+                        {p.title}{p.orgId ? ` · ${world.orgs[p.orgId]?.name}` : p.funderId && p.role !== "individual" ? ` · ${world.funders[p.funderId]?.name}` : ""}
                       </span>
                       <span className="block text-small text-subtle">Try: {p.tasks.join(" · ")}</span>
                     </span>
