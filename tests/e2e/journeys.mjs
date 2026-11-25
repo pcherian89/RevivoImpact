@@ -30,7 +30,7 @@ const click = async (name, opts = {}) => { await page.getByRole("button", { name
 await page.goto(`${file}?moment=apr12&motion=reduced#/app/ingrid/opps`);
 await page.waitForTimeout(200);
 await click(/^Publish$/);
-await check("A1 Ingrid publishes (four-eyes)", await audited("Published opportunity (four-eyes)"));
+await check("A1 Ingrid publishes (four-eyes)", await audited("Published opportunity (by a second person)"));
 await go("app/daniel/opps");
 await check("A1 the drafter sees it open", !(await text()).includes("Awaiting approval"));
 await go("join");
@@ -119,7 +119,7 @@ await check("B1 Nadia's request published", (await text()).includes("Racing whee
 await go("app/nadia/profile/halvorsen");
 await click("Ask for support");
 await page.getByLabel("Which part").selectOption({ index: 1 });
-await page.getByLabel("Kind of support").selectOption("Travel");
+await check("B2 choosing the line fills in what it still needs", (await page.getByLabel("Amount (USD)").inputValue()) !== "");
 await page.getByLabel("Amount (USD)").fill("1200");
 await click("Send ask");
 await check("B2 ask sent to Marcus", (await text()).includes("You asked for $1,200"));
@@ -327,7 +327,7 @@ t = await text();
 await check("P3 Ostral confirms; carried-in money shown apart", t.includes("carried in") && !t.includes("Waiting for Ostral"));
 await go("app/maya/report/ag-pe1");
 await check("P4 report figures appear before any writing, live from the records", (await text()).includes("Spending checked"));
-await click("Start the narrative from our records");
+await click("Draft our words from the records");
 const box = page.getByLabel("Report text");
 await box.fill((await box.inputValue()).replace(/\[What participants[^\]]*\]/, "We spent $11,000 this quarter."));
 await check("P4 money in the narrative that matches no record is flagged", (await text()).includes("does not match any figure in the records"));
@@ -349,7 +349,7 @@ await click("It ran");
 await click("Couldn’t run");
 await click("No coach available");
 await go("app/maya/programme/play-every-day");
-await check("P3 two missed in a row raises a flag", (await text()).includes("missed two sessions in a row"));
+await check("P3 two missed in a row raises a flag", /couldn.t run \d+ sessions in a row/.test(await text()));
 
 // Review fixes: the date menu works after you have acted (no hidden browser pop-up); paused progress is respected
 await go("app/maya/programme/play-every-day");
@@ -377,7 +377,7 @@ await click("View the receipt");
 await check("A fictional receipt opens from the record", (await text()).includes("Fictional demonstration document"));
 await page.keyboard.press("Escape");
 await go("app/ingrid/freport");
-await check("The funder report shows live figures", (await text()).includes("Spending checked") && /independently established impact/i.test(await text()));
+await check("The funder report shows live figures", (await text()).includes("Spending checked") && /impact shown by independent evidence/i.test(await text()) && /who we fund, by sport/i.test(await text()));
 await page.goto(`${file}?moment=apr12&motion=reduced&fresh=4#/app/nadia/discover`);
 await page.waitForTimeout(200);
 await check("Discovery explains why an opportunity fits", (await text()).includes("Fits because"));

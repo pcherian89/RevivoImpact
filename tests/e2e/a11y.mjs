@@ -14,6 +14,8 @@ for (const theme of ["dark", "daylight"]) {
   for (const r of routes) {
     await page.goto(`${file}?story=complete&theme=${theme}&motion=reduced#/${r}`);
     await page.waitForTimeout(80);
+    // Measure colours only once every transition has finished (a fade caught half-way reads as low contrast).
+    await page.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))); });
     await page.addScriptTag({ content: axe });
     const res = await page.evaluate(async () => await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } }));
     const bad = res.violations.filter((v) => v.impact === "serious" || v.impact === "critical");

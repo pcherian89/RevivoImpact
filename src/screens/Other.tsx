@@ -15,6 +15,7 @@ export function Safety({ persona }: { persona: Person }) {
   const athId = persona.role === "athlete" ? persona.id : managing;
   const ath = athId ? w.athletes[athId] : undefined;
   const act = useAction(persona.id);
+  const [last, setLast] = useState<string>("");
   if (!ath) return <Empty>Choose an athlete first.</Empty>;
   const consent = (p: "photos" | "progress") => w.consents.find((c) => c.athleteId === ath.id && c.purpose === p)?.value;
   const reps = w.authorisations.filter((a) => a.athleteId === ath.id);
@@ -25,13 +26,18 @@ export function Safety({ persona }: { persona: Person }) {
   return (
     <div className="pb-8">
       <PageHead eyebrow={persona.role === "athlete" ? "Consent & safety" : `Consent & safety · ${ath.name}`} title="Who can see what, and how do I stay in control?" lead="Every choice takes effect at once. Saying no changes nothing else." />
+      <p className="-mt-2 mb-6">
+        <a className="font-medium underline underline-offset-4 hover:text-signal" href={`#/app/${persona.id}/me`}>
+          {persona.role === "athlete" ? "See exactly what funders see about me" : `See exactly what funders see about ${ath.name.split(" ")[0]}`}
+        </a>
+      </p>
       {!canChange && <p className="flex gap-2 text-muted"><Lock className="mt-1 size-4" aria-hidden="true" /> As a coach you cannot change consent, accept offers or publish requests.</p>}
       <Section title="What you have agreed to">
         <ul>
           {(
             [
-              ["photos", "Photos and stories in updates", "Photos are removed from every update and report at once."],
-              ["progress", "Progress reporting to funders", "Funders see “sharing paused”; a person reviews; nothing is penalised automatically."],
+              ["photos", "Photos and stories in updates", "If you choose No, photos are removed from every update and report at once."],
+              ["progress", "Progress reporting to funders", "If you choose No, funders see “sharing paused”; a person follows up; nothing is penalised automatically."],
             ] as const
           ).map(([p, label, effect]) => {
             const v = consent(p);
@@ -41,13 +47,13 @@ export function Safety({ persona }: { persona: Person }) {
                 <p className="text-small text-subtle">{effect}</p>
                 <div className="mt-3 flex gap-3">
                   {[true, false].map((val) => (
-                    <button key={String(val)} type="button" disabled={!canChange} aria-pressed={v === val} onClick={() => act.run("setConsent", { athleteId: ath.id, purpose: p, value: val }, val ? `${label}: on for ${ath.name.split(" ")[0]}.` : `${label}: off for ${ath.name.split(" ")[0]}. This takes effect now.`)} className={seg(v === val)}>
+                    <button key={String(val)} type="button" disabled={!canChange} aria-pressed={v === val} onClick={() => (setLast(p), act.run("setConsent", { athleteId: ath.id, purpose: p, value: val }, val ? `${label}: on for ${ath.name.split(" ")[0]}.` : `${label}: off for ${ath.name.split(" ")[0]}. This takes effect now.`))} className={seg(v === val)}>
                       {val ? "Yes" : "No"}
                     </button>
                   ))}
                   <span className="self-center text-small text-subtle">{v === undefined ? "Not chosen yet" : "Change or withdraw at any time"}</span>
                 </div>
-                <Message error={act.error} done={act.done} />
+                {last === p && <Message error={act.error} done={act.done} />}
               </li>
             );
           })}

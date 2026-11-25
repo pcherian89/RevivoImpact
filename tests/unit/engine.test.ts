@@ -299,7 +299,7 @@ describe("P3 reconciliation (30 Jun, all journey steps done)", () => {
   });
   it("the claims check stops unsupported claims; spending can't exceed what was paid; photos need consent", () => {
     const w = full();
-    expect(claimsCheck("Participants showed improved confidence")).toEqual(["improved confidence"]);
+    expect(claimsCheck("Participants showed improved confidence")).toEqual(["improved", "improved confidence"]);
     expect(tryCmd(w, { at: "jun30", actor: "amira", type: "addExpense", args: { expenseId: "x1", agreementId: "ag-amira", what: "Coaching", amount: 400, paidOn: "Tue 29 Jun", receipt: true } })).toMatch(/can't be more than was paid/);
     expect(tryCmd(w, { at: "jun30", actor: "jonas", type: "sendProgress", args: { progressId: "x2", athleteId: "tiago", kind: "training", text: "Training week", proof: false, photo: true } })).toMatch(/Photos need consent/);
     expect(tryCmd(w, { at: "jun30", actor: "priya", type: "checkExpense", args: { expenseId: "ex-am-4" } })).toMatch(/no receipt/);
@@ -327,7 +327,7 @@ describe("P3 verifier regressions", () => {
     expect(at(w, "amira", "sendProgress", { progressId: "x1", agreementId: "ag-pe1", athleteId: "amira", kind: "result", text: "Won a medal", proof: true })).toMatch(/funding record of the athlete or organisation/);
     expect(at(w, "rosa", "sendProgress", { progressId: "x2", agreementId: "ag-amira", athleteId: "tiago", kind: "result", text: "Won", proof: true })).toMatch(/funding record of the athlete or organisation/);
     expect(at(w, "marcus", "sendProgress", { progressId: "x3", agreementId: "ag-oriel-tiago", kind: "result", text: "Photo", proof: true, photo: true })).toMatch(/who the update is about/);
-    expect(at(w, "jonas", "sendProgress", { progressId: "x4", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "result", text: "Tiago Esteves of Saltmere won", proof: true })).toMatch(/surname and club/);
+    expect(at(w, "jonas", "sendProgress", { progressId: "x4", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "result", text: "Tiago Esteves of Saltmere won", proof: true })).toMatch(/surname, club, coach and school/);
   });
   it("withdrawing progress consent pauses updates", () => {
     const w = full();
@@ -338,7 +338,13 @@ describe("P3 verifier regressions", () => {
     const w = full();
     expect(claimsCheck("life changing results; children are happier and healthier thanks to the programme", w, "ag-pe1").length).toBeGreaterThan(2);
     expect(claimsCheck("120 of 120 sessions ran", w, "ag-pe1")[0]).toMatch(/records show 108 of 120/);
-    expect(claimsCheck("108 of 120 planned sessions ran; attendance improved in May", w, "ag-pe1")).toEqual([]);
+    expect(claimsCheck("108 of 120 planned sessions ran; attendance was higher in May", w, "ag-pe1")).toEqual([]);
+    // docs/02: causal and outcome words are flagged even when the figures are right.
+    expect(claimsCheck("108 of 120 planned sessions ran; attendance improved in May", w, "ag-pe1")).toEqual(["improved"]);
+    expect(claimsCheck("Attendance rose by 40%", w, "ag-pe1")).toEqual(["40% without saying how many answered"]);
+    expect(claimsCheck("71% (212 of 460 answered) said they enjoyed it", w, "ag-pe1")).toEqual([]);
+    expect(claimsCheck("108 out of 120 sessions ran and all 120 sessions were planned", w, "ag-pe1")).toEqual(["all 120 sessions (the records show 108 of 120)"]);
+    expect(claimsCheck("We spent US$10,800 (10.8k dollars), not 10.9k dollars", w, "ag-pe1")).toEqual(["10.9k dollars does not match any figure in the records"]);
   });
   it("no money moves on existing funding before approval and confirmation; disputed funding stops counting", () => {
     const w = replay(checkpoint("jun30"));
@@ -450,9 +456,14 @@ describe("Ask Revivo for funders", async () => {
     const ask = (q: string) => funderAnswer(w, w.people.daniel, q);
     expect(ask(FUNDER_QUESTIONS[0]).lead).toMatch(/\$23,130 of spending is recorded/);
     expect(ask(FUNDER_QUESTIONS[1]).rows.map((r) => r.label).join(" ")).toMatch(/Competition judogi/);
-    expect(ask(FUNDER_QUESTIONS[3]).lead).toMatch(/scheduled across/);
+    expect(ask(FUNDER_QUESTIONS[3]).lead).toMatch(/still to pay across/);
     expect(ask(FUNDER_QUESTIONS[4]).rows.map((r) => r.label).join(" ")).toMatch(/Greenpark School/);
     expect(ask(FUNDER_QUESTIONS[5]).rows.some((r) => r.href?.includes("ag-amira"))).toBe(true);
+    // Every one of the six standard questions gets its own answer, never the name lookup or the fallback.
+    for (const q of FUNDER_QUESTIONS) expect(ask(q).from).not.toMatch(/^This agreement|^$/);
+    expect(ask("How much have we paid so far?").lead).toMatch(/still to pay/);
+    expect(ask("Should we give Amira more money?").refusal).toBe(true);
+    expect(ask("How is Amira doing?").from).toMatch(/This agreement/);
   });
   it("refuses to rank, decide or identify, and never names a young athlete in full", () => {
     const w = full();

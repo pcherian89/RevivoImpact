@@ -215,12 +215,13 @@ export function ImageSlot({
     <figure
       className={cn("photo-frame relative overflow-hidden rounded-[6px] bg-surface-2", className)}
       style={{ aspectRatio: ratio }}
-      aria-label={`Illustrative image placeholder: ${caption ?? file}`}
+      aria-label={`Photograph to come${caption ? `: ${caption}` : ""}`}
+      data-image={file}
     >
       <div className="absolute inset-0 bg-[radial-gradient(90%_80%_at_70%_40%,var(--ri-line-strong),transparent_70%)] opacity-70" />
+      {/* The file name stays in data-image for the image plan (docs/10); people see only that a photograph is coming. */}
       <figcaption className="absolute inset-x-0 top-0 flex flex-col gap-0.5 p-4 text-small text-subtle">
-        <span className="label">Illustrative</span>
-        <span className="font-mono text-[0.8125rem]">{file}</span>
+        <span className="label">Photograph to come</span>
         {caption && <span>{caption}</span>}
       </figcaption>
     </figure>

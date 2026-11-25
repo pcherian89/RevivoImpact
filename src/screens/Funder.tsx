@@ -432,7 +432,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
             </p>
           ))}
           {funds.length === 0 || t.remaining === 0 ? (
-            <p className="mt-4 text-small text-subtle">{t.remaining === 0 ? "Nothing is still needed: fully pledged, or held for offers and applications in progress." : "Your organisation has no development fund for direct offers."}</p>
+            <p className="mt-4 text-small text-subtle">{t.remaining === 0 ? "Nothing is still needed: fully promised, or held for offers and applications in progress." : "Your organisation has no development fund for direct offers."}</p>
           ) : (
             <Button className="mt-4 w-full" onClick={() => setOpen(true)} arrow>
               Offer support
@@ -481,7 +481,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
           Send offer
         </Button>
         <Message error={act.error} />
-        <p className="mt-3 text-small text-subtle">These checks are rules, not AI: the cap, the fund&rsquo;s money, your delegated limit and, for young athletes, safeguarding.</p>
+        <p className="mt-3 text-small text-subtle">These checks are rules, not AI: the cap, the fund&rsquo;s money, your approval limit and, for young athletes, safeguarding.</p>
       </Panel>
     </div>
   );
@@ -648,7 +648,7 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
               </select>
             </Field>
             {w.funds[fundId] && <p className="mt-3 text-small text-subtle">From this fund: {w.funds[fundId].type.toLowerCase()}, up to {fmt(w.funds[fundId].max)} each, {policyText(w.funds[fundId].policy).toLowerCase()}. The type and maximum come from the fund.</p>}
-            <Button className="mt-6" onClick={() => act.run("createOpportunity", { fundId, title, sport, purpose, amountLabel: `Up to ${fmt(w.funds[fundId].max)}`, closes }, "Drafted. A different person with Approve publishes it (four-eyes).")}>
+            <Button className="mt-6" onClick={() => act.run("createOpportunity", { fundId, title, sport, purpose, amountLabel: `Up to ${fmt(w.funds[fundId].max)}`, closes }, "Drafted. A colleague who can approve publishes it.")}>
               Submit for approval
             </Button>
             <Message error={act.error} done={act.done} />
@@ -913,7 +913,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
               <p className="mt-2 text-small text-subtle">{tiers.map((t) => `${fmt(t.amount)}: ${t.criterion.toLowerCase()}`).join(" · ")}{tiers.length < (fund.tiers?.length ?? 0) ? ` · Higher levels are above the ${fmt(a.requested)} requested.` : ""}</p>
             </div>
           )}
-          {a.status === "shortlisted" && <p className="mt-4 flex gap-2 text-signal"><CircleCheck className="size-5" aria-hidden="true" /> Shortlisted at {fmt(a.recommendedTier!)}. A different person with Approve decides.</p>}
+          {a.status === "shortlisted" && <p className="mt-4 flex gap-2 text-signal"><CircleCheck className="size-5" aria-hidden="true" /> Shortlisted at {fmt(a.recommendedTier!)}. A colleague who can approve decides.</p>}
           {["offered", "accepted", "waiting", "notselected"].includes(a.status) && <p className="mt-4 flex items-center gap-2 text-small">Decision sent: <AppStatus s={a.status} funderView /></p>}
           {!canReview && <p className="mt-4 flex gap-2 text-small text-subtle"><CircleHelp className="mt-0.5 size-4" aria-hidden="true" /> Your permissions do not include Review.</p>}
           <Message error={act.error} done={act.done} />
@@ -1248,7 +1248,7 @@ function UpcomingPayments({ persona, cash }: { persona: Person; cash: World["agr
     for (const x of scheduleOf(w, g.id).filter((i) => i.status !== "paid")) {
       const left = x.amount - x.paid;
       const due = x.status === "due" || x.status === "part-paid";
-      const note = x.status === "on-hold" ? "On hold after a review" : x.condition && !x.conditionMet ? `Once ${x.condition}` : x.condition ? `Condition met: ${x.condition}` : due ? "Ready to pay" : "No condition";
+      const note = x.status === "on-hold" ? `On hold until ${x.condition}` : x.condition && !x.conditionMet ? `Once ${x.condition}` : x.condition ? `Condition met: ${x.condition}` : due ? "Ready to pay" : "No condition";
       if (g.light) {
         const key = `${g.fundId}|${x.dueLabel}|${due}`;
         const r = rows.get(key);

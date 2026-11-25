@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
-import { agreementsFor, agreementTotals, nextInstalment, eligibility, type Criterion, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
+import { agreementsFor, agreementTotals, counts, nextInstalment, eligibility, type Criterion, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SimulatedAI, Tabs } from "../components/ui";
 import { FundingBar, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
@@ -83,7 +83,7 @@ export function SeekerHome({ persona }: { persona: Person }) {
       const act = Object.values(w.actions).find((x) => x.programmeId === p.id && x.siteId === st.site.id);
       if (st.plan?.status === "submitted" && st.plan.by !== persona.id && persona.perms.includes("Approve")) needs.push({ t: `Approve ${w.people[st.plan.by]?.name.split(" ")[0]}'s recovery plan for ${st.site.name}`, d: st.plan.text, a: "Read the plan", to: `programme/${p.id}` });
       else if (!st.plan && act?.assignedTo === persona.id) needs.push({ t: `Plan how ${st.site.name} catches up`, d: `${w.people[act.by]?.name} asked you. ${st.delivered} of ${st.due} sessions have run.`, a: "Write the plan", to: `programme/${p.id}` });
-      else if (!st.plan && !act && persona.perms.includes("Approve")) needs.push({ t: `${st.site.name} missed two sessions in a row`, d: `${st.weather} weather, ${st.coach} no coach available. Decide who plans the recovery.`, a: "See the site", to: `programme/${p.id}` });
+      else if (!st.plan && !act && persona.perms.includes("Approve")) needs.push({ t: `${st.site.name} couldn't run ${st.longestRun} sessions in a row`, d: `${st.weather} weather, ${st.coach} no coach available. Decide who plans the recovery.`, a: "See the site", to: `programme/${p.id}` });
     }
     const mySites = pt.sites.filter((x) => (persona.sites ?? []).includes(x.site.id) && x.toCheck > 0);
     if (persona.perms.includes("Verify") && mySites.length) needs.push({ t: `${mySites.reduce((a, x) => a + x.toCheck, 0)} sessions to check against the register`, d: mySites.map((x) => x.site.name).join(", "), a: "Check sessions", to: `programme/${p.id}` });
@@ -246,12 +246,12 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
   const [why, setWhy] = useState(false);
   const opps = Object.values(w.opps).filter((o) => o.status !== "draft" && o.status !== "awaiting");
   const scored = opps
-    .map((o) => ({ o, st: oppStatusAt(w, o), e: isOrg ? { kind: o.forOrganisations ? ("eligible" as const) : ("not" as const), summary: o.forOrganisations ? "For organisations like yours" : "For individual athletes", criteria: [] } : eligibility(w, o, ath) }))
+    .map((o) => ({ o, st: oppStatusAt(w, o), e: isOrg ? { kind: forOrgs(o) ? ("eligible" as const) : ("not" as const), summary: forOrgs(o) ? "For organisations like yours" : "For individual athletes", criteria: [] } : eligibility(w, o, ath) }))
     .filter((x) => isOrg || !x.o.forOrganisations)
     .filter((x) => (isOrg ? true : ath ? x.o.sportsLabel.toLowerCase().includes(ath.sport.toLowerCase()) || !/^(Swimming|Judo)$/.test(x.o.sportsLabel) : true));
   const open = scored.filter((x) => x.st === "open" && (!eligibleOnly || x.e.kind !== "not")).sort((a, b) => rank(a.e.kind) - rank(b.e.kind) || a.o.closes.localeCompare(b.o.closes));
   const upcoming = scored.filter((x) => x.st === "upcoming");
-  const funders = Object.values(w.funders).filter((f) => f.verified && (!ath || f.relevant.some((r) => r === "any" || ath.tags.map((t) => t.toLowerCase()).includes(r.toLowerCase()))) && (!acceptsOnly || f.accepts === "yes"));
+  const funders = Object.values(w.funders).filter((f) => f.verified && (!ath || f.relevant.some((r) => r === "any" || ath.tags.map((t) => t.toLowerCase()).includes(r.toLowerCase()))) && (!acceptsOnly || f.accepts === "yes") && !(ath?.minor && f.accepts === "commercial"));
   return (
     <div className="pb-8">
       <HeroBand file="im-05-discover-opportunities.png">
@@ -261,11 +261,14 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
       </HeroBand>
       <Tabs label="Discover" value={tab} onChange={setTab} tabs={[{ id: "opps", label: "Funding opportunities", count: open.length }, { id: "sponsors", label: "Sponsors & funders", count: funders.length }]} />
       <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Filters">
-        {ath && <FilterPill on>Sport: {ath.sport.toLowerCase()}</FilterPill>}
-        {ath && <FilterPill on>Region: {ath.region.replace(" Region", "")}</FilterPill>}
+        {ath && (
+          <span className="text-small text-subtle">
+            Checked against {persona.role === "athlete" ? "your" : `${ath.name.split(" ")[0]}'s`} profile: {ath.sport.toLowerCase()} · {ath.region}
+          </span>
+        )}
         {tab === "opps" ? (
           <button type="button" aria-pressed={eligibleOnly} onClick={() => setEligibleOnly(!eligibleOnly)}>
-            <FilterPill on={eligibleOnly}>I&rsquo;m eligible</FilterPill>
+            <FilterPill on={eligibleOnly}>Eligible only</FilterPill>
           </button>
         ) : (
           <button type="button" aria-pressed={acceptsOnly} onClick={() => setAcceptsOnly(!acceptsOnly)}>
@@ -279,7 +282,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
       {tab === "opps" ? (
         <>
           <p className="mt-6 text-small text-subtle">
-            {open.length} open on {fmtDate(DATE[moment])} from {new Set(open.map((x) => w.funds[x.o.fundId].funderId)).size} organisations · eligible first, then by deadline
+            {open.length} open on {fmtDate(DATE[moment])} from {new Set(open.map((x) => w.funds[x.o.fundId].funderId)).size} organisations · {open.some((x) => x.e.kind !== "not") ? "eligible first, then by deadline" : "none fits yet: each shows what it needs"}
           </p>
           <ul className="mt-2 border-t border-line">
             {open.map(({ o, e }) => (
@@ -297,7 +300,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
               <summary className="min-h-11 cursor-pointer py-2 font-medium text-muted hover:text-ink">Show {upcoming.length} upcoming</summary>
               <ul className="mt-2 border-t border-line">
                 {upcoming.map(({ o }) => (
-                  <OppRow key={o.id} w={w} o={o} summary={o.forOrganisations ? "For organisations" : "Check when it opens"} kind="check" personaId={persona.id} />
+                  <OppRow key={o.id} w={w} o={o} summary={forOrgs(o) ? "For organisations" : "Check when it opens"} kind="check" personaId={persona.id} />
                 ))}
               </ul>
             </details>
@@ -376,11 +379,15 @@ function OppRow({ w, o, summary, kind, personaId, because }: { w: World; o: Oppo
   );
 }
 
+/** An opportunity is for organisations when it says so or its rules ask for a club, team or coach. */
+const forOrgs = (o: Opportunity) => !!o.forOrganisations || o.rules.some((r) => r.kind === "organisation");
+
 /** Why a sponsor is relevant: its published sports, regions and what it accepts, against the athlete's profile. */
 function sponsorWhy(f: Funder, ath?: Athlete) {
   if (!ath) return undefined;
-  const sport = f.sports === "Any sport" || f.sports.toLowerCase().includes(ath.sport.toLowerCase()) ? (f.sports === "Any sport" ? "supports any sport" : `supports ${ath.sport.toLowerCase()}`) : "supports athletes like you";
-  const region = f.regions === "Any region" ? "any region" : f.regions.includes(ath.region) ? ath.region : f.regions;
+  // Only what the sponsor published: never a stronger fit than the records show.
+  const sport = f.sports === "Any sport" ? "supports any sport" : f.sports.toLowerCase().includes(ath.sport.toLowerCase()) ? `supports ${ath.sport.toLowerCase()}` : `lists ${f.sports}, not ${ath.sport.toLowerCase()}`;
+  const region = f.regions === "Any region" ? "any region" : f.regions.includes(ath.region) ? `includes ${ath.region}` : `${f.regions} only`;
   const asks = f.accepts === "yes" ? `accepts direct requests${f.acceptsMax ? ` up to ${fmt(f.acceptsMax)}` : ""}${f.acceptsSupport ? ` for ${f.acceptsSupport.join(", ").toLowerCase()}` : ""}` : f.accepts === "commercial" ? "proposes commercial sponsorship to adults" : "funds through its published opportunities";
   return `Why: ${sport} · ${region} · ${asks}`;
 }
@@ -468,7 +475,7 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
         <div className="mt-6 flex flex-col gap-4 rounded-[10px] border border-line-strong bg-canvas p-5 max-md:sticky max-md:bottom-[4.5rem] max-md:z-20 max-md:gap-3 max-md:p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-display text-xl font-bold">{ath ? e.summary : "Join to check your eligibility"}</p>
-            <p className="text-small text-muted">{mine ? "You have already applied. Follow it in Applications." : "Your profile fills the form; you choose what the funder sees."}</p>
+            <p className="text-small text-muted">{mine ? "You have already applied. Follow it in Applications." : e.kind === "not" ? "Funders set their own rules, so this one can't accept you. Others may fit, or publish a request so sponsors can find you." : "Your profile fills the form; you choose what the funder sees."}</p>
           </div>
           {mine ? (
             <a href={`#/app/${persona.id}/applications`} className={btn("secondary", "shrink-0")}>
@@ -478,7 +485,11 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
             <a href={ath ? `#/app/${persona.id}/apply/${o.id}` : "#/join"} className={btn("primary", "shrink-0")}>
               {ath ? "Apply with my profile" : "Join to apply"} <ArrowRight className="size-4" aria-hidden="true" />
             </a>
-          ) : null}
+          ) : (
+            <a href={`#/app/${persona.id}/discover`} className={btn("secondary", "shrink-0")}>
+              See other opportunities <ArrowRight className="size-4" aria-hidden="true" />
+            </a>
+          )}
         </div>
       )}
       <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
@@ -549,7 +560,14 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
   const [lineId, setLineId] = useState(req?.lines[req.lines.length - 1]?.id ?? "l1");
   const line = totals?.lines.find((l) => l.id === lineId);
   const [amount, setAmount] = useState(String(Math.min(line?.remaining ?? 0, f?.acceptsMax ?? 0) || ""));
-  const [support, setSupport] = useState(f?.acceptsSupport?.[1] ?? f?.acceptsSupport?.[0] ?? "Travel");
+  // The kind of support follows from the line chosen; the amount follows the line (what is still needed, up to the funder's limit).
+  const kindOf = (label: string) => (/travel|entry|entries|flight|transport|competition/i.test(label) ? "Travel" : /coach|training|camp/i.test(label) ? "Coaching" : "Equipment");
+  const support = kindOf(line?.label ?? "");
+  const pickLine = (id: string, rid = reqId) => {
+    setLineId(id);
+    const l = requestTotals(w, rid).lines.find((x) => x.id === id);
+    setAmount(String(Math.min(l?.remaining ?? 0, f?.acceptsMax ?? 0) || ""));
+  };
   if (!f) return <Empty>This funder does not exist.</Empty>;
   const opps = Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === f.id && o.status !== "awaiting" && o.status !== "draft");
   const Icon = typeIcon[f.type];
@@ -645,7 +663,7 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
         {req && totals && (
           <>
             <Field label="Funding request" htmlFor="ask-req">
-              <select id="ask-req" className={inputCls} value={reqId} onChange={(e) => setReqId(e.target.value)}>
+              <select id="ask-req" className={inputCls} value={reqId} onChange={(e) => (setReqId(e.target.value), pickLine(w.requests[e.target.value].lines[0].id, e.target.value))}>
                 {myRequests.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.title}
@@ -654,18 +672,11 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
               </select>
             </Field>
             <Field label="Which part" htmlFor="ask-line">
-              <select id="ask-line" className={inputCls} value={lineId} onChange={(e) => setLineId(e.target.value)}>
+              <select id="ask-line" className={inputCls} value={lineId} onChange={(e) => pickLine(e.target.value)}>
                 {totals.lines.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.label}: {fmt(l.remaining)} still needed
                   </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Kind of support" htmlFor="ask-support">
-              <select id="ask-support" className={inputCls} value={support} onChange={(e) => setSupport(e.target.value)}>
-                {["Equipment", "Travel", "Coaching"].map((s) => (
-                  <option key={s}>{s}</option>
                 ))}
               </select>
             </Field>
@@ -1024,7 +1035,7 @@ function AddFact({ persona, athleteId, minor, empty }: { persona: Person; athlet
   const [value, setValue] = useState("");
   const [vis, setVis] = useState<"discoverable" | "application" | "private">(minor ? "application" : "discoverable");
   const act = useAction(persona.id);
-  const LABEL = { result: "Result", club: "Club", coach: "Coach referee", goal: "Season goal" } as const;
+  const LABEL = { result: "Result", club: "Club", coach: "Coach who can vouch for you", goal: "Season goal" } as const;
   return (
     <form
       className="mt-6 rounded-[10px] border border-line-strong p-5"
@@ -1175,7 +1186,13 @@ export function MyProfile({ persona }: { persona: Person }) {
       )}
       <Section title="Current support">
         <ul>
-          {ath.currentSupport.length === 0 ? <Empty li>None declared.</Empty> : ath.currentSupport.map((s) => (
+          {Object.values(w.agreements).filter((g) => g.recipientId === ath.id && counts(g)).map((g) => (
+            <Row key={g.id}>
+              <span>{w.funds[g.fundId].type} · {w.funders[w.funds[g.fundId].funderId].name}</span>
+              <span className="tabular-nums">{fmt(g.amount)} · on Revivo Impact</span>
+            </Row>
+          ))}
+          {ath.currentSupport.length === 0 && !Object.values(w.agreements).some((g) => g.recipientId === ath.id && counts(g)) ? <Empty li>None declared.</Empty> : ath.currentSupport.map((s) => (
             <Row key={s.label}>
               <span>{s.label}</span>
               <span className="tabular-nums">{fmt(s.amount)} · {s.declared ? "declared on applications" : "not yet declared"}</span>
@@ -1277,7 +1294,7 @@ export function Publish({ persona }: { persona: Person }) {
         arrow
         onClick={() => {
           if (!ownerId) return;
-          const ok = act.run("publishRequest", { requestId: `rq-${ownerId}-${Date.now()}`, ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: verifiedLabel, tags: [sport, ...(ath?.para ? ["Para athletics"] : []), "Equipment", "Travel", "Any region", "Verified evidence", ath && !ath.minor ? "Adults only" : "Organisation"] }, "Published. Funders can now find it.");
+          const ok = act.run("publishRequest", { requestId: `rq-${ownerId}-${Date.now()}`, ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: verifiedLabel, tags: [] }, "Published. Funders can now find it.");
           if (ok) go(`app/${persona.id}/funding`);
         }}
       >

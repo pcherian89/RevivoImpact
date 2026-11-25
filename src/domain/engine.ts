@@ -94,21 +94,21 @@ export function scheduleOf(w: World, agreementId: string): Instalment[] {
       { amount: g.amount - t.carriedPaid, dueISO: "2027-09-30", dueLabel: "Thu 30 Sep", condition: "the next update is received", met: false },
     ].filter((x) => x.amount > 0);
   } else if (type === "Scholarship award") {
-    const half = g.amount / 2;
+    const half = Math.floor(g.amount / 2);
     const allChecked = t.spent > 0 && t.waiting === 0;
     plan = [
       { amount: half, ...accepted },
-      { amount: g.amount - half, dueISO: "2027-09-01", dueLabel: "Wed 1 Sep", condition: review?.conditions && review.decision === "Continue with conditions" ? review.conditions.split(";")[0].replace(/^Instalment 2 on Wed 1 Sep once /i, "").replace(/\.$/, "") : "the quarterly update is in and its spending checked", met: review?.decision === "Continue with conditions" ? false : allChecked },
+      { amount: g.amount - half, dueISO: "2027-09-01", dueLabel: "Wed 1 Sep", condition: review?.conditions && review.decision === "Continue with conditions" ? review.conditions.split(";")[0].replace(/^Instalment 2 on Wed 1 Sep once /i, "").replace(/\.$/, "") : "the quarterly update is in and its spending checked", met: allChecked && !Object.values(w.expenses).some((e) => e.agreementId === g.id && (e.status === "query" || !e.receipt)) },
     ];
   } else if (type === "Sponsorship agreement") {
-    const half = g.amount / 2;
+    const half = Math.floor(g.amount / 2);
     const dels = Object.values(w.deliverables).filter((d) => d.agreementId === g.id);
     plan = [
       { amount: half, ...accepted },
       { amount: g.amount - half, dueISO: "2027-12-01", dueLabel: "Wed 1 Dec", condition: "the first two deliverables are done", met: dels.length >= 2 && dels.slice(0, 2).every((d) => d.status === "complete") },
     ];
   } else if (type === "Programme grant") {
-    const q = g.amount / 5;
+    const q = Math.floor(g.amount / 5);
     const accepted2 = Object.values(w.reports).some((r) => r.agreementId === g.id && r.status === "accepted");
     plan = [
       { amount: q, dueISO: "2027-04-12", dueLabel: "Mon 12 Apr (quarter 1)" },
@@ -123,10 +123,12 @@ export function scheduleOf(w: World, agreementId: string): Instalment[] {
   let before = 0;
   return plan.map((p, i) => {
     const paid = Math.max(0, Math.min(p.amount, t.paid - before));
-    const received = Math.max(0, Math.min(p.amount, t.received + t.carriedPaid - before));
+    // Money carried in counts as received only once the recipient has confirmed the figures.
+    const received = Math.max(0, Math.min(p.amount, t.received + (g.status === "active" ? t.carriedPaid : 0) - before));
     before += p.amount;
-    const status: Instalment["status"] = paid >= p.amount ? "paid" : paid > 0 ? "part-paid" : onHold ? "on-hold" : p.dueISO > today ? "expected" : p.condition && !p.met ? "waiting" : "due";
-    return { n: i + 1, amount: p.amount, dueISO: p.dueISO, dueLabel: p.dueLabel, condition: p.condition, conditionMet: p.met, status, paid, received };
+    const status: Instalment["status"] = paid >= p.amount ? "paid" : onHold ? "on-hold" : paid > 0 ? "part-paid" : p.dueISO > today ? "expected" : p.condition && !p.met ? "waiting" : "due";
+    const condition = onHold && paid < p.amount ? `the review "${review!.decision}" is lifted${review!.conditions ? ` (${review!.conditions})` : ""}` : p.condition;
+    return { n: i + 1, amount: p.amount, dueISO: p.dueISO, dueLabel: p.dueLabel, condition, conditionMet: onHold ? false : p.met, status, paid, received };
   });
 }
 /** The next instalment not yet fully paid (or undefined when everything is paid). */
@@ -145,12 +147,14 @@ export function siteStatus(w: World, programmeId: string, siteId: string) {
   const status = share >= 0.95 ? "On track" : share >= 0.85 ? "Needs attention" : "Behind";
   let run = 0;
   let alert = false;
+  let longestRun = 0;
   for (const x of ss) {
     run = x.status === "missed" ? run + 1 : 0;
+    longestRun = Math.max(longestRun, run);
     if (run >= 2) alert = true;
   }
   const plan = Object.values(w.recoveryPlans).filter((r) => r.programmeId === programmeId && r.siteId === siteId).pop();
-  return { sessions: ss, unrecorded, delivered, missed: missed.length, weather: missed.filter((x) => x.reason === "weather").length, coach: missed.filter((x) => x.reason === "coach availability").length, due, status, alert, plan, checked: ss.filter((x) => x.status === "delivered" && x.checked).length, toCheck: ss.filter((x) => x.status === "delivered" && !x.checked).length };
+  return { sessions: ss, unrecorded, delivered, missed: missed.length, weather: missed.filter((x) => x.reason === "weather").length, coach: missed.filter((x) => x.reason === "coach availability").length, due, status, alert, longestRun, plan, checked: ss.filter((x) => x.status === "delivered" && x.checked).length, toCheck: ss.filter((x) => x.status === "delivered" && !x.checked).length };
 }
 export function programmeTotals(w: World, programmeId: string) {
   const p = w.programmes[programmeId];
@@ -159,23 +163,44 @@ export function programmeTotals(w: World, programmeId: string) {
 }
 
 /** Claims check for reports (docs/02 §10): words that claim more than records show. Deterministic. */
-const CLAIMS = ["improved confidence", "transformed", "changed lives", "changing lives", "life-changing", "life changing", "proven", "proves", "proved", "guaranteed", "impact on wellbeing", "caused", "because of the programme", "thanks to the programme", "as a result of the programme", "happier", "healthier", "anti-social", "crime", "100%", "every child", "all children", "all participants"]; // copy-check: allow (the words the claims check refuses)
+const CLAIMS = ["improved", "improvement", "more confident", "improved confidence", "transformed", "transformational", "transform", "changed lives", "changing lives", "life-changing", "life changing", "proven", "proves", "proved", "guaranteed", "impact", "impact on wellbeing", "caused", "because of", "as a result of", "thanks to the programme", "thanks to our", "led to", "reduced", "happier", "healthier", "anti-social", "antisocial", "offending", "crime", "every child", "every participant", "all children", "all participants"]; // copy-check: allow (the words the claims check refuses)
 export function claimsCheck(text: string, w?: World, agreementId?: string) {
   const t = text.toLowerCase();
   const esc = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const out = CLAIMS.filter((c) => new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t));
+  // A percentage needs its sample: "71% (212 of 460 answered)" passes; "rose by 40%" does not.
+  for (const m of t.matchAll(/(\d+(?:\.\d+)?)\s?%/g)) {
+    const around = t.slice(Math.max(0, m.index! - 120), m.index! + 120);
+    if (!/\d+ (?:of|out of) \d+ (?:answered|responded|replied|people|participants)|answered|responded|self-reported/.test(around)) out.push(`${m[1]}% without saying how many answered`);
+  }
   // Figures must match the records: "N of M sessions" and money amounts that the records do not contain.
   const p = w && agreementId ? Object.values(w.programmes).find((x) => x.agreementId === agreementId) : undefined;
   if (w && p) {
     const pt = programmeTotals(w, p.id);
-    for (const m of t.matchAll(/(\d+) of (\d+) (?:planned )?sessions/g)) if (Number(m[1]) !== pt.delivered || Number(m[2]) !== pt.planned) out.push(`${m[1]} of ${m[2]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
+    for (const m of t.matchAll(/(\d+) (?:out )?of (?:the )?(\d+) (?:planned |scheduled )?sessions/g)) if (Number(m[1]) !== pt.delivered || Number(m[2]) !== pt.planned) out.push(`${m[1]} of ${m[2]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
+    for (const m of t.matchAll(/all (?:the )?(\d+) (?:planned |scheduled )?sessions/g)) if (pt.delivered !== Number(m[1]) || pt.delivered !== pt.planned) out.push(`all ${m[1]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
   }
   // Money in the narrative must be a figure the records contain (founder, P4): flag any amount that is not.
   if (w && agreementId) {
     const known = knownAmounts(w, agreementId);
-    for (const m of text.matchAll(/\$\s?([\d,]+)/g)) {
-      const v = Number(m[1].replace(/,/g, ""));
-      if (v > 0 && !known.has(v)) out.push(`$${v.toLocaleString("en-GB")} does not match any figure in the records`);
+    const prog = Object.values(w.programmes).find((x) => x.agreementId === agreementId);
+    // Money in any form: $, US$, USD, €, £, "dollars", decimals and "k".
+    const re = /(?:(us\$|\$|usd|€|£)\s?([\d,]+(?:\.\d+)?)(k)?|([\d,]+(?:\.\d+)?)(k)?\s?(?:dollars|usd))/gi;
+    for (const m of text.matchAll(re)) {
+      const raw = (m[2] ?? m[4]).replace(/,/g, "");
+      const v = Number(raw) * ((m[3] ?? m[5]) ? 1000 : 1);
+      if (!(v > 0)) continue;
+      if (!Number.isInteger(v) || !known.has(v)) {
+        out.push(`${m[0].trim()} does not match any figure in the records`);
+        continue;
+      }
+      // In context: "Coaching cost $12,000" must match coaching's own figures.
+      const before = text.slice(Math.max(0, m.index! - 40), m.index!).toLowerCase();
+      const line = prog?.budget.find((b) => before.includes(b.line.toLowerCase()));
+      if (line) {
+        const spent = sum(Object.values(w.expenses).filter((e) => e.agreementId === agreementId && e.category === line.line).map((e) => e.amount));
+        if (v !== spent && v !== line.amount) out.push(`${m[0].trim()} for ${line.line.toLowerCase()} (the records show ${fmt(spent)} spent of ${fmt(line.amount)})`);
+      }
     }
   }
   return out;
@@ -230,7 +255,7 @@ export function requestTotals(w: World, requestId: string) {
   const heldApp = sum(lines.map((l) => l.heldApp));
   const other = sum(lines.map((l) => l.otherSources));
   const remaining = sum(lines.map((l) => l.remaining));
-  const status = r.status === "closed" ? "Closed" : remaining === 0 && pledged + other >= requested ? "Fully pledged" : pledged > 0 ? "Partly funded" : "Open";
+  const status = r.status === "closed" ? "Closed" : remaining === 0 && pledged + other >= requested ? "Fully promised" : pledged > 0 ? "Partly funded" : "Open";
   return { requested, pledged, received: rec, offered, heldApp, other, remaining, lines, status };
 }
 
@@ -263,20 +288,20 @@ export function eligibility(_w: World, opp: Opportunity, a: Athlete | undefined)
     switch (r.kind) {
       case "age": {
         const ok = opp.id === "eas" ? a.age >= 15 && a.age <= 21 : opp.id === "ardent-hp" ? a.age < 23 : a.age >= 16;
-        c = { label: r.label, result: ok ? "met" : "not", detail: ok ? `You are ${a.age} (the panel checks your ID)` : `You are ${a.age}` };
+        c = { label: r.label, result: ok ? "met" : "not", detail: ok ? `You are ${a.age} (the panel checks your ID)` : `Only for ${r.label.replace(/^Aged /, "ages ").replace(/ on .*$/, "")}; you are ${a.age}` };
         break;
       }
       case "sport": {
         const ok = opp.id === "ardent-hp" ? a.sport === "Judo" : ["Athletics", "Badminton", "Boxing", "Cycling", "Judo", "Rowing", "Swimming", "Table tennis", "Wheelchair basketball", "Wheelchair racing"].includes(a.sport);
-        c = { label: r.label, result: ok ? "met" : "not", detail: a.sport };
+        c = { label: r.label, result: ok ? "met" : "not", detail: ok ? a.sport : `Only for ${opp.sportsLabel.replace(/ incl\..*$/, "")}; not ${a.sport.toLowerCase()}` };
         break;
       }
       case "swimming":
-        c = { label: r.label, result: a.sport === "Swimming" ? "met" : "not", detail: a.sport };
+        c = { label: r.label, result: a.sport === "Swimming" ? "met" : "not", detail: a.sport === "Swimming" ? a.sport : `Only for swimming; not ${a.sport.toLowerCase()}` };
         break;
       case "region": {
         const ok = opp.id === "crsc-tb" ? a.region === "Coastal Region" : true;
-        c = { label: r.label, result: ok ? "met" : "not", detail: a.region };
+        c = { label: r.label, result: ok ? "met" : "not", detail: ok ? a.region : `Only for Coastal Region athletes; you are in ${a.region}` };
         break;
       }
       case "result": {
@@ -286,7 +311,7 @@ export function eligibility(_w: World, opp: Opportunity, a: Athlete | undefined)
       }
       case "referee": {
         const coach = a.facts.find((f) => f.kind === "coach");
-        c = { label: r.label, result: coach ? "met" : "todo", detail: coach ? coach.value : "Add a coach or club referee" };
+        c = { label: r.label, result: coach ? "met" : "todo", detail: coach ? coach.value : "Add a coach who can vouch for you" };
         break;
       }
       case "statement":
@@ -311,7 +336,7 @@ export function eligibility(_w: World, opp: Opportunity, a: Athlete | undefined)
   const check = out.filter((c) => c.result === "check").length;
   const todo = out.filter((c) => c.result === "todo").length;
   const not = out.filter((c) => c.result === "not");
-  if (not.length) return { criteria: out, summary: `Not eligible: ${/^(You|For) /.test(not[0].detail) ? not[0].detail.charAt(0).toLowerCase() + not[0].detail.slice(1) : not[0].detail}`, kind: "not" };
+  if (not.length) return { criteria: out, summary: `Not eligible: ${/^(You|For|Only) /.test(not[0].detail) ? not[0].detail.charAt(0).toLowerCase() + not[0].detail.slice(1) : not[0].detail}`, kind: "not" };
   const parts = [`${met} of ${out.length} met`];
   if (check) parts.push(`${check} for the panel to check`);
   if (todo) parts.push(`${todo} to add`);
@@ -409,6 +434,25 @@ const staffCan = (w: World, actor: string, orgId: string, ...perms: Person["perm
 };
 const siteOf = (w: World, actor: string, siteId: string) => !w.people[actor]?.sites || w.people[actor].sites!.includes(siteId);
 
+/**
+ * Funders see a young athlete's first name only (docs/02 §7.3): no surname, club, coach, school or exact place in any
+ * text that reaches them. Generic words (sports, academy, club, school names in general) are matched as whole words.
+ */
+export function identifyingWords(w: World, athleteId: string) {
+  const a = w.athletes[athleteId];
+  if (!a) return [];
+  const generic = new Set(["sports", "sport", "academy", "club", "centre", "center", "school", "the", "and", "fc", "squad"]);
+  const club = (a.club ?? "").toLowerCase().split(/\s+/).filter((x) => x.length > 3 && !generic.has(x));
+  const coaches = [...w.authorisations.filter((z) => z.athleteId === athleteId).map((z) => w.people[z.coachId]?.name), ...Object.values(w.progress).filter((x) => x.athleteId === athleteId && x.attestedBy).map((x) => w.people[x.attestedBy!]?.name)]
+    .filter(Boolean)
+    .flatMap((n) => n!.toLowerCase().split(" "));
+  return [...a.name.toLowerCase().split(" ").slice(1), ...club, ...coaches, "school", "grammar", "college"].filter((x) => x.length > 2);
+}
+const anonymousEnough = (w: World, athleteId: string, text: string) => {
+  const t = ` ${text.toLowerCase()} `;
+  return !identifyingWords(w, athleteId).some((x) => new RegExp(`[^a-z]${x}[^a-z]`).test(t));
+};
+
 /** Money and updates move only on an agreement both sides have agreed (not a draft, not awaiting confirmation, not disputed). */
 const live = (g: Agreement) => need(!g.status || g.status === "active", g.status === "awaiting-approval" ? "This funding waits for a second person at the funder to approve it." : g.status === "awaiting-recipient" ? "This funding waits for the organisation to confirm the figures." : "The figures on this funding are disputed. Agree them first.");
 /** A paused or closed review stops further payments until a new review. */
@@ -453,7 +497,7 @@ export const commands = {
     need(o.status === "awaiting" || o.status === "draft", "This opportunity is already published.");
     o.status = "open";
     o.publishedBy = c.actor;
-    audit(c, "Published opportunity (four-eyes)", o.title);
+    audit(c, "Published opportunity (by a second person)", o.title);
   },
 
   createOpportunity(c: Ctx, a: { fundId: string; title: string; sport: string; purpose: string; amountLabel: string; closes: string; oppId?: string }) {
@@ -536,7 +580,7 @@ export const commands = {
       { id: "am-r1", label: "Result", value: "Bronze, National U21 Judo Championships 2026", kind: "result", state: "awaiting", visibility: "discoverable" },
       { id: "am-r2", label: "Result", value: "Gold, Coastal Region Judo Open 2026", kind: "result", state: "self", visibility: "discoverable" },
       { id: "am-age", label: "Date of birth", value: "Age 19 (ID document seen only by verifiers)", kind: "age", state: "awaiting", visibility: "application" },
-      { id: "am-coach", label: "Coach referee", value: "Keiko Mori, Saltmere Sports Academy", kind: "coach", state: "self", visibility: "application" },
+      { id: "am-coach", label: "Coach who can vouch for you", value: "Keiko Mori, Saltmere Sports Academy", kind: "coach", state: "self", visibility: "application" },
       { id: "am-club", label: "Club", value: "Saltmere Sports Academy", kind: "club", state: "self", visibility: "discoverable" },
       { id: "am-goal", label: "Season goal", value: "Medal at the Continental U21 Invitational", kind: "goal", state: "self", visibility: "discoverable" },
       { id: "am-support", label: "Current support", value: "Saltmere travel bursary, $300", kind: "support", state: "self", visibility: "private" },
@@ -754,7 +798,23 @@ export const commands = {
       need(p?.orgId === org.id && p.perms.some((x) => x === "Admin" || x === "Approve"), "Only someone with Admin or Approve at the organisation publishes its requests.");
       region = org.region;
     }
-    c.w.requests[a.requestId] = { id: a.requestId, ownerKind: a.ownerKind, ownerId: a.ownerId, title: a.title, sport: a.sport, region, minor, ageGroup, lines: a.lines.map((l, i) => ({ id: `l${i + 1}`, label: l.label, amount: l.amount, otherSources: 0 })), visibility: minor ? "Verified funders only" : a.visibility, discoverable: true, status: "open", neededBy: a.neededBy, neededMonth: a.neededMonth, publishedBy: c.actor, publishedAt: c.at, verifiedLabel: a.verifiedLabel, tags: a.tags, safeguarding: minor ? "Checked for identifying details (simulated) · 6 May" : undefined };
+    // Labels and tags are worked out from the records here, whatever the screen sends (so nothing can be claimed).
+    const owner = a.ownerKind === "athlete" ? c.w.athletes[a.ownerId] : undefined;
+    const nVerified = owner ? owner.facts.filter((f) => f.state === "verified" || f.state === "confirmed").length : 0;
+    const verifiedLabel = a.ownerKind === "org" ? (c.w.orgs[a.ownerId]?.verified ? "Organisation verified" : "Organisation not yet verified") : minor ? (owner!.facts.some((f) => f.kind === "result" && (f.state === "verified" || f.state === "confirmed")) ? "Result verified by a national federation" : "No result verified yet") : nVerified ? `${nVerified} ${nVerified === 1 ? "fact" : "facts"} verified · ${owner!.facts.filter((f) => f.state === "self").length} self-reported` : "No facts verified yet";
+    const words = `${a.title} ${a.lines.map((l) => l.label).join(" ")}`.toLowerCase();
+    const tags = [
+      a.sport,
+      ...(owner?.para ? ["Para athletics"] : []),
+      ...(/equip|kit|wheel|bike|boat|bow|paddle|racket|spikes|gear/.test(words) ? ["Equipment"] : []),
+      ...(/travel|entry|entries|competition|flight|transport/.test(words) ? ["Travel"] : []),
+      ...(/coach|training|camp/.test(words) ? ["Coaching"] : []),
+      "Any region",
+      region,
+      ...((a.ownerKind === "org" ? c.w.orgs[a.ownerId]?.verified : nVerified > 0) ? ["Verified evidence"] : []),
+      ...(a.ownerKind === "org" ? ["Organisation"] : minor ? [] : ["Adults only"]),
+    ];
+    c.w.requests[a.requestId] = { id: a.requestId, ownerKind: a.ownerKind, ownerId: a.ownerId, title: a.title, sport: a.sport, region, minor, ageGroup, lines: a.lines.map((l, i) => ({ id: `l${i + 1}`, label: l.label, amount: l.amount, otherSources: 0 })), visibility: minor ? "Verified funders only" : a.visibility, discoverable: true, status: "open", neededBy: a.neededBy, neededMonth: a.neededMonth, publishedBy: c.actor, publishedAt: c.at, verifiedLabel, tags, safeguarding: minor ? "Checked for identifying details (simulated) · 6 May" : undefined };
     audit(c, minor ? "Published an anonymised funding request (identifiability check passed)" : "Published a funding request", a.title);
   },
 
@@ -882,7 +942,7 @@ export const commands = {
     const status: Offer["status"] = second ? "second-approval" : recipientMinor && funder.type === "Individual sponsor" ? "safeguarding" : "held";
     c.w.offers[a.offerId] = { id: a.offerId, fundId: a.fundId, by: c.actor, recipientKind: a.recipientKind, recipientId: a.recipientId, requestId: a.requestId, lineId: a.lineId ?? (r ? r.lines[0].id : undefined), amount: a.amount, reason: a.reason, status, at: c.at, deliverables: a.deliverables };
     if (status !== "second-approval") markAskOffered(c.w, c.w.offers[a.offerId]);
-    const why = fund.policy !== "Simple" ? `this fund's ${fund.policy} policy` : "above the delegated limit";
+    const why = fund.policy !== "Simple" ? `this fund's ${fund.policy} policy` : "above your approval limit";
     audit(c, status === "second-approval" ? `Offer of ${fmt(a.amount)} sent for second approval (${why})` : status === "safeguarding" ? `Offer of ${fmt(a.amount)} sent to platform safeguarding review` : `Offered ${fmt(a.amount)}`, offerRecord(c.w, c.w.offers[a.offerId]));
   },
 
@@ -972,6 +1032,10 @@ export const commands = {
     need(!c.w.ledger.some((l) => l.id === a.entryId), "That record already exists. Nothing was changed.");
     need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === a.ref), `Payment ${a.ref} is already recorded.`);
     need(released(c.w, ag.id) + a.amount <= ag.amount, "You can't pay more than was committed.");
+    const sched = scheduleOf(c.w, ag.id);
+    const dueNow = sum(sched.filter((x) => x.status === "due" || x.status === "part-paid").map((x) => x.amount - x.paid));
+    const next = sched.find((x) => x.status !== "paid" && x.status !== "due" && x.status !== "part-paid");
+    need(a.amount <= dueNow, dueNow > 0 ? `Only ${fmt(dueNow)} is due now under the payment schedule.` : `Nothing is due yet. The next payment${next ? ` (${fmt(next.amount - next.paid)}, ${next.dueLabel})` : ""} ${next?.condition && !next.conditionMet ? `waits until ${next.condition}` : "is not due yet"}.`);
     c.w.ledger.push({ id: a.entryId, agreementId: ag.id, kind: "release", amount: a.amount, by: c.actor, at: c.at, ref: a.ref });
     audit(c, `Recorded a payment of ${fmt(a.amount)} (simulated)${fund.policy === "Simple" && c.w.offers[ag.offerId ?? ""]?.by === c.actor ? " · single-person approval" : ""}`, fund.name);
   },
@@ -1031,6 +1095,7 @@ export const commands = {
     need(a.what?.trim().length >= 3, "Say what the money was spent on.");
     sportingCheck(a.what);
     live(g);
+    if (g.recipientKind === "athlete" && c.w.athletes[g.recipientId]?.minor) need(anonymousEnough(c.w, g.recipientId, a.what), "Leave out the surname, club, coach and school: funders see a young athlete's first name only.");
     need(!Object.values(c.w.expenses).some((e) => e.agreementId === g.id && e.what.toLowerCase() === a.what.trim().toLowerCase() && e.amount === a.amount && e.paidOn === a.paidOn), "This expense is already recorded (same item, amount and date).");
     const t = agreementTotals(c.w, g.id);
     need(t.spent + a.amount <= t.paid, `Only ${fmt(t.paid - t.spent)} of the money paid is not yet accounted for. Spending can't be more than was paid.`);
@@ -1086,11 +1151,7 @@ export const commands = {
       need(c.actor === ath.id || ath.guardianId === c.actor || coach, "Only the athlete, their guardian or a coach allowed to send updates can do this.");
       if (a.photo) need(c.w.consents.some((z) => z.athleteId === ath.id && z.purpose === "photos" && z.value), "Photos need consent first. The athlete (or guardian) can turn on “Photos and stories”.");
       need(!progressPaused(c.w, ath.id), `Progress sharing is paused for ${ath.name.split(" ")[0]}. ${ath.minor ? "The guardian" : "The athlete"} can turn it back on in Consent & safety.`);
-      if (ath.minor) {
-        // Funders see a minor's first name only: no surname or club in update text.
-        const words = [...ath.name.split(" ").slice(1), ...(ath.club ? [ath.club] : [])].filter((x) => x.length > 2).map((x) => x.toLowerCase());
-        need(!words.some((x) => a.text.toLowerCase().includes(x)), "Leave out the surname and club: funders see a young athlete's first name only.");
-      }
+      if (ath.minor) need(anonymousEnough(c.w, ath.id, a.text), "Leave out the surname, club, coach and school: funders see a young athlete's first name only.");
     } else need(a.orgId && c.w.people[c.actor]?.orgId === a.orgId, "Only the organisation can send its update.");
     c.w.progress[a.progressId] = { id: a.progressId, agreementId: a.agreementId, athleteId: a.athleteId, orgId: a.orgId, kind: a.kind, text: a.text.trim(), proof: a.proof, photo: a.photo, by: c.actor, at: c.at };
     audit(c, `Sent a ${a.kind === "result" ? "result" : a.kind === "training" ? "training" : "progress"} update${a.photo ? " with a photo (consent on)" : ""}`, a.athleteId ? (c.w.athletes[a.athleteId].minor ? "Athlete under 18" : c.w.athletes[a.athleteId].name) : c.w.orgs[a.orgId!]?.name ?? "");
@@ -1201,7 +1262,7 @@ export const commands = {
     r.status = a.approve ? "approved" : "returned";
     r.decidedBy = c.actor;
     r.reason = a.reason?.trim();
-    audit(c, a.approve ? "Approved a recovery plan (four-eyes)" : `Returned a recovery plan: ${a.reason}`, p.sites.find((s) => s.id === r.siteId)!.name);
+    audit(c, a.approve ? "Approved a recovery plan (by a second person)" : `Returned a recovery plan: ${a.reason}`, p.sites.find((s) => s.id === r.siteId)!.name);
   },
 
   draftReport(c: Ctx, a: { reportId: string; agreementId: string; period: string }) {
@@ -1266,7 +1327,7 @@ export const commands = {
     const ci = c.w.carriedIn?.[g.id] ?? { paid: 0, spent: 0 };
     if (ci.paid) c.w.ledger.push({ id: `${g.id}-ci`, agreementId: g.id, kind: "carried-in", amount: ci.paid, by: c.actor, at: c.at, ref: "Paid before joining Revivo Impact" });
     if (ci.spent) c.w.expenses[`${g.id}-ci`] = { id: `${g.id}-ci`, agreementId: g.id, what: "Spending reported before joining Revivo Impact", amount: ci.spent, paidOn: "Before 30 Jun", receipt: false, by: c.actor, at: c.at, status: "carried-in" };
-    audit(c, `Approved the commitment of ${fmt(g.amount)} (four-eyes); carried-in figures wait for the recipient`, c.w.orgs[g.recipientId].name);
+    audit(c, `Approved the commitment of ${fmt(g.amount)} (by a second person); carried-in figures wait for the recipient`, c.w.orgs[g.recipientId].name);
   },
 
   confirmExistingFunding(c: Ctx, a: { agreementId: string; agree: boolean; reason?: string }) {

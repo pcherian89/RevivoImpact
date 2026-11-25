@@ -42,7 +42,9 @@ import {
   Label,
   PageHead,
   Panel,
+  SeeSource,
   SimulatedAI,
+  type Source,
 } from "../components/ui";
 import { FundingBar, FundingLine, MiniLine } from "../components/money";
 import { docNumber, FictionalDocument, type DocSpec } from "../components/Document";
@@ -249,9 +251,12 @@ export function AgreementStages({
 
 /* ------------------------------------------- fictional supporting documents */
 
-const ISSUER = (what: string, w: World, g: Agreement) => {
+/** A funder never sees a young athlete's club or coach, not even on a fictional receipt (docs/02 §7.3). */
+const shielded = (w: World, athleteId: string | undefined, viewer: Person) => !!athleteId && !!w.athletes[athleteId]?.minor && !!viewer.funderId;
+
+const ISSUER = (what: string, w: World, g: Agreement, viewer: Person) => {
   const t = what.toLowerCase();
-  const club = g.recipientKind === "athlete" ? w.athletes[g.recipientId]?.club : undefined;
+  const club = g.recipientKind === "athlete" && !shielded(w, g.recipientId, viewer) ? w.athletes[g.recipientId]?.club : undefined;
   if (/coach|fee|training|session/.test(t)) return { issuer: club ?? "Halden Coaching Collective", line: "Coaching and training services", kind: "Invoice" as const };
   if (/travel|minibus|flight|train|bus|hotel/.test(t)) return { issuer: "Coastline Coach Travel", line: "Team and athlete travel", kind: "Receipt" as const };
   if (/entry|invitational|championship|series|race/.test(t)) return { issuer: "Competition Entries Office", line: "Event entries and accreditation", kind: "Receipt" as const };
@@ -262,17 +267,19 @@ const ISSUER = (what: string, w: World, g: Agreement) => {
 
 export function docForExpense(w: World, e: World["expenses"][string], viewer: Person): DocSpec {
   const g = w.agreements[e.agreementId];
-  const i = ISSUER(e.what, w, g);
+  const i = ISSUER(e.what, w, g, viewer);
   return { kind: i.kind, issuer: i.issuer, issuerLine: i.line, number: docNumber(e.id, i.kind === "Invoice" ? "INV" : "RCT"), date: `${e.paidOn} 2027`, to: recipientName(w, g.recipientKind, g.recipientId, viewer), lines: [{ label: e.what, amount: e.amount }], note: "Paid in full (simulated)." };
 }
 
 export function docForProgress(w: World, p: World["progress"][string], viewer: Person): DocSpec {
   const a = p.athleteId ? w.athletes[p.athleteId] : undefined;
   const who = p.athleteId ? athleteLabel(w, p.athleteId, viewer) : w.orgs[p.orgId ?? ""]?.name ?? "";
+  const hide = shielded(w, p.athleteId, viewer);
+  const coach = p.attestedBy ? (hide ? "The athlete's coach (name withheld)" : w.people[p.attestedBy]?.name) : undefined;
   if (p.attestedBy && !p.proof)
-    return { kind: "Training confirmation", issuer: a?.club ?? "The athlete's club", issuerLine: "Coach's confirmation", number: docNumber(p.id, "TRN"), date: `${dayOf(p.at)} 2027`, to: who, lines: [{ label: p.text }], note: "I confirm this training record matches my session register.", signedBy: w.people[p.attestedBy]?.name };
+    return { kind: "Training confirmation", issuer: hide ? "The athlete's club (name withheld)" : a?.club ?? "The athlete's club", issuerLine: "Coach's confirmation", number: docNumber(p.id, "TRN"), date: `${dayOf(p.at)} 2027`, to: who, lines: [{ label: p.text }], note: "I confirm this training record matches my session register.", signedBy: coach };
   const fed = a?.sport === "Judo" ? "Ardent Judo Federation" : `${a?.sport ?? "National"} federation results service`;
-  return { kind: "Result confirmation", issuer: fed, issuerLine: "Official results list (fictional)", number: docNumber(p.id, "RES"), date: `${dayOf(p.at)} 2027`, to: who, lines: [{ label: p.text }], note: p.attestedBy ? `Also confirmed by ${w.people[p.attestedBy]?.name} (coach).` : "Entry matches the published results list.", signedBy: p.attestedBy ? w.people[p.attestedBy]?.name : undefined };
+  return { kind: "Result confirmation", issuer: fed, issuerLine: "Official results list (fictional)", number: docNumber(p.id, "RES"), date: `${dayOf(p.at)} 2027`, to: who, lines: [{ label: p.text }], note: p.attestedBy ? `Also confirmed by ${hide ? "the athlete's coach" : `${coach} (coach)`}.` : "Entry matches the published results list.", signedBy: coach };
 }
 
 export function docForEvidence(w: World, d: World["deliverables"][string], i: number, viewer: Person): DocSpec {
@@ -587,7 +594,7 @@ export function AgreementPage({
                       · {dayOf(p.at)} ·{" "}
                       {p.proof ? "proof attached" : "no proof attached"}
                       {p.attestedBy
-                        ? ` · confirmed by ${w.people[p.attestedBy]?.name} (coach)`
+                        ? ` · confirmed by ${minor && !me ? "the athlete's coach" : `${w.people[p.attestedBy]?.name} (coach)`}`
                         : ""}
                       {p.by !== g.recipientId && w.people[p.by]
                         ? ` · sent by ${minor && !me ? "the athlete's coach" : w.people[p.by].name}`
@@ -1560,7 +1567,7 @@ export function ProgrammePage({
       <PageHead
         eyebrow={`${p.name} · ${w.orgs[p.orgId].name}${funder ? ` · funded by ${w.funders[persona.funderId!].name}` : ""}`}
         title={`Is ${p.name} on track?`}
-        lead={`${t.delivered} of ${t.due} sessions so far have run (${t.planned} planned this quarter) · ${t.participants} participants · ${p.sites.length} sites${funder ? " · you see counts, never children's details" : ""}`}
+        lead={`${t.due < t.planned ? `${t.delivered} of ${t.due} sessions recorded so far have run (${t.planned} planned this quarter)` : `${t.delivered} of ${t.planned} planned sessions ran this quarter`} · ${t.participants} participants · ${p.sites.length} sites${funder ? " · you see counts, never children's details" : ""}`}
       />
       {alerts.map((s) => (
         <SiteAlert
@@ -1835,7 +1842,7 @@ function SiteAlert({
     >
       <p className="flex items-center gap-2 font-medium">
         <CircleAlert className="size-5 text-amber" aria-hidden="true" />{" "}
-        {site.name} missed two sessions in a row
+        {site.name} couldn&rsquo;t run {s.longestRun} sessions in a row
       </p>
       <p className="mt-1 text-small text-muted">
         {s.delivered} of {s.due} sessions have run. Reasons recorded:{" "}
@@ -2162,6 +2169,7 @@ export function reportFigures(w: World, agreementIds: string[]) {
   const progress = Object.values(w.progress).filter((x) => x.agreementId && agreementIds.includes(x.agreementId) && !progressPaused(w, x.athleteId));
   const dels = Object.values(w.deliverables).filter((d) => agreementIds.includes(d.agreementId));
   return {
+    ids: agreementIds,
     committed: add("committed"),
     paid: add("paid"),
     carriedPaid: add("carriedPaid"),
@@ -2179,9 +2187,9 @@ export function reportFigures(w: World, agreementIds: string[]) {
 
 function figureRows(f: ReturnType<typeof reportFigures>) {
   return [
-    ["Funding committed", f.committed, "Agreed by both sides"],
-    ["Funding paid", f.paid, f.carriedPaid ? `Includes ${fmt(f.carriedPaid)} paid before joining Revivo Impact` : "Payments recorded by the funder (simulated)"],
-    ["Funding received", f.received, "Arrival confirmed by the recipient"],
+    ["Agreed", f.committed, "Committed by both sides"],
+    ["Paid", f.paid, f.carriedPaid ? `Includes ${fmt(f.carriedPaid)} paid before joining Revivo Impact` : "Payments recorded by the funder (simulated)"],
+    ["Received", f.received, f.paid - f.received > 0 ? `Arrival confirmed by the recipient; ${fmt(f.paid - f.received)} is paid but not yet confirmed${f.carriedPaid ? " or was paid before joining" : ""}` : "Arrival confirmed by the recipient"],
     ["Spending reported", f.spent, "What the money was spent on"],
     ["Spending checked", f.checked, "Checked against receipts by the funder"],
     ["Waiting to be checked", f.waiting, "Usually waiting for a receipt"],
@@ -2189,8 +2197,24 @@ function figureRows(f: ReturnType<typeof reportFigures>) {
   ] as const;
 }
 
+const FIG_KEY = { Agreed: "committed", Paid: "paid", Received: "received", "Spending reported": "spent", "Spending checked": "checked", "Waiting to be checked": "waiting", "Not yet spent": "notYetSpent" } as const;
+
+/** "See source" for a report figure: the agreements behind it, largest first (grouped agreements as one line). */
+function reportSource(w: World, viewer: Person, f: ReturnType<typeof reportFigures>, label: keyof typeof FIG_KEY): Source {
+  const k = FIG_KEY[label];
+  const all = f.ids.map((id) => ({ g: w.agreements[id], v: agreementTotals(w, id)[k] as number })).filter((x) => x.v > 0);
+  const named = all.filter((x) => !x.g.light).sort((a, b) => b.v - a.v);
+  const light = all.filter((x) => x.g.light);
+  return {
+    title: `${label}: ${fmt(all.reduce((a, x) => a + x.v, 0))}`,
+    rows: [...named.map((x) => ({ label: `${recipientName(w, x.g.recipientKind, x.g.recipientId, viewer)} · ${w.funds[x.g.fundId].type}`, value: fmt(x.v) })), ...(light.length ? [{ label: `${light.length} other agreements, grouped`, value: fmt(light.reduce((a, x) => a + x.v, 0)) }] : [])],
+    note: "Added up from each agreement's payment, receipt and expense records each time the report opens.",
+  };
+}
+
 /** The figures block: money, activities delivered, progress recorded and impact, each kept apart. */
-function ReportFigures({ f }: { f: ReturnType<typeof reportFigures> }) {
+function ReportFigures({ f, viewer }: { f: ReturnType<typeof reportFigures>; viewer: Person }) {
+  const { world: w } = useStore();
   return (
     <div className="mt-2">
       <h2 className="label mt-6 text-subtle">The money</h2>
@@ -2202,7 +2226,15 @@ function ReportFigures({ f }: { f: ReturnType<typeof reportFigures> }) {
                 {k}
                 <span className="block text-small font-normal text-subtle">{d}</span>
               </th>
-              <td className="py-2 text-right font-medium tabular-nums">{fmt(v)}</td>
+              <td className="py-2 text-right font-medium tabular-nums">
+                {v > 0 ? (
+                  <SeeSource name={k} source={reportSource(w, viewer, f, k)}>
+                    {fmt(v)}
+                  </SeeSource>
+                ) : (
+                  fmt(v)
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -2236,6 +2268,7 @@ function ReportFigures({ f }: { f: ReturnType<typeof reportFigures> }) {
         <ul className="mt-2">
           {f.progress.slice(0, 8).map((x) => (
             <li key={x.id} className="border-b border-line py-2">
+              {f.ids.length > 1 && x.agreementId && <span className="font-medium">{recipientName(w, w.agreements[x.agreementId].recipientKind, w.agreements[x.agreementId].recipientId, viewer)}: </span>}
               {x.text}
               <span className="text-small text-subtle"> · {x.proof ? "with proof" : x.attestedBy ? "confirmed by the coach" : "self-reported"}</span>
             </li>
@@ -2244,7 +2277,7 @@ function ReportFigures({ f }: { f: ReturnType<typeof reportFigures> }) {
       ) : (
         <p className="mt-2 text-muted">No progress records.</p>
       )}
-      <h2 className="label mt-8 text-subtle">Independently established impact</h2>
+      <h2 className="label mt-8 text-subtle">Impact shown by independent evidence</h2>
       <p className="mt-2 text-muted">None recorded. Progress happened while this funding was in place; the records do not show that the funding caused it.</p>
     </div>
   );
@@ -2301,18 +2334,18 @@ export function ReportPage({ persona, id }: { persona: Person; id: string }) {
         lead={`${report?.period ?? `${prog?.name ?? w.funds[g.fundId].name} · April to June 2027`} · ${report ? (report.status === "accepted" ? `accepted by ${w.people[report.decidedBy ?? ""]?.name}` : report.status === "submitted" ? "sent to the funder" : report.status === "returned" ? `returned: “${report.reason}”` : "draft") : "not written yet"}`}
       />
       <p className="text-small text-subtle">The figures below come straight from the records each time this page opens, so they always match. The words are the organisation&rsquo;s own.</p>
-      <ReportFigures f={f} />
+      <ReportFigures f={f} viewer={persona} />
 
       <h2 className="label mt-10 text-subtle">In {staff ? "our" : "their"} own words</h2>
       {!report && staff && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <ActionButton actor={persona.id} type="draftReport" args={{ reportId: `rep-${id}-${Date.now()}`, agreementId: id, period: "April to June 2027" }} success="Drafted from your records. Add your own words, then send it.">
-            <Sparkles className="size-4" aria-hidden="true" /> Start the narrative from our records
+            <Sparkles className="size-4" aria-hidden="true" /> Draft our words from the records
           </ActionButton>
           <SimulatedAI />
         </div>
       )}
-      {!report && !staff && <p className="mt-3 text-muted">The organisation hasn&rsquo;t written its narrative yet. The figures above are already current.</p>}
+      {!report && !staff && <p className="mt-3 text-muted">The organisation hasn&rsquo;t written its own words yet. The figures above are already current.</p>}
       {report && editable && (
         <>
           <label htmlFor="rep-text" className="sr-only">
@@ -2338,6 +2371,11 @@ export function ReportPage({ persona, id }: { persona: Person; id: string }) {
         </>
       )}
       {report && !editable && <article className="mt-3 whitespace-pre-line border-l-2 border-line-strong pl-5 leading-relaxed">{report.text}</article>}
+      {report && !editable && flags.length > 0 && (
+        <p role="status" className="mt-3 text-small text-amber">
+          <CircleAlert className="mr-1 inline size-4" aria-hidden="true" /> Since this report was sent, the records no longer support: {flags.join("; ")}. The figures above are current; the words are as sent.
+        </p>
+      )}
       {report?.status === "submitted" && side === "funder" && (persona.perms.includes("Review") || persona.perms.includes("Approve")) && (
         <div className="mt-6 flex flex-wrap items-end gap-3" data-ri-print-hide>
           <ActionButton actor={persona.id} type="decideReport" args={{ reportId: report.id, accept: true }} success="Accepted.">
@@ -2366,14 +2404,23 @@ export function FunderReportPage({ persona }: { persona: Person }) {
   const { world: w } = useStore();
   const fid = persona.funderId;
   if (!fid) return <Empty>Funding reports are for funders.</Empty>;
-  const funds = Object.values(w.funds).filter((x) => x.funderId === fid && BEHAVIOUR_OF(w, x.id) !== "inkind");
-  const all = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR_OF(w, g.fundId) !== "inkind");
+  const funds = Object.values(w.funds).filter((x) => x.funderId === fid && BEHAVIOUR_OF(w, x.id) !== "inkind" && BEHAVIOUR_OF(w, x.id) !== "commercial");
+  const theirs = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g));
+  // Commercial sponsorship and in-kind support never enter development or programme cash totals (invariant I6).
+  const all = theirs.filter((g) => BEHAVIOUR_OF(w, g.fundId) !== "inkind" && BEHAVIOUR_OF(w, g.fundId) !== "commercial");
+  const commercial = theirs.filter((g) => BEHAVIOUR_OF(w, g.fundId) === "commercial");
   const f = reportFigures(w, all.map((g) => g.id));
+  const sportOf = (g: Agreement) => (g.recipientKind === "athlete" ? w.athletes[g.recipientId]?.sport : w.orgs[g.recipientId]?.sport) ?? "Other";
+  const sports = [...new Set(all.map(sportOf))].map((sp) => {
+    const gs = all.filter((g) => sportOf(g) === sp);
+    const ff = reportFigures(w, gs.map((g) => g.id));
+    return { sp, n: gs.length, athletes: gs.filter((g) => g.recipientKind === "athlete").length, committed: ff.committed, paid: ff.paid };
+  }).sort((a, b) => b.committed - a.committed);
   const name = w.funders[fid].name;
   return (
     <div className="max-w-3xl pb-10">
       <PageHead eyebrow={`Funding report · ${name}`} title="What has our funding done so far?" lead={`Everything ${name} funds on Revivo Impact, as at ${({ apr12: "Mon 12 Apr", may06: "Thu 6 May", jun30: "Wed 30 Jun" } as const)[w.moment]} 2027 · calculated from the records each time it opens`} />
-      <ReportFigures f={f} />
+      <ReportFigures f={f} viewer={persona} />
       <h2 className="label mt-10 text-subtle">By fund</h2>
       <table className="mt-2 w-full text-table">
         <thead>
@@ -2401,6 +2448,40 @@ export function FunderReportPage({ persona }: { persona: Person }) {
           })}
         </tbody>
       </table>
+      <h2 className="label mt-10 text-subtle">Who we fund, by sport</h2>
+      <table className="mt-2 w-full text-table">
+        <thead>
+          <tr className="label-data border-b border-line text-left text-subtle">
+            <th className="py-2 pr-3">Sport</th>
+            <th className="py-2 pr-3 text-right">Athletes and organisations</th>
+            <th className="py-2 pr-3 text-right">Committed</th>
+            <th className="py-2 text-right">Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sports.map((x) => (
+            <tr key={x.sp} className="border-b border-line">
+              <td className="py-2 pr-3">{x.sp}</td>
+              <td className="py-2 pr-3 text-right tabular-nums">
+                {x.athletes} {x.athletes === 1 ? "athlete" : "athletes"}
+                {x.n - x.athletes ? ` · ${x.n - x.athletes} ${x.n - x.athletes === 1 ? "organisation" : "organisations"}` : ""}
+              </td>
+              <td className="py-2 pr-3 text-right tabular-nums">{fmt(x.committed)}</td>
+              <td className="py-2 text-right tabular-nums">{fmt(x.paid)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-small text-subtle">Young athletes are counted, never named.</p>
+      {commercial.length > 0 && (
+        <>
+          <h2 className="label mt-10 text-subtle">Commercial sponsorship (counted apart)</h2>
+          <p className="mt-2 text-small text-muted">Sponsorship is a commercial agreement, so it is never added to the development and programme figures above.</p>
+          <p className="mt-2 tabular-nums">
+            {commercial.length} {commercial.length === 1 ? "agreement" : "agreements"} · {fmt(reportFigures(w, commercial.map((g) => g.id)).committed)} agreed · {fmt(reportFigures(w, commercial.map((g) => g.id)).paid)} paid
+          </p>
+        </>
+      )}
       <ExportButtons name={`${name} funding report`} f={f} />
       <p className="mt-8 text-small text-subtle">{HONESTY}</p>
     </div>
@@ -2425,14 +2506,31 @@ export const FUNDER_QUESTIONS = [
  * linking to the record where a person acts. Refuses ranking, deciding and identifying young people.
  */
 export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer {
-  const REF = /\b(best|rank|ranking|top|worst|deserv\w*|should we (fund|stop|cut)|decide|approve|reject|most talented|potential|which child|identify|who is|surname|address|school)\b/i;
-  if (REF.test(q)) return { q, lead: "I can't rank people, judge potential, decide funding or identify young participants. People decide on Revivo Impact. Try one of the questions below.", rows: [], from: "", refusal: true };
+  const REF = /\b(best|rank|ranking|top|worst|deserv\w*|should (we|i) (give|fund|stop|cut|increase|pay|renew|continue|drop)|more money|decide|approve|reject|most talented|potential|which child|identify|who is|surname|address|school)\b/i;
+  if (REF.test(q)) return { q, lead: "That decision is yours, so I won't make it: I can't rank people, judge potential, decide funding or identify young participants. I can show the records that help you decide; try one of the questions above.", rows: [], from: "", refusal: true };
   const fid = persona.funderId!;
-  const mine = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR_OF(w, g.fundId) !== "inkind");
+  const all = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR_OF(w, g.fundId) !== "inkind");
+  // Money totals cover development and programme cash only; commercial sponsorship is reported apart (invariant I6).
+  const mine = all.filter((g) => BEHAVIOUR_OF(w, g.fundId) !== "commercial");
   const named = mine.filter((g) => !g.light);
   const who = (g: Agreement) => recipientName(w, g.recipientKind, g.recipientId, persona);
   const link = (g: Agreement) => `#/app/${persona.id}/agreement/${g.id}`;
   const ql = q.toLowerCase();
+  // A question about one named recipient ("How much did we pay Lanternfield…?") gets that record's figures.
+  const one = all.filter((g) => !g.light && !(g.recipientKind === "athlete" && w.athletes[g.recipientId]?.minor)).find((g) => who(g).toLowerCase().split(/[\s·]+/).some((x) => x.length > 3 && !/^(sports?|sporting|club|academy|school|community|foundation|trust|fund|group|centre|anonymised|under|athletics|federation)$/.test(x) && new RegExp(`(^|[^a-z])${x.replace(/[^a-z]/g, "")}([^a-z]|$)`).test(ql)));
+  if (one) {
+    const t = agreementTotals(w, one.id);
+    const ex = Object.values(w.expenses).filter((e) => e.agreementId === one.id);
+    const next = nextInstalment(w, one.id);
+    return { q, lead: `${who(one)}: ${fmt(t.committed)} agreed, ${fmt(t.paid)} paid, ${fmt(t.spent)} spent, ${fmt(t.checked)} checked against receipts.${BEHAVIOUR_OF(w, one.fundId) === "commercial" ? " This is commercial sponsorship, counted apart." : ""}`, rows: [...ex.map((e) => ({ label: e.what, value: fmt(e.amount), note: e.status === "checked" ? "Checked" : e.status === "query" ? "Question asked" : e.status === "carried-in" ? "Before joining Revivo Impact" : "Not yet checked", href: link(one) })), ...(next ? [{ label: `Next payment: ${next.dueLabel}`, value: fmt(next.amount - next.paid), note: next.condition && !next.conditionMet ? `Once ${next.condition}` : "No condition outstanding", href: link(one) }] : [])], from: "This agreement's payments, expenses and schedule" };
+  }
+  if (/(have we|did we|we've|so far).*(paid|pay)|still to pay|how much.*(paid|pay)|left to pay/.test(ql)) {
+    const tt = mine.map((g) => agreementTotals(w, g.id));
+    const paid = tt.reduce((a, t) => a + t.paid, 0);
+    const left = tt.reduce((a, t) => a + t.stillToPay, 0);
+    const comm = all.filter((g) => BEHAVIOUR_OF(w, g.fundId) === "commercial").map((g) => agreementTotals(w, g.id));
+    return { q, lead: `You have paid ${fmt(paid)} and ${fmt(left)} is still to pay, across ${mine.length} development and programme agreements.${comm.length ? ` Commercial sponsorship is counted apart: ${fmt(comm.reduce((a, t) => a + t.paid, 0))} paid, ${fmt(comm.reduce((a, t) => a + t.stillToPay, 0))} still to pay.` : ""}`, rows: [{ label: "Agreed", value: fmt(tt.reduce((a, t) => a + t.committed, 0)) }, { label: "Paid", value: fmt(paid) }, { label: "Confirmed received", value: fmt(tt.reduce((a, t) => a + t.received, 0)), note: "the rest is waiting for the recipient to confirm it arrived" }, { label: "Still to pay", value: fmt(left), note: "see “Which payments are coming up?” for dates" }], from: "Payment records (the ledger)" };
+  }
   if (/spent|spend|where.*money|used/.test(ql) && !/check/.test(ql)) {
     const rows = named.map((g) => ({ g, t: agreementTotals(w, g.id) })).filter((x) => x.t.spent > 0).sort((a, b) => b.t.spent - a.t.spent);
     const total = rows.reduce((a, x) => a + x.t.spent, 0);
@@ -2443,18 +2541,27 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
     return { q, lead: ex.length ? `${ex.length} expense${ex.length > 1 ? "s" : ""} (${fmt(ex.reduce((a, e) => a + e.amount, 0))}) still need checking. ${ex.filter((e) => !e.receipt).length ? `${ex.filter((e) => !e.receipt).length} have no receipt yet.` : "All have receipts."}` : "Nothing is waiting to be checked.", rows: ex.map((e) => ({ label: `${who(w.agreements[e.agreementId])}: ${e.what}`, value: fmt(e.amount), note: e.receipt ? "Receipt added: ready to check" : e.status === "query" ? `You asked: “${e.query}”` : "No receipt yet", href: link(w.agreements[e.agreementId]) })), from: "Expense records" };
   }
   if (/update|report|progress/.test(ql) && !/programme|behind/.test(ql)) {
-    const due = named.filter((g) => g.recipientKind === "athlete" && agreementTotals(w, g.id).paid > 0).filter((g) => !Object.values(w.expenses).some((e) => e.agreementId === g.id && e.at === w.moment) && !Object.values(w.progress).some((x) => x.agreementId === g.id && x.at === w.moment));
+    const quiet = (g: Agreement) => !Object.values(w.expenses).some((e) => e.agreementId === g.id && e.at === w.moment) && !Object.values(w.progress).some((x) => x.agreementId === g.id && x.at === w.moment);
+    const due = mine.filter((g) => g.recipientKind === "athlete" && agreementTotals(w, g.id).paid > 0).filter(quiet);
+    const dn = due.filter((g) => !g.light);
+    const dl = due.filter((g) => g.light);
     const paused = named.filter((g) => g.recipientKind === "athlete" && progressPaused(w, g.recipientId));
-    return { q, lead: due.length ? `${due.length} athlete${due.length > 1 ? "s have" : " has"} not sent an update this quarter.${paused.length ? ` Progress sharing is paused for ${paused.length}: a person should follow up; nothing is penalised automatically.` : ""}` : "Every athlete you fund has sent an update this quarter.", rows: due.map((g) => ({ label: who(g), value: fmt(agreementTotals(w, g.id).notYetSpent), note: "paid but not yet accounted for", href: link(g) })), from: "Payments, expenses and progress records" };
+    return { q, lead: due.length ? `${due.length} athlete${due.length > 1 ? "s have" : " has"} not sent an update this quarter.${paused.length ? ` Progress sharing is paused for ${paused.length}: a person should follow up; nothing is penalised automatically.` : ""}` : "Every athlete you fund has sent an update this quarter.", rows: [...dn.map((g) => ({ label: who(g), value: fmt(agreementTotals(w, g.id).notYetSpent), note: "paid but not yet accounted for", href: link(g) })), ...(dl.length ? [{ label: `${dl.length} more athletes on earlier agreements`, value: fmt(dl.reduce((a, g) => a + agreementTotals(w, g.id).notYetSpent, 0)), note: "Grouped as one line; their updates are due on the same quarterly date" }] : [])], from: "Payments, expenses and progress records" };
   }
   if (/pay|due|instal|tranche|coming/.test(ql)) {
-    const rows = mine
+    // Payments include commercial sponsorship (it is still money you pay), shown with its own figure.
+    const left = (g: Agreement) => scheduleOf(w, g.id).filter((i) => i.status !== "paid").reduce((a, i) => a + i.amount - i.paid, 0);
+    const toPay = all.reduce((a, g) => a + left(g), 0);
+    const comm = all.filter((g) => BEHAVIOUR_OF(w, g.fundId) === "commercial").reduce((a, g) => a + left(g), 0);
+    const rows = all
       .map((g) => ({ g, x: scheduleOf(w, g.id).find((i) => i.status !== "paid") }))
       .filter((r) => r.x)
-      .sort((a, b) => a.x!.dueISO.localeCompare(b.x!.dueISO));
+      .sort((a, b) => (a.x!.status === "on-hold" ? 1 : 0) - (b.x!.status === "on-hold" ? 1 : 0) || a.x!.dueISO.localeCompare(b.x!.dueISO));
+    const nowDue = rows.filter((r) => r.x!.status === "due" || r.x!.status === "part-paid");
     const nm = rows.filter((r) => !r.g.light);
     const light = rows.filter((r) => r.g.light);
-    return { q, lead: rows.length ? `${fmt(rows.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0))} is scheduled across ${rows.length} agreements. The next: ${rows[0].x!.dueLabel}.` : "No payments are scheduled.", rows: [...nm.slice(0, 6).map((r) => ({ label: `${r.x!.dueLabel}: ${who(r.g)}`, value: fmt(r.x!.amount - r.x!.paid), note: r.x!.condition && !r.x!.conditionMet ? `Once ${r.x!.condition}` : "No condition outstanding", href: link(r.g) })), ...(light.length ? [{ label: `${light.length} earlier agreements`, value: fmt(light.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0)), note: "Grouped; see Funding for dates" }] : [])], from: "Payment schedules" };
+    const note = (x: NonNullable<ReturnType<typeof nextInstalment>>) => (x.status === "on-hold" ? `On hold until ${x.condition}` : x.status === "due" || x.status === "part-paid" ? "Due now: ready to pay" : x.condition && !x.conditionMet ? `Once ${x.condition}` : "No condition outstanding");
+    return { q, lead: rows.length ? `${fmt(toPay)} is still to pay across ${rows.length} agreements${comm ? ` (${fmt(comm)} of it commercial sponsorship)` : ""}. ${nowDue.length ? `${nowDue.length} ${nowDue.length === 1 ? "payment is" : "payments are"} due now (${fmt(nowDue.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0))}).` : "Nothing is due today."} The list shows each agreement's next payment.` : "Nothing is left to pay.", rows: [...nm.slice(0, 8).map((r) => ({ label: `${r.x!.status === "due" || r.x!.status === "part-paid" ? "Due now" : r.x!.dueLabel}: ${who(r.g)}`, value: fmt(r.x!.amount - r.x!.paid), note: note(r.x!), href: link(r.g) })), ...(light.length ? [{ label: `${light.length} other agreements, grouped`, value: fmt(light.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0)), note: `Next payments; ${light.filter((r) => r.x!.status === "due").length} due now. Record them from Funding.` }] : [])], from: "Payment schedules" };
   }
   if (/programme|behind|schedule|session|site/.test(ql)) {
     const progs = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));
@@ -2481,7 +2588,7 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
     });
     return { q, lead: rows.length ? `${rows.length} agreement${rows.length > 1 ? "s have" : " has"} something to look at before renewing. Deciding is yours.` : "Nothing outstanding on the agreements you manage.", rows, from: "Reviews, expenses, deliverables, progress and sessions" };
   }
-  return { q, lead: "I answer questions about your funding records. Try one of these:", rows: FUNDER_QUESTIONS.map((x) => ({ label: x })), from: "", refusal: true };
+  return { q, lead: "I answer questions about your funding records. Try one of the questions above, ask how much you have paid, or name an athlete or organisation you fund.", rows: [], from: "", refusal: true };
 }
 
 export function FunderAskRevivo({ open, onClose, persona }: { open: boolean; onClose: () => void; persona: Person }) {
