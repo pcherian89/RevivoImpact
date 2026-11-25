@@ -93,7 +93,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const on = () => {
-      setRoute(parse());
+      const next = parse();
+      setRoute((prev) => {
+        // "What changed" belongs to the person who acted: close it when the viewer switches person, so one
+        // person's names never show on another person's screen.
+        if (prev[0] !== "app" || next[0] !== "app" || prev[1] !== next[1]) setChanged(null);
+        return next;
+      });
       window.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", on);

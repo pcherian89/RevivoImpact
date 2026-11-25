@@ -155,6 +155,10 @@ await click("Release to the guardian");
 await check("Platform releases it to the guardian", (await text()).includes("Safeguarding review passed"));
 
 await check("no page errors", errs.length === 0);
+// Privacy: "What changed" never carries one person's names onto another person's screen
+await go("app/rosa/applications");
+await go("app/kenji/apps");
+await check("What changed closes when switching person", !(await page.locator('[role="status"]').filter({ hasText: "What changed" }).count()));
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(`${ok} checks passed, ${bad} failed`);
 await browser.close();
