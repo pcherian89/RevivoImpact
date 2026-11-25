@@ -39,6 +39,7 @@ export const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 export const person = (w: World, id: string) => w.people[id] as Person | undefined;
 /** An existing-funding draft counts only once a second person approves it (docs/03 Journey D). */
 export const counts = (g: Agreement) => g.status !== "awaiting-approval";
+export const BEHAVIOUR_OF = (w: World, fundId: string) => BEHAVIOUR[w.funds[fundId].type];
 export const agreementsOf = (w: World, fundId: string) => Object.values(w.agreements).filter((a) => a.fundId === fundId && counts(a));
 export const released = (w: World, agreementId: string) => sum(w.ledger.filter((l) => l.agreementId === agreementId && (l.kind === "release" || l.kind === "carried-in")).map((l) => l.amount));
 export const received = (w: World, agreementId: string) => sum(w.ledger.filter((l) => l.agreementId === agreementId && l.kind === "receipt").map((l) => l.amount));
@@ -76,7 +77,9 @@ export function siteStatus(w: World, programmeId: string, siteId: string) {
   const ss = Object.values(w.sessions).filter((x) => x.programmeId === programmeId && x.siteId === siteId).sort((a, b) => a.slot - b.slot);
   const delivered = ss.filter((x) => x.status === "delivered").length;
   const missed = ss.filter((x) => x.status === "missed");
-  const due = LAST_SLOT[w.moment] + 1;
+  // Sessions not yet recorded (for example today's, before the coach records it) are neither run nor missed.
+  const due = delivered + missed.length;
+  const unrecorded = LAST_SLOT[w.moment] + 1 - ss.length;
   const share = due ? delivered / due : 1;
   const status = share >= 0.95 ? "On track" : share >= 0.85 ? "Needs attention" : "Behind";
   let run = 0;
@@ -86,7 +89,7 @@ export function siteStatus(w: World, programmeId: string, siteId: string) {
     if (run >= 2) alert = true;
   }
   const plan = Object.values(w.recoveryPlans).filter((r) => r.programmeId === programmeId && r.siteId === siteId).pop();
-  return { sessions: ss, delivered, missed: missed.length, weather: missed.filter((x) => x.reason === "weather").length, coach: missed.filter((x) => x.reason === "coach availability").length, due, status, alert, plan, checked: ss.filter((x) => x.status === "delivered" && x.checked).length, toCheck: ss.filter((x) => x.status === "delivered" && !x.checked).length };
+  return { sessions: ss, unrecorded, delivered, missed: missed.length, weather: missed.filter((x) => x.reason === "weather").length, coach: missed.filter((x) => x.reason === "coach availability").length, due, status, alert, plan, checked: ss.filter((x) => x.status === "delivered" && x.checked).length, toCheck: ss.filter((x) => x.status === "delivered" && !x.checked).length };
 }
 export function programmeTotals(w: World, programmeId: string) {
   const p = w.programmes[programmeId];

@@ -29,6 +29,8 @@ export type Person = {
   journeys: string;
   tasks: string[];
   enhancedCheck?: boolean;
+  /** Programme sites a coach records sessions for */
+  sites?: string[];
   persona: boolean;
 };
 
@@ -320,8 +322,8 @@ const PEOPLE: Person[] = [
   P({ id: "jonas", name: "Jonas Becker", role: "coach", title: "Head swim coach · 6 athletes", orgId: "saltmere", perms: [], group: "Seeking funding", journeys: "E", tasks: ["Prepare an application (you cannot submit it)", "See only athletes who authorised you"] }),
   P({ id: "maya", name: "Maya Torres", role: "organisation", title: "Programme director", orgId: "lanternfield", perms: ["Admin", "Approve"], group: "Delivering programmes", journeys: "C", tasks: ["Find programme funding", "See what your organisation can apply for"] }),
   P({ id: "ewan", name: "Morag Linden", role: "organisation", title: "Club secretary · Admin", orgId: "highland", perms: ["Admin", "Approve", "Finance"], group: "Seeking funding", journeys: "C", tasks: ["See your request and the offer you received"], persona: true }),
-  P({ id: "lena", name: "Lena Novak", role: "organisation", title: "Greenpark site coordinator · Lanternfield", orgId: "lanternfield", perms: ["Verify"], group: "Delivering programmes", journeys: "C", tasks: ["Submit a recovery plan for Greenpark", "Check sessions at your site"] }),
-  P({ id: "sam", name: "Sam Rivera", role: "programme-coach", title: "Coach · Greenpark and Westbrook", orgId: "lanternfield", perms: [], group: "Delivering programmes", journeys: "C", tasks: ["Record today's session", "Mark a session that couldn't run"] }),
+  P({ id: "lena", name: "Lena Novak", role: "organisation", title: "Greenpark site coordinator · Lanternfield", orgId: "lanternfield", sites: ["greenpark"], perms: ["Verify"], group: "Delivering programmes", journeys: "C", tasks: ["Submit a recovery plan for Greenpark", "Check sessions at your site"] }),
+  P({ id: "sam", name: "Sam Rivera", role: "programme-coach", title: "Coach · Greenpark and Westbrook", orgId: "lanternfield", sites: ["greenpark", "westbrook"], perms: [], group: "Delivering programmes", journeys: "C", tasks: ["Record today's session", "Mark a session that couldn't run"] }),
   P({ id: "ingrid", name: "Ingrid Solberg", role: "funder", title: "Director of Programmes · Approve", orgId: "tallwater", funderId: "tallwater", perms: ["Approve", "Admin"], group: "Providing funding", journeys: "A", tasks: ["Publish Daniel's draft", "Decide the scholarship offers", "Try to approve your own draft"] }),
   P({ id: "daniel", name: "Daniel Osei", role: "funder", title: "Programme officer · Review, Verify", orgId: "tallwater", funderId: "tallwater", perms: ["Review", "Verify"], group: "Providing funding", journeys: "A, C, D", tasks: ["Verify a fact against a document", "Request information", "Score and shortlist"] }),
   P({ id: "priya", name: "Priya Nair", role: "funder", title: "Finance officer · Finance", orgId: "tallwater", funderId: "tallwater", perms: ["Finance"], group: "Providing funding", journeys: "A, C", tasks: ["Record a release", "See that you cannot approve awards"] }),

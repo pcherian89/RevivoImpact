@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn, SeeSource } from "./ui";
+import { cn, SeeSource, type Source } from "./ui";
 import { fmt } from "../domain/engine";
 
 export type LineNode = { short: string; full: string; stat?: ReactNode; note?: string };
@@ -140,55 +140,50 @@ export function MiniLine({ total, current, label }: { total: number; current: nu
 }
 
 /**
- * Agreement funding bar (docs/04 §6): length = Committed. Segments: spent · verified (solid ink) · awaiting
- * verification (steel hatch) · unspent (outline, surface-2) · still to come (control outline). Words and figures in
- * the legend carry the meaning; colour never does on its own.
+ * Agreement money bar (docs/04 §6): length = committed. Spent and checked · spent, waiting to be checked · paid, not
+ * yet spent · still to pay. Plain words for each audience; colour never carries meaning on its own; every figure can
+ * open its records.
  */
-export function FundingBar({
-  committed,
-  released,
-  reported,
-  verified,
-  receivedOn,
-  onSource,
-}: {
-  committed: number;
-  released: number;
-  reported: number;
-  verified: number;
-  receivedOn?: string;
-  onSource?: (what: string) => void;
-}) {
+export type MoneyParts = { committed: number; paid: number; received: number; spent: number; checked: number; carriedSpent?: number };
+export function FundingBar({ m, audience, sources }: { m: MoneyParts; audience: "funder" | "recipient"; sources?: Partial<Record<"checked" | "waiting" | "carried" | "notYetSpent" | "stillToPay" | "paid", Source>> }) {
+  const me = audience === "recipient";
+  const carried = m.carriedSpent ?? 0;
   const seg = [
-    { key: "verified", v: verified, label: "Spent · verified", cls: "bg-ink" },
-    { key: "awaiting", v: reported - verified, label: "Awaiting verification", cls: "hatch border border-steel" },
-    { key: "unspent", v: Math.max(0, released - reported), label: "Unspent", cls: "border border-ink bg-surface-2" },
-    { key: "outstanding", v: committed - released, label: "Still to come", cls: "border border-dashed border-control" },
-  ];
-  const rel = (released / committed) * 100;
+    { key: "checked" as const, v: m.checked, label: me ? "Spent, checked by the funder" : "Spent and checked", cls: "bg-ink" },
+    { key: "carried" as const, v: carried, label: "Spent before joining (carried in)", cls: "border border-ink bg-ink/40" },
+    { key: "waiting" as const, v: m.spent - m.checked - carried, label: "Spent, waiting to be checked", cls: "hatch border border-steel" },
+    { key: "notYetSpent" as const, v: Math.max(0, m.paid - m.spent), label: "Paid, not yet spent", cls: "border border-ink bg-surface-2" },
+    { key: "stillToPay" as const, v: m.committed - m.paid, label: me ? "Still to come" : "Still to pay", cls: "border border-dashed border-control" },
+  ].filter((x) => x.v > 0 || x.key === "stillToPay" || x.key === "notYetSpent");
+  const paidPct = m.committed ? (m.paid / m.committed) * 100 : 0;
   return (
     <figure>
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <span className="label-data text-muted">
-          Released {fmt(released)}
-          {receivedOn && <span className="normal-case tracking-normal font-sans font-medium text-subtle"> · {receivedOn}</span>}
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-small">
+        <span className="text-muted">
+          {me ? "Paid to you" : "Paid"}{" "}
+          <SeeSource name="Paid" source={sources?.paid}>
+            <span className="font-medium text-ink">{fmt(m.paid)}</span>
+          </SeeSource>
+          {m.paid > 0 && <span className="text-subtle"> · {m.received >= m.paid ? "arrival confirmed" : `${fmt(m.paid - m.received)} not yet confirmed as received`}</span>}
         </span>
-        <span className="label-data text-subtle">Committed {fmt(committed)}</span>
+        <span className="text-subtle">
+          {me ? "Agreed" : "Committed"} <span className="font-medium text-ink tabular-nums">{fmt(m.committed)}</span>
+        </span>
       </div>
       <div className="relative" aria-hidden="true">
         <div className="flex h-5 w-full gap-[3px]">
-          {seg.map((s) => (s.v > 0 ? <div key={s.key} className={cn("h-full rounded-[3px]", s.cls)} style={{ width: `${(s.v / committed) * 100}%` }} /> : null))}
+          {seg.map((x) => (x.v > 0 ? <div key={x.key} className={cn("h-full rounded-[3px]", x.cls)} style={{ width: `${(x.v / m.committed) * 100}%` }} /> : null))}
         </div>
-        <span className="absolute -top-1 bottom-[-4px] w-[1.75px] bg-ink" style={{ left: `calc(${rel}% - 1px)` }} />
+        {m.paid > 0 && <span className="absolute -top-1 bottom-[-4px] w-[1.75px] bg-ink" style={{ left: `calc(${paidPct}% - 1px)` }} />}
       </div>
       <figcaption className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-small sm:grid-cols-4">
-        {seg.map((s) => (
-          <div key={s.key} className="flex items-start gap-2">
-            <span aria-hidden="true" className={cn("mt-1 inline-block size-3 shrink-0 rounded-[2px]", s.cls)} />
+        {seg.map((x) => (
+          <div key={x.key} className="flex items-start gap-2">
+            <span aria-hidden="true" className={cn("mt-1 inline-block size-3 shrink-0 rounded-[2px]", x.cls)} />
             <span>
-              <span className="block text-subtle">{s.label}</span>
-              <SeeSource name={`${s.label} ${fmt(s.v)}`} onClick={() => onSource?.(s.label)}>
-                <span className="font-medium text-ink">{fmt(s.v)}</span>
+              <span className="block text-subtle">{x.label}</span>
+              <SeeSource name={x.label} source={sources?.[x.key]}>
+                <span className="font-medium text-ink">{fmt(x.v)}</span>
               </SeeSource>
             </span>
           </div>
@@ -198,13 +193,13 @@ export function FundingBar({
   );
 }
 
-/** Fund bar (length = Announced): committed solid · held for offers dashed · available empty. */
-export function FundBar({ announced, committed, reserved }: { announced: number; committed: number; reserved: number }) {
+/** Fund bar (length = total fund): committed solid · set aside for offers dashed · still available empty. */
+export function FundBar({ announced, committed, reserved, sources }: { announced: number; committed: number; reserved: number; sources?: { committed?: Source; reserved?: Source } }) {
   const available = announced - committed - reserved;
   const parts = [
-    { label: "Committed", v: committed, cls: "bg-ink" },
-    { label: "Offered, awaiting reply", v: reserved, cls: "border border-dashed border-ink bg-surface-2" },
-    { label: "Still available", v: available, cls: "bg-line-strong" },
+    { key: "committed" as const, label: "Committed", v: committed, cls: "bg-ink" },
+    { key: "reserved" as const, label: "Set aside for offers", v: reserved, cls: "border border-dashed border-ink bg-surface-2" },
+    { key: "available" as const, label: "Still available", v: available, cls: "bg-line-strong" },
   ];
   return (
     <figure>
@@ -214,17 +209,15 @@ export function FundBar({ announced, committed, reserved }: { announced: number;
       {committed + reserved === 0 && <p className="mt-2 text-small text-muted">Nothing committed or offered yet: all {fmt(announced)} is still available.</p>}
       <figcaption className="mt-3 flex flex-wrap gap-x-8 gap-y-3 text-small">
         <span>
-          <span className="block text-subtle">Announced</span>
-          <SeeSource name={`Announced ${fmt(announced)}`}>
-            <span className="font-medium">{fmt(announced)}</span>
-          </SeeSource>
+          <span className="block text-subtle">Total fund</span>
+          <span className="font-medium tabular-nums">{fmt(announced)}</span>
         </span>
         {parts.map((p) => (
           <span key={p.label} className="flex items-start gap-2">
             <span aria-hidden="true" className={cn("mt-1 inline-block size-3 rounded-[2px]", p.cls)} />
             <span>
               <span className="block text-subtle">{p.label}</span>
-              <SeeSource name={`${p.label} ${fmt(p.v)}`}>
+              <SeeSource name={p.label} source={p.key === "available" ? undefined : sources?.[p.key]}>
                 <span className="font-medium">{fmt(p.v)}</span>
               </SeeSource>
             </span>

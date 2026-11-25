@@ -60,6 +60,11 @@ function load(): Saved {
     if (m !== s.moment) s.own = [];
     s.moment = m;
   }
+  // ?story=complete opens 30 Jun with every journey step done (for presenters and screenshots).
+  if (q.get("story") === "complete") {
+    s.moment = "jun30";
+    s.own = ordered("jun30").flatMap((x) => stepEvents(x.s)).map((e, k) => ({ ...e, n: k + 1 }));
+  }
   const t = q.get("theme");
   if (t === "dark" || t === "daylight") s.theme = t;
   if (q.get("motion") === "reduced") s.reducedMotion = true;

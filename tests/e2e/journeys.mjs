@@ -14,13 +14,23 @@ const check = async (label, cond) => {
 };
 const go = async (path) => { await page.evaluate((p) => (location.hash = p), "/" + path); await page.waitForTimeout(80); };
 const text = () => page.evaluate(() => document.body.innerText);
+/** Was this action written to the audit? (The platform audit lists every action; the screen keeps its place.) */
+const audited = async (action) => {
+  const back = await page.evaluate(() => location.hash);
+  await go("app/alex/admin");
+  await page.getByRole("tab", { name: /Audit/ }).click();
+  const found = (await text()).includes(action);
+  await page.evaluate((h) => (location.hash = h), back);
+  await page.waitForTimeout(80);
+  return found;
+};
 const click = async (name, opts = {}) => { await page.getByRole("button", { name, exact: false, ...opts }).first().click(); await page.waitForTimeout(60); };
 
 // ---- Journey A at 12 Apr
 await page.goto(`${file}?moment=apr12&motion=reduced#/app/ingrid/opps`);
 await page.waitForTimeout(200);
 await click(/^Publish$/);
-await check("A1 Ingrid publishes (four-eyes)", (await text()).includes("Published opportunity (four-eyes)"));
+await check("A1 Ingrid publishes (four-eyes)", await audited("Published opportunity (four-eyes)"));
 await go("app/daniel/opps");
 await check("A1 the drafter sees it open", !(await text()).includes("Awaiting approval"));
 await go("join");
@@ -70,14 +80,19 @@ await click("Send decisions");
 await check("A9 Ingrid sends 46 offers", (await text()).includes("Decisions sent to all 143 applicants"));
 await go("app/amira/applications");
 await click("Accept scholarship award");
-await check("A10 Amira accepts", (await text()).includes("Accepted a scholarship award of $4,500"));
-await go("app/ingrid/portfolio");
-await check("A11 approver has no Finance: no release button", !(await text()).includes("Record release (simulated)"));
+await check("A10 Amira accepts", await audited("Accepted a scholarship award of $4,500"));
 await go("app/priya/portfolio");
-await click("Record release (simulated)");
+await page.getByRole("link", { name: /Amira Haddad/ }).first().click();
+await page.waitForTimeout(100);
+const amiraAg = await page.evaluate(() => location.hash.split("/").pop());
+await go(`app/ingrid/agreement/${amiraAg}`);
+await check("A11 approver has no Finance: no payment button", !(await text()).includes("Record payment"));
+await go(`app/priya/agreement/${amiraAg}`);
+await page.getByLabel(/Amount \(USD\)/).fill("2250");
+await click("Record payment");
 await go("app/amira/funding");
 await click("Confirm I received $2,250");
-await check("A11 receipt confirmed", (await text()).includes("Confirmed receipt of $2,250"));
+await check("A11 receipt confirmed", await audited("Confirmed receipt of $2,250"));
 
 // ---- Journey B (6 May)
 await go("app/nadia/publish");
@@ -132,7 +147,7 @@ await check("B4 Nadia sees offers", (await text()).includes("Oriel Freight Group
 // ---- Journey E (6 May, safeguarding)
 await go("app/rosa/safety");
 await click("Authorise Jonas Becker");
-await check("E2 coach authorised with limited powers", (await text()).includes("Authorised a coach: prepare applications and submit updates only"));
+await check("E2 coach authorised with limited powers", await audited("Authorised a coach: prepare applications and submit updates only"));
 await go("app/rosa/publish");
 t = await text();
 await check("E3 anonymised preview + identifiability check", t.includes("Identifiability check:") && t.includes("Swimmer · 16–17"));
@@ -153,7 +168,7 @@ await go("app/jonas/applications");
 await check("E4 the coach cannot accept for a minor (no accept button)", !(await text()).includes("Accept development grant"));
 await go("app/rosa/applications");
 await click("Accept development grant");
-await check("E4 guardian accepts", (await text()).includes("Accepted a development grant of $1,500"));
+await check("E4 guardian accepts", await audited("Accepted a development grant of $1,500"));
 await go("app/kenji/apps");
 t = await text();
 await check("E4 Kenji now sees the first name only", t.includes("Tiago") && !t.includes("Esteves"));
@@ -171,7 +186,7 @@ await click("Send offer");
 await check("Individual → minor goes to safeguarding review", (await text()).includes("in platform safeguarding review"));
 await go("app/alex/admin");
 await click("Release to the guardian");
-await check("Platform releases it to the guardian", (await text()).includes("Safeguarding review passed"));
+await check("Platform releases it to the guardian", await audited("Safeguarding review passed"));
 
 // ---- End-to-end review fixes (docs/11 §4)
 await go("app/kenji/fdiscover");
@@ -200,6 +215,77 @@ await click("Report a concern");
 await check("Report a concern reaches the safeguarding team", (await text()).includes("Sent to the platform safeguarding team"));
 await go("app/alex/admin");
 await check("Admin sees the concern without the athlete's name", (await text()).includes("guardian of an athlete under 18") && !(await text()).includes("Tiago"));
+
+// ---- P3: track and review (30 Jun), by real clicks
+await page.goto(`${file}?moment=jun30&motion=reduced#/app/amira/home`);
+await page.waitForTimeout(200);
+await check("P3 Amira's Home asks for her quarterly update", (await text()).includes("Your quarterly update is due"));
+await go("app/amira/update/ag-amira");
+await page.getByLabel("What was it for?").fill("Coaching fees, May and June");
+await page.getByLabel("How much? (USD)").fill("900");
+await click("Add a photo of the receipt");
+await click("Add spending");
+t = await text();
+await check("P3 spending added in one short form", t.includes("Coaching fees, May and June") && t.includes("Waiting to be checked"));
+await go("app/amira/update/ag-amira");
+await page.getByLabel("What was it for?").fill("Competition judogi");
+await page.getByLabel("How much? (USD)").fill("210");
+await click("Add spending");
+await go("app/amira/update/ag-amira");
+await page.getByLabel("What was it for?").fill("A holiday in the sun");
+await page.getByLabel("How much? (USD)").fill("100");
+await click("Add spending");
+await check("P3 non-sporting spending refused", (await text()).includes("sport only"));
+await go("app/priya/agreement/ag-amira");
+await page.getByRole("button", { name: "Check", exact: true }).first().click();
+await page.waitForTimeout(60);
+await click("Ask for the receipt");
+t = await text();
+await check("P3 Priya checks one and asks for the missing receipt", t.includes("Checked") && t.includes("Receipt needed"));
+await go("app/amira/home");
+await check("P3 Amira is asked for the receipt", (await text()).includes("asked for a receipt"));
+await go("app/daniel/agreement/ag-amira");
+await page.getByText("Continue with conditions", { exact: true }).click();
+await page.getByLabel("The conditions").fill("Next payment once the judogi receipt is added.");
+await click("Record the review");
+await check("P3 Daniel records a review with conditions", (await text()).includes("Next payment once the judogi receipt is added."));
+await go("app/daniel/portfolio");
+await click("Add existing funding");
+await page.getByLabel("What is it for?").fill("Regional swimming coach development");
+await page.getByLabel("Amount agreed").fill("24000");
+await page.getByLabel("Already paid").fill("12000");
+await page.getByLabel("Already spent").fill("10400");
+await click("Add and send for approval");
+await check("P3 existing funding waits for a second person", (await text()).includes("waiting for a second person"));
+const exUrl = await page.evaluate(() => location.hash.split("/").pop());
+await go(`app/ingrid/agreement/${exUrl}`);
+await click("Approve this funding");
+await go(`app/farid/agreement/${exUrl}`);
+await click("The figures are right");
+t = await text();
+await check("P3 Ostral confirms; carried-in money shown apart", t.includes("carried in") && !t.includes("Waiting for Ostral"));
+await go("app/maya/report/ag-pe1");
+await click("Draft it from our records");
+const box = page.getByLabel("Report text");
+await box.fill((await box.inputValue()).replace(/\[What participants[^\]]*\]/, "Participants showed improved confidence."));
+await check("P3 claims check stops “improved confidence”", (await text()).includes("claims more than your records show"));
+await box.fill((await box.inputValue()).replace("Participants showed improved confidence.", "212 of 460 answered our survey; 71% said they feel confident trying new activities, up from 58% (self-reported)."));
+await click("Send to Tallwater Sports Foundation");
+await check("P3 report sent", (await text()).includes("sent to the funder"));
+await go("app/daniel/programme/play-every-day");
+t = await text();
+await check("P3 funder sees counts, never children's details", t.includes("108 of 120") || t.includes("of 20 ran"));
+await check("P3 funder sees no session notes", !t.includes("two new starters"));
+
+// Sam records today's sessions (6 May)
+await page.goto(`${file}?moment=may06&motion=reduced#/app/sam/today`);
+await page.waitForTimeout(200);
+await page.getByLabel(/How many came/).first().fill("52");
+await click("It ran");
+await click("Couldn’t run");
+await click("No coach available");
+await go("app/maya/programme/play-every-day");
+await check("P3 two missed in a row raises a flag", (await text()).includes("missed two sessions in a row"));
 
 await check("no page errors", errs.length === 0);
 // Privacy: "What changed" never carries one person's names onto another person's screen

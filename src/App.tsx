@@ -5,6 +5,7 @@ import { Apply, FunderProfile, Join, MyFunding, MyProfile, OpportunityPage, Publ
 import { AthleteForFunder, FunderApplications, FunderDiscover, FunderOpportunities, FunderOverview, Portfolio, RequestPage, ReviewPage, SelectionPage } from "./screens/Funder";
 import { Admin, Safety } from "./screens/Other";
 import { Planned } from "./screens/Planned";
+import { AgreementPage, ProgrammePage, ReportPage, TodayPage, UpdatePage } from "./screens/Track";
 import { HOME_SCREEN } from "./data/structure";
 import type { Person } from "./domain/model";
 
@@ -84,6 +85,16 @@ function renderScreen(sc: string, param: string | undefined, p: Person) {
       return funder ? <Portfolio persona={p} /> : <MyFunding persona={p} />;
     case "admin":
       return <Admin persona={p} />;
+    case "agreement":
+      return <AgreementPage persona={p} id={param ?? ""} />;
+    case "update":
+      return <UpdatePage persona={p} id={param ?? ""} />;
+    case "programme":
+      return <ProgrammePage persona={p} id={param} />;
+    case "today":
+      return <TodayPage persona={p} />;
+    case "report":
+      return <ReportPage persona={p} id={param ?? ""} />;
     default: {
       const n = Number(sc.replace(/^s/, ""));
       return <Planned n={Number.isFinite(n) && n > 0 ? n : 3} persona={p} />;

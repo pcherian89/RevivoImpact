@@ -1,4 +1,4 @@
-import type { RoleKey } from "../domain/model";
+import type { Person, RoleKey, World } from "../domain/model";
 
 /** Main navigation per role: at most five items (docs/03 §2). `screen` is the route segment. */
 export type NavItem = { label: string; screen: string };
@@ -52,11 +52,24 @@ export const NAV: Record<RoleKey, NavItem[]> = {
     { label: "Organisation", screen: "me" },
   ],
   "programme-coach": [
-    { label: "Today", screen: "s20" },
-    { label: "Sessions", screen: "s19" },
+    { label: "Today", screen: "today" },
+    { label: "Programme", screen: "programme" },
   ],
   admin: [{ label: "Audit & admin", screen: "admin" }],
 };
+
+/** Navigation for one person: organisations that run a programme get "Programme" in place of "Organisation". */
+export function navFor(p: Person, w: World): NavItem[] {
+  if (p.role === "organisation" && Object.values(w.programmes).some((x) => x.orgId === p.orgId))
+    return [
+      { label: "Home", screen: "home" },
+      { label: "Programme", screen: "programme" },
+      { label: "Funding", screen: "funding" },
+      { label: "Discover", screen: "discover" },
+      { label: "Applications", screen: "applications" },
+    ];
+  return NAV[p.role];
+}
 
 export const HOME_SCREEN: Record<RoleKey, string> = {
   athlete: "home",
@@ -66,7 +79,7 @@ export const HOME_SCREEN: Record<RoleKey, string> = {
   sponsor: "overview",
   individual: "overview",
   organisation: "home",
-  "programme-coach": "s20",
+  "programme-coach": "today",
   admin: "admin",
 };
 

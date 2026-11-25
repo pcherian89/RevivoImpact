@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { CalendarDays, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileStack, Footprints, Hand, House, LayoutGrid, Map, Moon, Pause, RotateCcw, Search, ShieldCheck, Sun, UserRound, UsersRound, Wallet, Wand2, X, type LucideIcon } from "lucide-react";
+import { CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileStack, Footprints, Hand, House, LayoutGrid, Map, Moon, Pause, RotateCcw, Search, ShieldCheck, Sun, UserRound, UsersRound, Wallet, Wand2, X, type LucideIcon } from "lucide-react";
 import { useStore } from "../state/store";
 import { ImpactLockup } from "../brand/RevivoLogo";
 import { MOMENTS, type Person } from "../domain/model";
 import { JOURNEYS } from "../domain/story";
-import { NAV } from "../data/structure";
+import { navFor } from "../data/structure";
 import { btn, cn, Label } from "./ui";
 
 /* ------------------------------------------------ prototype bar & banner */
@@ -104,17 +104,17 @@ const ManagingCtx = createContext<string | undefined>(undefined);
 /** The athlete a guardian or coach is currently managing ("Managing: Tiago ▾"). */
 export const useManaging = () => useContext(ManagingCtx);
 
-const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Audit & admin": ShieldCheck };
+const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Audit & admin": ShieldCheck, Programme: CalendarCheck };
 
 export function AppFrame({ persona, active, children }: { persona: Person; active: string; children: ReactNode }) {
   const { go, world } = useStore();
-  const nav = NAV[persona.role];
+  const nav = navFor(persona, world);
   const managed = persona.role === "guardian" ? Object.values(world.athletes).filter((a) => a.guardianId === persona.id) : persona.role === "coach" ? world.authorisations.filter((z) => z.coachId === persona.id).map((z) => world.athletes[z.athleteId]) : [];
   const [managing, setManaging] = useState<string | undefined>(managed[0]?.id);
   useEffect(() => {
     if (managed.length && !managed.some((a) => a.id === managing)) setManaging(managed[0].id);
   }, [managed, managing]);
-  const parent: Record<string, string> = { opportunity: "discover", profile: "discover", apply: "applications", publish: "funding", request: "fdiscover", athlete: "fdiscover", review: "apps", selection: "apps" };
+  const parent: Record<string, string> = { opportunity: "discover", profile: "discover", apply: "applications", publish: "funding", request: "fdiscover", athlete: "fdiscover", review: "apps", selection: "apps", agreement: persona.funderId ? "portfolio" : "funding", update: "funding", report: persona.funderId ? "portfolio" : "funding" };
   const on = (screen: string) => active === screen || parent[active] === screen;
   const workspace = persona.role === "athlete" ? "Athlete" : persona.role === "guardian" ? "Guardian" : persona.role === "individual" ? "Individual sponsor" : persona.role === "admin" ? "Platform" : (world.orgs[persona.orgId ?? ""]?.name ?? world.funders[persona.funderId ?? ""]?.name ?? "");
   return (
@@ -191,8 +191,9 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
 
 /** "What changed": the records the last action changed (docs/03 §6). */
 function WhatChanged() {
-  const { changed, clearChanged } = useStore();
-  if (!changed || changed.length === 0) return null;
+  const { changed, clearChanged, guide } = useStore();
+  // Guided mode only (docs/03 P3 panel): in normal use each action's own message confirms it, and nothing covers the page.
+  if (!guide.open || !changed || changed.length === 0) return null;
   return (
     <div role="status" className="fixed right-3 bottom-20 z-40 w-[min(26rem,calc(100vw-1.5rem))] rounded-[10px] border border-line-strong bg-surface p-4 shadow-2xl md:right-6 md:bottom-6" data-ri-print-hide>
       <div className="flex items-start justify-between gap-3">

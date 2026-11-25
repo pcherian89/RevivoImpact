@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react";
 import {
   ArrowRight,
   CircleAlert,
@@ -96,11 +96,48 @@ export function Label({ children, className }: { children: ReactNode; className?
 }
 
 /** Every figure is a "See source" button (invariant I8). */
-export function SeeSource({ children, name, onClick }: { children: ReactNode; name: string; onClick?: () => void }) {
+/** The records behind a figure (P1 "Source records" panel). Rows are already filtered for the viewer's access. */
+export type Source = { title: string; rows: { label: string; value: string; note?: string }[]; note?: string };
+const SourceCtx = createContext<(s: Source) => void>(() => {});
+export function SourceProvider({ children }: { children: ReactNode }) {
+  const [src, setSrc] = useState<Source | null>(null);
   return (
-    <button type="button" onClick={onClick} title={`See source: ${name}`} className="tabular-nums underline decoration-dotted decoration-1 underline-offset-4 hover:text-signal">
+    <SourceCtx.Provider value={setSrc}>
       {children}
-      <span className="sr-only"> (see source: {name})</span>
+      <Panel open={!!src} onClose={() => setSrc(null)} eyebrow="Where this number comes from" title={src?.title ?? ""}>
+        {src && (
+          <>
+            {src.rows.length === 0 ? (
+              <p className="text-muted">No records yet.</p>
+            ) : (
+              <ul className="border-t border-line">
+                {src.rows.map((r, i) => (
+                  <li key={i} className="flex items-start justify-between gap-4 border-b border-line py-3">
+                    <span>
+                      <span className="block">{r.label}</span>
+                      {r.note && <span className="block text-small text-subtle">{r.note}</span>}
+                    </span>
+                    <span className="shrink-0 font-medium tabular-nums">{r.value}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {src.note && <p className="mt-4 text-small text-subtle">{src.note}</p>}
+          </>
+        )}
+      </Panel>
+    </SourceCtx.Provider>
+  );
+}
+
+/** A figure that opens its records. Without records to show it is plain text: it never pretends to link. */
+export function SeeSource({ children, name, onClick, source }: { children: ReactNode; name: string; onClick?: () => void; source?: Source }) {
+  const open = useContext(SourceCtx);
+  if (!onClick && !source) return <span className="tabular-nums">{children}</span>;
+  return (
+    <button type="button" onClick={() => (source ? open(source) : onClick?.())} title={`See where this comes from: ${name}`} className="tabular-nums underline decoration-dotted decoration-1 underline-offset-4 hover:text-signal">
+      {children}
+      <span className="sr-only"> (see where this comes from: {name})</span>
     </button>
   );
 }

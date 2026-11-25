@@ -1,18 +1,20 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, BadgeCheck, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
-import { DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
-import { agreementsFor, eligibility, fmt, fundTotals, identifiability, offersFor, oppStatusAt, received, released, requestTotals, stateLabel } from "../domain/engine";
+import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
+import { agreementsFor, agreementTotals, eligibility, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt, received, released, requestTotals, stateLabel } from "../domain/engine";
 import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SimulatedAI, Tabs } from "../components/ui";
-import { FundingBar, FundingLine, NeedBar } from "../components/money";
+import { FundingBar, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
 import { useManaging } from "../components/Shell";
+import { AgreementStages } from "./Track";
+import { agreementSources } from "./sources";
 
 const funderOf = (w: World, id: string) => w.funders[id];
 const typeIcon: Record<Funder["type"], typeof Building2> = { Foundation: Landmark, Company: Building2, "Sports brand": Shirt, "Government body": Landmark, Federation: UsersRound, "Individual sponsor": UserRound };
 
 /** The athlete this seeker screen is about: the adult athlete, or the athlete a guardian or coach manages. */
-function useSubject(persona: Person) {
+export function useSubject(persona: Person) {
   const { world } = useStore();
   const managing = useManaging();
   if (persona.role === "athlete") return world.athletes[persona.id];
@@ -54,11 +56,38 @@ export function SeekerHome({ persona }: { persona: Person }) {
       needs.push({ t: `${funderOf(w, w.funds[o.fundId].funderId).name} offered ${fmt(o.amount)}`, d: `${w.funds[o.fundId].type} · ${ath?.minor ? "only you, as guardian, can accept" : "read what they will see, then accept or decline"}`, a: "Read the offer", to: "applications" });
     for (const g of agreementsFor(w, kind, rid).filter((g) => released(w, g.id) > received(w, g.id)))
       needs.push({ t: `Confirm you received ${fmt(released(w, g.id) - received(w, g.id))}`, d: `${w.funds[g.fundId].name} recorded a payment (simulated)`, a: "Confirm receipt", to: "funding" });
+    // P3: what the funder needs back (receipts asked for, spending to add, proof for a sponsor, figures to confirm)
+    for (const g of agreementsFor(w, kind, rid).filter((g) => !g.light)) {
+      const t = agreementTotals(w, g.id);
+      const fname = funderOf(w, w.funds[g.fundId].funderId).name;
+      if (g.status === "awaiting-recipient") needs.push({ t: `${fname} added funding that started before Revivo Impact`, d: "Check the figures carried in and confirm them, or say what is wrong.", a: "Check the figures", to: `agreement/${g.id}` });
+      const q = Object.values(w.expenses).find((e) => e.agreementId === g.id && e.status === "query");
+      if (q) needs.push({ t: `${fname} asked for a receipt`, d: `${q.what} · ${fmt(q.amount)}: “${q.query}”`, a: "Add the receipt", to: `agreement/${g.id}` });
+      else if (BEHAVIOUR[w.funds[g.fundId].type] === "commercial") {
+        const d = Object.values(w.deliverables).find((x) => x.agreementId === g.id && x.done + x.pending < x.target);
+        if (d && persona.id === g.recipientId) needs.push({ t: "Send proof to your sponsor", d: `${d.label}: ${d.done} of ${d.target} done`, a: "Send proof", to: `update/${g.id}?proof` });
+      } else if (t.paid > 0 && t.received >= t.paid && t.spent < t.paid && moment === "jun30" && g.recipientKind === "athlete")
+        needs.push({ t: "Your quarterly update is due", d: `${fmt(t.paid - t.spent)} of ${fname}'s payment is not yet accounted for. Add spending and share your progress.`, a: "Send an update", to: `update/${g.id}` });
+    }
     for (const app of Object.values(w.applications).filter((x) => x.applicantId === rid)) {
       if (app.status === "info" && app.info?.status === "open") needs.push({ t: "The panel needs one more document", d: app.info.text, a: "Answer", to: "applications" });
       if (app.status === "draft") needs.push({ t: `Finish your application to ${w.opps[app.oppId].title}`, d: app.preparedBy !== persona.id ? `Prepared by ${w.people[app.preparedBy]?.name}; waiting for you to submit` : "Saved as a draft", a: persona.role === "coach" ? "See the draft" : "Submit application", to: "applications" });
     }
     for (const it of Object.values(w.interests).filter((x) => x.athleteId === rid && x.status === "sent")) needs.push({ t: `${funderOf(w, it.funderId).name} is interested in your profile`, d: `"${it.reason}" Share more, or say no thanks. Saying no changes nothing.`, a: "Answer", to: "applications" });
+  }
+  // Programme operators: alerts, recovery plans, sessions to check, the quarterly report (docs/03 Journey C)
+  for (const p of Object.values(w.programmes).filter((x) => org && x.orgId === org.id)) {
+    const pt = programmeTotals(w, p.id);
+    for (const st of pt.sites.filter((x) => x.alert)) {
+      const act = Object.values(w.actions).find((x) => x.programmeId === p.id && x.siteId === st.site.id);
+      if (st.plan?.status === "submitted" && st.plan.by !== persona.id && persona.perms.includes("Approve")) needs.push({ t: `Approve ${w.people[st.plan.by]?.name.split(" ")[0]}'s recovery plan for ${st.site.name}`, d: st.plan.text, a: "Read the plan", to: `programme/${p.id}` });
+      else if (!st.plan && act?.assignedTo === persona.id) needs.push({ t: `Plan how ${st.site.name} catches up`, d: `${w.people[act.by]?.name} asked you. ${st.delivered} of ${st.due} sessions have run.`, a: "Write the plan", to: `programme/${p.id}` });
+      else if (!st.plan && !act && persona.perms.includes("Approve")) needs.push({ t: `${st.site.name} missed two sessions in a row`, d: `${st.weather} weather, ${st.coach} no coach available. Decide who plans the recovery.`, a: "See the site", to: `programme/${p.id}` });
+    }
+    const mySites = pt.sites.filter((x) => (persona.sites ?? []).includes(x.site.id) && x.toCheck > 0);
+    if (persona.perms.includes("Verify") && mySites.length) needs.push({ t: `${mySites.reduce((a, x) => a + x.toCheck, 0)} sessions to check against the register`, d: mySites.map((x) => x.site.name).join(", "), a: "Check sessions", to: `programme/${p.id}` });
+    const rep = Object.values(w.reports).filter((r) => r.agreementId === p.agreementId).pop();
+    if (moment === "jun30" && persona.perms.includes("Approve") && (!rep || rep.status === "draft" || rep.status === "returned")) needs.push({ t: rep?.status === "returned" ? "Your report came back with a question" : "The quarterly report is due today", d: `${p.name} · drafted for you from your records (Simulated AI); you check it and add your own words`, a: rep ? "Open the report" : "Write the report", to: `report/${p.agreementId}` });
   }
   const shown = needs.slice(0, 3);
   const quick = org
@@ -125,7 +154,7 @@ export function SeekerHome({ persona }: { persona: Person }) {
       {agreements.filter((g) => !g.light).slice(0, 1).map((g) => (
         <Section key={g.id} title={`${w.funds[g.fundId].type} · ${funderOf(w, w.funds[g.fundId].funderId).name}`}>
           <div className="mt-4">
-            <AgreementLine w={w} id={g.id} to={org?.name ?? ath?.name ?? ""} />
+            <AgreementStages w={w} g={g} viewer={persona} compact />
           </div>
         </Section>
       ))}
@@ -862,31 +891,6 @@ export function SeekerApplications({ persona }: { persona: Person }) {
 
 /* =============================================================== My Funding */
 
-function AgreementLine({ w, id, to }: { w: World; id: string; to: string }) {
-  const g = w.agreements[id];
-  const fund = w.funds[g.fundId];
-  const rel = released(w, id);
-  const rec = received(w, id);
-  const commercial = fund.type === "Sponsorship agreement";
-  const nodes = commercial
-    ? [
-        { short: "Agreement", full: "Sponsorship agreement", stat: fmt(g.amount) },
-        { short: "Funding", full: "Payments", stat: rel ? `${fmt(rel)}${rec >= rel ? " · received" : ""}` : "—" },
-        { short: "Deliverables", full: "Agreed deliverables", stat: `${w.offers[g.offerId ?? ""]?.deliverables?.length ?? 3} agreed`, note: "Evidence starts 30 Jun" },
-        { short: "Evidence", full: "Evidence", stat: "—" },
-        { short: "Review", full: "Review", stat: "—" },
-      ]
-    : [
-        { short: "Need", full: "Funding need", stat: g.requestId ? fmt(requestTotals(w, g.requestId).requested) : w.applications[w.offers[g.offerId ?? ""]?.applicationId ?? ""] ? fmt(w.applications[w.offers[g.offerId!]!.applicationId!].requested) : "—" },
-        { short: "Support", full: "Approved support", stat: fmt(g.amount), note: `Accepted ${{ apr12: "before 12 Apr", may06: "6 May", jun30: "30 Jun" }[g.acceptedAt] ?? g.acceptedAt}` },
-        { short: "Released", full: "Funds released and received", stat: rel ? `${fmt(rel)} of ${fmt(g.amount)}` : "Next: payment", note: rel ? (rec >= rel ? "Received" : "Confirm receipt") : undefined },
-        { short: "Spent", full: "Expenditure and verification", stat: "—", note: "Spending updates start 30 Jun" },
-        { short: "Progress", full: "Sporting progress", stat: "—" },
-        { short: "Review", full: "Funding review", stat: "—" },
-      ];
-  return <FundingLine from={funderOf(w, fund.funderId).name} to={to} current={rel ? (commercial ? 1 : 2) : 1} nodes={nodes} />;
-}
-
 export function MyFunding({ persona }: { persona: Person }) {
   const { world: w } = useStore();
   const ath = useSubject(persona);
@@ -899,25 +903,39 @@ export function MyFunding({ persona }: { persona: Person }) {
   const com = ags.filter((g) => w.funds[g.fundId].type === "Sponsorship agreement");
   return (
     <div className="pb-8">
-      <PageHead eyebrow={isOrg ? "Funding" : "My Funding"} title={`What support ${persona.role === "athlete" ? "do I" : isOrg ? "do we" : `does ${ath?.name.split(" ")[0]}`} have?`} lead="Agreed, paid and still to come, in plain words. Every figure comes from the records." />
+      <PageHead eyebrow={isOrg ? "Funding" : "My Funding"} title={`What support ${persona.role === "athlete" ? "do I" : isOrg ? "do we" : `does ${ath?.name.split(" ")[0]}`} have?`} lead="What you've been given, what's still to come, and any update your funders need." />
       {ags.length === 0 && reqs.length === 0 && <Empty>No support yet. Apply to opportunities or publish a funding request so funders can find {isOrg ? "you" : "you"}.</Empty>}
       {[...dev, ...com].map((g) => {
         const fund = w.funds[g.fundId];
-        const rel = released(w, g.id);
-        const rec = received(w, g.id);
+        const t = agreementTotals(w, g.id);
+        const commercial = fund.type === "Sponsorship agreement";
+        const owe = t.paid > t.received && persona.role !== "coach";
+        const query = Object.values(w.expenses).some((e) => e.agreementId === g.id && e.status === "query");
         return (
-          <Section key={g.id} title={`${fund.type} · ${funderOf(w, fund.funderId).name}${fund.type === "Sponsorship agreement" ? " · commercial (kept apart from development funding)" : ""}`}>
+          <Section key={g.id} title={`${fund.type} from ${funderOf(w, fund.funderId).name}${commercial ? " · commercial, kept apart" : ""}`}>
+            {g.status === "awaiting-recipient" && <p className="mt-3 font-medium">Existing funding: please confirm the figures on the record.</p>}
             <div className="mt-4">
-              <AgreementLine w={w} id={g.id} to={isOrg ? w.orgs[rid!].name : ath!.name} />
+              <AgreementStages w={w} g={g} viewer={persona} compact />
             </div>
             <div className="mt-6">
-              <FundingBar committed={g.amount} released={rel} reported={0} verified={0} receivedOn={rec >= rel && rel ? "receipt confirmed" : rel ? "receipt not yet confirmed" : undefined} />
+              <FundingBar m={t} audience="recipient" sources={agreementSources(w, g.id, persona)} />
             </div>
-            {rel > rec && (persona.role !== "coach") && (
-              <ActionButton className="mt-5" actor={persona.id} type="confirmReceipt" args={{ agreementId: g.id, entryId: `rc-${g.id}-${Date.now()}` }} success="Receipt confirmed. This is your confirmation, not a bank check.">
-                Confirm I received {fmt(rel - rec)}
-              </ActionButton>
-            )}
+            <div className="mt-5 flex flex-wrap items-start gap-3">
+              {owe && (
+                <ActionButton actor={persona.id} type="confirmReceipt" args={{ agreementId: g.id, entryId: `rc-${g.id}-${Date.now()}` }} success="Thank you. Arrival confirmed.">
+                  Confirm I received {fmt(t.paid - t.received)}
+                </ActionButton>
+              )}
+              {!commercial && t.paid > t.spent && (
+                <a className={btn(owe || query ? "secondary" : "primary")} href={`#/app/${persona.id}/update/${g.id}`}>
+                  <Receipt className="size-4" aria-hidden="true" /> Add spending
+                </a>
+              )}
+              {commercial && <a className={btn("secondary")} href={`#/app/${persona.id}/update/${g.id}?proof`}>Send proof</a>}
+              <a className={btn(query ? "primary" : "quiet")} href={`#/app/${persona.id}/agreement/${g.id}`}>
+                {query ? "Add the missing receipt" : "See everything"} <ArrowRight className="size-4" aria-hidden="true" />
+              </a>
+            </div>
           </Section>
         );
       })}

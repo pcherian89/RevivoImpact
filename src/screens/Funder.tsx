@@ -2,9 +2,10 @@ import { useState } from "react";
 import { ArrowRight, ChevronRight, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
-import { fit, fmt, fundTotals, mayReachMinors, oppStatusAt, platformTotals, released, requestTotals, stateLabel, sum } from "../domain/engine";
+import { agreementTotals, counts, fit, fmt, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
-import { FundBar, MiniLine, NeedBar } from "../components/money";
+import { FundBar, NeedBar } from "../components/money";
+import { fundSources } from "./sources";
 import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
 import { fmtDate } from "./Seeker";
 
@@ -25,6 +26,16 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const forMe = waiting.filter((o) => o.by !== persona.id);
   if (forMe.length && persona.perms.includes("Approve")) needs.push({ t: `${forMe.length} offer${forMe.length > 1 ? "s" : ""} waiting for your second approval`, d: "A colleague made them; this fund needs two people.", a: "Give second approval", to: "apps" });
   else if (waiting.length && persona.perms.includes("Approve")) needs.push({ t: `${waiting.length} of your offers ${waiting.length > 1 ? "are" : "is"} waiting for a second approver`, d: "Nothing reaches the recipient until a colleague with Approve agrees. You can withdraw it.", a: "See offers", to: "apps" });
+  // P3: money and reports that need a person at this funder
+  const mineAg = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid);
+  for (const g of mineAg.filter((g) => g.status === "awaiting-approval" && g.preparedBy !== persona.id && persona.perms.includes("Approve"))) needs.push({ t: `Approve existing funding for ${recipientName(w, g.recipientKind, g.recipientId, persona)}`, d: `${fmt(g.amount)} · prepared by ${w.people[g.preparedBy ?? ""]?.name}; a second person must approve it`, a: "Review and approve", to: `agreement/${g.id}` });
+  for (const g of Object.values(w.agreements).filter((g) => g.status === "awaiting-recipient" && g.recipientId === persona.orgId)) needs.push({ t: `${w.funders[w.funds[g.fundId].funderId].name} added funding you already receive`, d: `${fmt(g.amount)} · check the figures carried in and confirm them`, a: "Check the figures", to: `agreement/${g.id}` });
+  const checkable = Object.values(w.expenses).filter((e) => e.status === "reported" && e.receipt && mineAg.some((g) => g.id === e.agreementId) && e.by !== persona.id);
+  if (checkable.length && (persona.perms.includes("Finance") || persona.perms.includes("Review"))) needs.push({ t: `${plural(checkable.length, "expense")} to check`, d: `${fmt(sum(checkable.map((e) => e.amount)))} with receipts, from ${[...new Set(checkable.map((e) => recipientName(w, w.agreements[e.agreementId].recipientKind, w.agreements[e.agreementId].recipientId, persona)))].join(", ")}`, a: "Check spending", to: `agreement/${checkable[0].agreementId}` });
+  const toRead = Object.values(w.reports).filter((r) => r.status === "submitted" && mineAg.some((g) => g.id === r.agreementId));
+  if (toRead.length && (persona.perms.includes("Review") || persona.perms.includes("Approve"))) needs.push({ t: "A report to read", d: toRead[0].period, a: "Read the report", to: `report/${toRead[0].agreementId}` });
+  const proofs = Object.values(w.deliverables).filter((d) => d.pending > 0 && mineAg.some((g) => g.id === d.agreementId));
+  if (proofs.length) needs.push({ t: "Sponsorship proof to accept", d: proofs.map((d) => d.label).join(", "), a: "Open", to: `agreement/${proofs[0].agreementId}` });
   const asks = Object.values(w.asks).filter((a) => a.funderId === fid && a.status === "sent");
   if (asks.length) needs.push({ t: `${asks.length} support ${asks.length === 1 ? "ask" : "asks"} to answer`, d: "Answer with an offer, a question or “not now”.", a: "Answer asks", to: "apps" });
   const shortlisted = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "shortlisted");
@@ -960,112 +971,247 @@ export function Portfolio({ persona }: { persona: Person }) {
   const { world: w } = useStore();
   const fid = persona.funderId!;
   const funds = fundsOf(w, fid);
-  const [tab, setTab] = useState<"agreements" | "reports">("agreements");
-  const own = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light);
-  // Agreements from before the demonstration dates are summarised per fund, so the list and the table always agree.
+  const [tab, setTab] = useState<"agreements" | "programmes" | "reports">(location.hash.includes("reports") ? "reports" : "agreements");
+  const [adding, setAdding] = useState(false);
+  const mine = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid);
+  const own = mine.filter((g) => !g.light);
   const earlier = funds
     .map((f) => {
-      const gs = Object.values(w.agreements).filter((g) => g.fundId === f.id && g.light);
+      const gs = mine.filter((g) => g.fundId === f.id && g.light);
       return { fund: f, n: gs.length, committed: sum(gs.map((g) => g.amount)), released: sum(gs.map((g) => released(w, g.id))) };
     })
     .filter((e) => e.n > 0);
-  const pt = platformTotals(w);
-  void pt;
+  const cash = mine.filter((g) => counts(g) && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
+  const money = cash.map((g) => agreementTotals(w, g.id));
+  const kits = mine.filter((g) => g.kits);
+  const delivered = w.kitDeliveries.reduce((a, d) => a + d.items, 0);
+  const toCheck = Object.values(w.expenses).filter((e) => mine.some((g) => g.id === e.agreementId) && e.status === "reported" && e.receipt);
+  const reports = Object.values(w.reports).filter((r) => mine.some((g) => g.id === r.agreementId) && r.status !== "draft");
+  const programmes = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));
+  const answers = [
+    { q: "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: "Accepted by both sides" },
+    { q: "How much have we paid?", a: fmt(sum(money.map((m) => m.paid))), d: `${fmt(sum(money.map((m) => m.stillToPay)))} still to pay` },
+    { q: "How much spending is checked?", a: fmt(sum(money.map((m) => m.checked))), d: `${fmt(sum(money.map((m) => m.waiting)))} waiting to be checked` },
+  ];
   return (
     <div className="pb-8">
-      <PageHead eyebrow={`Funding · ${w.funders[fid].name}`} title="Where is our money?" lead="Every fund, totalled by type: development, programme, in-kind and commercial never mix. Every figure comes from the records." />
-      <Tabs label="Funding" value={tab} onChange={setTab} tabs={[{ id: "agreements", label: "Agreements" }, { id: "reports", label: "Reports" }]} />
-      {tab === "agreements" ? (
+      <PageHead eyebrow={`Funding · ${w.funders[fid].name}`} title="Who are we supporting, and how is the money used?" lead="Development, programme, commercial and in-kind support are counted apart. Every figure comes from the records." />
+      <section className="grid gap-6 border-b border-line pb-6 sm:grid-cols-3">
+        {answers.map((x) => (
+          <div key={x.q}>
+            <p className="text-small text-subtle">{x.q}</p>
+            <p className="text-stat mt-1 tabular-nums">{x.a}</p>
+            <p className="text-small text-muted">{x.d}</p>
+          </div>
+        ))}
+      </section>
+      {(toCheck.length > 0 || reports.some((r) => r.status === "submitted") || own.some((g) => g.status === "awaiting-approval")) && (
+        <Section title="Needs you">
+          <ul>
+            {own.filter((g) => g.status === "awaiting-approval").map((g) => (
+              <Row key={g.id}>
+                <span>Existing funding for {recipientName(w, g.recipientKind, g.recipientId, persona)} ({fmt(g.amount)}) waits for a second person to approve it</span>
+                <a className={btn("primary", "min-h-10")} href={`#/app/${persona.id}/agreement/${g.id}`}>Open</a>
+              </Row>
+            ))}
+            {toCheck.length > 0 && (
+              <Row>
+                <span>
+                  {plural(toCheck.length, "expense")} with receipts to check ({fmt(sum(toCheck.map((e) => e.amount)))})
+                </span>
+                <a className={btn("secondary", "min-h-10")} href={`#/app/${persona.id}/agreement/${toCheck[0].agreementId}`}>
+                  Check spending
+                </a>
+              </Row>
+            )}
+            {reports.filter((r) => r.status === "submitted").map((r) => (
+              <Row key={r.id}>
+                <span>Report to read: {r.period}</span>
+                <a className={btn("secondary", "min-h-10")} href={`#/app/${persona.id}/report/${r.agreementId}`}>Read the report</a>
+              </Row>
+            ))}
+          </ul>
+        </Section>
+      )}
+      <div className="mt-8">
+        <Tabs label="Funding" value={tab} onChange={setTab} tabs={[{ id: "agreements", label: "Who we support", count: mine.filter(counts).length }, ...(programmes.length ? [{ id: "programmes" as const, label: "Programmes", count: programmes.length }] : []), { id: "reports", label: "Reports", count: reports.length }]} />
+      </div>
+      {tab === "agreements" && (
         <>
-          <ul className="mt-4 border-t border-line md:hidden">
-            {funds.map((f) => {
-              const t = fundTotals(w, f.id);
+          <Section title="Is there money left in each fund?">
+            <ul>
+              {funds.map((f) => {
+                const t = fundTotals(w, f.id);
+                return (
+                  <li key={f.id} className="border-b border-line py-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-medium">{f.name}</p>
+                      <p className="text-small text-subtle">
+                        {f.type} · {policyText(f.policy).toLowerCase()} · {plural(t.count, "agreement")}
+                      </p>
+                    </div>
+                    {BEHAVIOUR[f.type] === "inkind" ? (
+                      <p className="mt-2 text-small">
+                        {kits.reduce((a, g) => a + g.kits!.items, 0)} kits declared at {fmt(t.committed)} (not cash, never added to money totals) · {delivered} delivered
+                      </p>
+                    ) : (
+                      <div className="mt-3">
+                        <FundBar announced={t.announced} committed={t.committed} reserved={t.held} sources={fundSources(w, f.id, persona)} />
+                        <p className="mt-2 text-small text-muted">Paid so far {fmt(t.released)}</p>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+          <Section title="Who we support" aside={<button type="button" className={btn("secondary", "min-h-10")} onClick={() => setAdding(true)}>Add existing funding</button>}>
+            <ul>
+              {own.map((g) => {
+                const t = agreementTotals(w, g.id);
+                return (
+                  <Row key={g.id}>
+                    <div>
+                      <a className="font-medium hover:text-signal" href={`#/app/${persona.id}/agreement/${g.id}`}>
+                        {recipientName(w, g.recipientKind, g.recipientId, persona)} · {w.funds[g.fundId].type} · {fmt(g.amount)}
+                      </a>
+                      <p className="mt-1 text-small text-subtle">
+                        {g.status === "awaiting-approval" ? "Waiting for a second approver" : g.status === "awaiting-recipient" ? "Waiting for the recipient to confirm" : `${fmt(t.paid)} paid · ${fmt(t.spent)} spent · ${fmt(t.checked)} checked`}
+                        {g.origin === "Existing agreement" ? " · existing funding" : ""}
+                      </p>
+                    </div>
+                    <a className={btn("quiet", "min-h-10 shrink-0")} href={`#/app/${persona.id}/agreement/${g.id}`}>
+                      Open <ArrowRight className="size-4" aria-hidden="true" />
+                    </a>
+                  </Row>
+                );
+              })}
+              {earlier.filter((e) => !kits.some((k) => k.fundId === e.fund.id)).map((e) => (
+                <Row key={e.fund.id}>
+                  <div>
+                    <p className="font-medium">
+                      {plural(e.n, w.funds[e.fund.id].type.toLowerCase())} · {e.fund.name}
+                    </p>
+                    <p className="mt-1 text-small text-subtle">
+                      Earlier agreements, shown as one line · {fmt(e.committed)} committed · {fmt(e.released)} paid
+                    </p>
+                  </div>
+                </Row>
+              ))}
+              {own.length === 0 && earlier.length === 0 && <Empty li>No agreements yet.</Empty>}
+            </ul>
+          </Section>
+        </>
+      )}
+      {tab === "programmes" && (
+        <Section title="Are funded programmes on track?">
+          <ul>
+            {programmes.map((p) => {
+              const t = programmeTotals(w, p.id);
+              const behind = t.sites.filter((s) => s.status !== "On track");
               return (
-                <li key={f.id} className="border-b border-line py-4">
-                  <p className="font-medium">{f.name}</p>
-                  <p className="text-small text-subtle">{f.type} · {policyText(f.policy).toLowerCase()} · {plural(t.count, "agreement")}</p>
-                  <div className="mt-3"><FundBar announced={t.announced} committed={t.committed} reserved={t.held} /></div>
-                  <p className="mt-2 text-small text-muted">Released {fmt(t.released)}</p>
-                </li>
+                <Row key={p.id}>
+                  <div>
+                    <p className="font-medium">
+                      {p.name} · {w.orgs[p.orgId].name}
+                    </p>
+                    <p className="mt-1 text-small text-subtle">
+                      {t.delivered} of {t.due} sessions so far · {behind.length ? `${behind.map((s) => s.site.name).join(", ")} behind or needing attention` : "every site on track"}
+                    </p>
+                  </div>
+                  <a className={btn("secondary", "min-h-10 shrink-0")} href={`#/app/${persona.id}/programme/${p.id}`}>
+                    See sites <ArrowRight className="size-4" aria-hidden="true" />
+                  </a>
+                </Row>
               );
             })}
           </ul>
-          <div className="relative mt-4 hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[52rem] text-table">
-              <thead>
-                <tr className="label-data border-b border-line text-left text-subtle">
-                  <th className="sticky left-0 bg-canvas py-3 pr-4">Fund</th>
-                  <th className="py-3 pr-4">Type · approval</th>
-                  <th className="py-3 pr-4 text-right">Agreements</th>
-                  <th className="py-3 pr-4 text-right">Committed</th>
-                  <th className="py-3 pr-4 text-right">Held for offers</th>
-                  <th className="py-3 pr-4 text-right">Released</th>
-                  <th className="py-3 text-right">Available</th>
-                </tr>
-              </thead>
-              <tbody>
-                {funds.map((f) => {
-                  const t = fundTotals(w, f.id);
-                  return (
-                    <tr key={f.id} className="h-14 border-b border-line">
-                      <td className="sticky left-0 bg-canvas pr-4 font-medium">{f.name}</td>
-                      <td className="pr-4">
-                        <Chip kind="neutral">{f.type}</Chip> <span className="block text-small text-subtle">{policyText(f.policy)}</span>
-                      </td>
-                      <td className="pr-4 text-right">{t.count}</td>
-                      <td className="pr-4 text-right"><SeeSource name={`${f.name} committed`}>{fmt(t.committed)}</SeeSource></td>
-                      <td className="pr-4 text-right">{fmt(t.held)}</td>
-                      <td className="pr-4 text-right"><SeeSource name={`${f.name} released`}>{fmt(t.released)}</SeeSource></td>
-                      <td className="text-right">{fmt(t.available)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <Section title="Agreements to follow">
-            {own.length === 0 && earlier.length === 0 ? <Empty>No agreements yet.</Empty> : (
-              <ul>
-                {earlier.map((e) => (
-                  <Row key={e.fund.id}>
-                    <div>
-                      <p className="font-medium">{plural(e.n, w.funds[e.fund.id].type.toLowerCase())} · {e.fund.name}</p>
-                      <p className="mt-1 text-small text-subtle">Earlier agreements, shown as one line · {fmt(e.committed)} committed · {fmt(e.released)} released</p>
-                    </div>
-                    <SeeSource name={`${e.fund.name} earlier agreements`}>{fmt(e.committed)}</SeeSource>
-                  </Row>
-                ))}
-                {own.map((g) => {
-                  const rel = released(w, g.id);
-                  return (
-                    <Row key={g.id}>
-                      <div>
-                        <p className="font-medium">
-                          {recipientName(w, g.recipientKind, g.recipientId, persona)} · {w.funds[g.fundId].type} · {fmt(g.amount)}
-                        </p>
-                        <p className="mt-1 flex items-center gap-2 text-small text-subtle">
-                          <MiniLine total={6} current={rel ? 2 : 1} label={rel ? "Released" : "Committed"} /> {rel ? `${fmt(rel)} released` : "Committed · payment to record"} · {g.origin}
-                        </p>
-                      </div>
-                      {rel === 0 && persona.perms.includes("Finance") && (
-                        <ActionButton actor={persona.id} type="recordRelease" args={{ agreementId: g.id, amount: w.funds[g.fundId].type === "Scholarship award" || w.funds[g.fundId].type === "Sponsorship agreement" ? g.amount / 2 : g.amount, ref: `REL-${g.id}`, entryId: `le-${g.id}-${Date.now()}` }} success="Release recorded (simulated). The recipient confirms receipt.">
-                          Record release (simulated)
-                        </ActionButton>
-                      )}
-                    </Row>
-                  );
-                })}
-              </ul>
-            )}
-          </Section>
-          <p className="mt-6 text-small text-subtle">Spending updates, verification, deliverables and reviews start on 30 Jun. In-kind items and commercial agreements are reported apart and never added to development totals.</p>
-        </>
-      ) : (
-        <div className="mt-6 max-w-2xl text-muted">
-          <p>Reports are drafted only from verified records, pass a claims check, and keep outputs, sporting outcomes and impact apart. Report drafting arrives in the next build.</p>
-          <p className="mt-3 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
-        </div>
+        </Section>
       )}
+      {tab === "reports" && (
+        <Section title="Reports from the people we fund">
+          {reports.length === 0 ? <Empty>No reports yet. Organisations send them from their funding record; you read, accept or return them here.</Empty> : (
+            <ul>
+              {reports.map((r) => (
+                <Row key={r.id}>
+                  <span>
+                    {r.period} · {recipientName(w, "org", w.agreements[r.agreementId].recipientId, persona)}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <Chip kind={r.status === "accepted" ? "verified" : r.status === "submitted" ? "awaiting" : "attention"}>{r.status === "accepted" ? "Accepted" : r.status === "submitted" ? "To read" : "Returned"}</Chip>
+                    <a className={btn("secondary", "min-h-10")} href={`#/app/${persona.id}/report/${r.agreementId}`}>Open</a>
+                  </span>
+                </Row>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+      <AddExisting persona={persona} open={adding} onClose={() => setAdding(false)} />
+      <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
     </div>
+  );
+}
+
+function AddExisting({ persona, open, onClose }: { persona: Person; open: boolean; onClose: () => void }) {
+  const { world: w, go } = useStore();
+  const fid = persona.funderId!;
+  const funds = fundsOf(w, fid).filter((f) => BEHAVIOUR[f.type] !== "inkind");
+  const [org, setOrg] = useState("ostral");
+  const [fundId, setFundId] = useState(funds.find((f) => f.id === "fdg")?.id ?? funds[0]?.id ?? "");
+  const [amount, setAmount] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [paid, setPaid] = useState("");
+  const [spent, setSpent] = useState("");
+  const act = useAction(persona.id);
+  return (
+    <Panel open={open} onClose={onClose} eyebrow="Add existing funding" title="Funding that started before Revivo Impact">
+      <p className="text-small text-muted">No new application is needed. A second person with Approve confirms it, then the recipient checks the figures.</p>
+      <Field label="Who receives it?" htmlFor="ex-org">
+        <select id="ex-org" className={inputCls} value={org} onChange={(e) => setOrg(e.target.value)}>
+          {Object.values(w.orgs).filter((o) => !o.light).map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="From which fund?" htmlFor="ex-fund">
+        <select id="ex-fund" className={inputCls} value={fundId} onChange={(e) => setFundId(e.target.value)}>
+          {funds.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name} ({fmt(fundTotals(w, f.id).available)} available)
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="What is it for?" htmlFor="ex-purpose">
+        <input id="ex-purpose" className={inputCls} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="For example: regional swimming coach development" />
+      </Field>
+      <div className="grid gap-x-4 sm:grid-cols-3">
+        <Field label="Amount agreed" htmlFor="ex-amt">
+          <input id="ex-amt" inputMode="numeric" className={inputCls} value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} />
+        </Field>
+        <Field label="Already paid" htmlFor="ex-paid">
+          <input id="ex-paid" inputMode="numeric" className={inputCls} value={paid} onChange={(e) => setPaid(e.target.value.replace(/\D/g, ""))} />
+        </Field>
+        <Field label="Already spent" htmlFor="ex-spent">
+          <input id="ex-spent" inputMode="numeric" className={inputCls} value={spent} onChange={(e) => setSpent(e.target.value.replace(/\D/g, ""))} />
+        </Field>
+      </div>
+      <Button
+        className="mt-6"
+        onClick={() => {
+          const id = `ag-ex-${org}-${Date.now()}`;
+          if (act.run("addExistingFunding", { agreementId: id, fundId, orgId: org, amount: Number(amount), purpose, paid: Number(paid || 0), spent: Number(spent || 0), nextUpdate: "Next update due Thu 30 Sep" }, "Added. A second person with Approve now confirms it.")) {
+            onClose();
+            go(`app/${persona.id}/agreement/${id}`);
+          }
+        }}
+      >
+        Add and send for approval
+      </Button>
+      <Message error={act.error} done={act.done} />
+    </Panel>
   );
 }
