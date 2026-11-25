@@ -43,7 +43,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const toReview = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "submitted" && a.scores.length < 2 && !a.scores.some((s) => s.by === persona.id) && !a.light);
   if (toReview.length && persona.perms.includes("Review")) needs.push({ t: `${toReview.length} application${toReview.length > 1 ? "s" : ""} to review`, d: toReview.map((a) => athleteLabel(w, a.applicantId, persona)).join(", "), a: "Review", to: `review/${toReview[0].id}` });
   const toRelease = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light && released(w, g.id) === 0 && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
-  if (toRelease.length && persona.perms.includes("Finance")) needs.push({ t: `${toRelease.length} payment${toRelease.length > 1 ? "s" : ""} to record`, d: "Recorded, never processed (simulated).", a: "Record payments", to: "portfolio" });
+  if (toRelease.length && persona.perms.includes("Finance")) needs.push({ t: toRelease.length > 1 ? `${toRelease.length} first payments to record` : `First payment to record for ${recipientName(w, toRelease[0].recipientKind, toRelease[0].recipientId, persona)}`, d: "Your finance team pays; you record it here (simulated: no money moves).", a: "Record a payment", to: `agreement/${toRelease[0].id}` });
   const main = funds.find((x) => x.id === "eas") ?? funds[0];
   const isFoundation = f.type === "Foundation";
   const quick = [

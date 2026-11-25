@@ -247,3 +247,19 @@ Tone each image with the same solver and target as Pathway (`tools/tone/solve.py
 p75 luminance ≈ 76/255, mean saturation ≈ 42%, clamps as `04` §9; record values in `src/content/images.ts`; compress
 to WebP (about 1672px wide, quality 78) for the single-file build; total images under about 3 MB. Every image is
 labelled "Illustrative" in its alt text context and is never presented as a real participant.
+
+## P3 update (25 Nov 2026): no new images; three placements change
+
+P3 added the working screens for tracking and review: the funding record (15/17), Send an update (18), Programme
+(19), Today's sessions (20) and Reports (21). Following the founder's direction ("use photography where it enhances
+the experience, not where it interferes with functionality") and `04` §1 (working zones carry no photos), these
+screens have **no photographs**. The set stays at **19 images**; only placements change:
+
+| Image | Before | Now |
+|---|---|---|
+| im-08-community-programme | Programme (19) header and the Community Sports Programme Grant header | The organisation's Home and the Community Sports Programme Grant header only |
+| im-14-sponsorship-sprinter | Corvane Athlete Partnerships header; sponsorship agreement band (15, 17) | Corvane Athlete Partnerships header only |
+| im-17-report-desk | Reports (21) print cover band | The printed report cover only (built in P4) |
+
+Nothing else changes: same filenames, ratios, subjects, grading and prompts. Until the founder supplies the images,
+labelled placeholders stay in place.
