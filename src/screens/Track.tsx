@@ -44,6 +44,7 @@ import {
   SimulatedAI,
 } from "../components/ui";
 import { FundingBar, FundingLine, MiniLine } from "../components/money";
+import { docNumber, FictionalDocument, type DocSpec } from "../components/Document";
 import {
   ActionButton,
   athleteLabel,
@@ -245,6 +246,40 @@ export function AgreementStages({
   );
 }
 
+/* ------------------------------------------- fictional supporting documents */
+
+const ISSUER = (what: string, w: World, g: Agreement) => {
+  const t = what.toLowerCase();
+  const club = g.recipientKind === "athlete" ? w.athletes[g.recipientId]?.club : undefined;
+  if (/coach|fee|training|session/.test(t)) return { issuer: club ?? "Halden Coaching Collective", line: "Coaching and training services", kind: "Invoice" as const };
+  if (/travel|minibus|flight|train|bus|hotel/.test(t)) return { issuer: "Coastline Coach Travel", line: "Team and athlete travel", kind: "Receipt" as const };
+  if (/entry|invitational|championship|series|race/.test(t)) return { issuer: "Competition Entries Office", line: "Event entries and accreditation", kind: "Receipt" as const };
+  if (/survey|register|monitoring/.test(t)) return { issuer: "Fieldnote Research Services", line: "Surveys and registers", kind: "Invoice" as const };
+  if (/hall|venue/.test(t)) return { issuer: "Westside Community Halls", line: "Hall hire", kind: "Invoice" as const };
+  return { issuer: "Northline Sports Supplies", line: "Sports equipment and kit", kind: "Receipt" as const };
+};
+
+export function docForExpense(w: World, e: World["expenses"][string], viewer: Person): DocSpec {
+  const g = w.agreements[e.agreementId];
+  const i = ISSUER(e.what, w, g);
+  return { kind: i.kind, issuer: i.issuer, issuerLine: i.line, number: docNumber(e.id, i.kind === "Invoice" ? "INV" : "RCT"), date: `${e.paidOn} 2027`, to: recipientName(w, g.recipientKind, g.recipientId, viewer), lines: [{ label: e.what, amount: e.amount }], note: "Paid in full (simulated)." };
+}
+
+export function docForProgress(w: World, p: World["progress"][string], viewer: Person): DocSpec {
+  const a = p.athleteId ? w.athletes[p.athleteId] : undefined;
+  const who = p.athleteId ? athleteLabel(w, p.athleteId, viewer) : w.orgs[p.orgId ?? ""]?.name ?? "";
+  if (p.attestedBy && !p.proof)
+    return { kind: "Training confirmation", issuer: a?.club ?? "The athlete's club", issuerLine: "Coach's confirmation", number: docNumber(p.id, "TRN"), date: `${dayOf(p.at)} 2027`, to: who, lines: [{ label: p.text }], note: "I confirm this training record matches my session register.", signedBy: w.people[p.attestedBy]?.name };
+  const fed = a?.sport === "Judo" ? "Ardent Judo Federation" : `${a?.sport ?? "National"} federation results service`;
+  return { kind: "Result confirmation", issuer: fed, issuerLine: "Official results list (fictional)", number: docNumber(p.id, "RES"), date: `${dayOf(p.at)} 2027`, to: who, lines: [{ label: p.text }], note: p.attestedBy ? `Also confirmed by ${w.people[p.attestedBy]?.name} (coach).` : "Entry matches the published results list.", signedBy: p.attestedBy ? w.people[p.attestedBy]?.name : undefined };
+}
+
+export function docForEvidence(w: World, d: World["deliverables"][string], i: number, viewer: Person): DocSpec {
+  const g = w.agreements[d.agreementId];
+  const ev = d.evidence![i];
+  return { kind: "Activity evidence", issuer: recipientName(w, g.recipientKind, g.recipientId, viewer), issuerLine: `For ${w.funders[w.funds[g.fundId].funderId].name}`, number: docNumber(`${d.id}-${i}`, "ACT"), date: `${dayOf(ev.at)} 2027`, to: d.label, lines: [{ label: ev.text }, { label: "Photo: illustrative placeholder (no real image)" }], note: ev.accepted ? "Accepted by the sponsor." : "Waiting for the sponsor to accept." };
+}
+
 /* ------------------------------------------------- the funding record */
 
 export function AgreementPage({
@@ -257,6 +292,8 @@ export function AgreementPage({
   const { world: w } = useStore();
   const g = w.agreements[id];
   const [ask, setAsk] = useState(false);
+  const [doc, setDoc] = useState<DocSpec | null>(null);
+  const [docExpense, setDocExpense] = useState<string | null>(null);
   if (!g) return <Empty>This funding record does not exist.</Empty>;
   const side = sideOf(w, persona, g);
   if (!side)
@@ -389,6 +426,11 @@ export function AgreementPage({
                         ? ` · ${funder.name} asked: “${e.query}”`
                         : ""}
                     </p>
+                    {e.receipt && e.status !== "carried-in" && (
+                      <button type="button" className="mt-1 inline-flex min-h-9 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => (setDoc(docForExpense(w, e, persona)), setDocExpense(e.id))}>
+                        View the receipt
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Chip
@@ -550,6 +592,11 @@ export function AgreementPage({
                         ? ` · sent by ${minor && !me ? "the athlete's coach" : w.people[p.by].name}`
                         : ""}
                     </p>
+                    {(p.proof || p.attestedBy) && (
+                      <button type="button" className="mt-1 inline-flex min-h-9 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => setDoc(docForProgress(w, p, persona))}>
+                        View the {p.attestedBy && !p.proof ? "coach's confirmation" : "proof"}
+                      </button>
+                    )}
                   </div>
                   {p.photo &&
                     (photosOn ? (
@@ -620,6 +667,14 @@ export function AgreementPage({
         persona={persona}
         agreementId={id}
       />
+      <Panel open={!!doc} onClose={() => (setDoc(null), setDocExpense(null))} eyebrow="Supporting document · fictional" title={doc ? `${doc.kind} · ${doc.issuer}` : ""}>
+        {doc && <FictionalDocument d={doc} />}
+        {docExpense && side === "funder" && (persona.perms.includes("Finance") || persona.perms.includes("Verify")) && ["reported", "query"].includes(w.expenses[docExpense]?.status ?? "") && w.expenses[docExpense].by !== persona.id && (
+          <ActionButton className="mt-5" actor={persona.id} type="checkExpense" args={{ expenseId: docExpense }} success="Checked against the receipt.">
+            Receipt matches: check
+          </ActionButton>
+        )}
+      </Panel>
       <p className="mt-8 text-small text-subtle">{HONESTY}</p>
     </div>
   );
@@ -980,6 +1035,7 @@ function Deliverables({
   side: "funder" | "recipient";
 }) {
   const { world: w } = useStore();
+  const [doc, setDoc] = useState<DocSpec | null>(null);
   const dels = Object.values(w.deliverables).filter(
     (d) => d.agreementId === g.id,
   );
@@ -997,6 +1053,11 @@ function Deliverables({
                   {d.done} of {d.target} done
                   {d.pending ? ` · ${d.pending} waiting for the sponsor` : ""}
                 </p>
+                {(d.evidence ?? []).map((ev, i) => (
+                  <button key={i} type="button" className="mt-1 block min-h-9 text-left text-small underline underline-offset-4 hover:text-signal" onClick={() => setDoc(docForEvidence(w, d, i, persona))}>
+                    View proof {i + 1}: {ev.text}
+                  </button>
+                ))}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Chip
@@ -1045,6 +1106,9 @@ function Deliverables({
       <p className="mt-3 text-small text-subtle">
         Deliverables are counted, never turned into money.
       </p>
+    <Panel open={!!doc} onClose={() => setDoc(null)} eyebrow="Supporting document · fictional" title={doc ? `${doc.kind} · ${doc.issuer}` : ""}>
+        {doc && <FictionalDocument d={doc} />}
+      </Panel>
     </Section>
   );
 }

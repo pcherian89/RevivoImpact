@@ -247,7 +247,7 @@ export type Expense = { id: string; agreementId: string; what: string; amount: n
 /** Sporting progress: a result, training or a milestone, with or without proof. */
 export type Progress = { id: string; agreementId?: string; athleteId?: string; orgId?: string; kind: "result" | "training" | "milestone"; text: string; proof: boolean; attestedBy?: string; photo?: boolean; by: string; at: Moment };
 /** Commercial sponsorship deliverables: separate from money, never a cash bar. */
-export type Deliverable = { id: string; agreementId: string; label: string; due: string; target: number; done: number; pending: number; status: "scheduled" | "in-progress" | "complete" };
+export type Deliverable = { id: string; agreementId: string; label: string; due: string; target: number; done: number; pending: number; status: "scheduled" | "in-progress" | "complete"; evidence?: { text: string; at: Moment; accepted: boolean }[] };
 export type ReviewDecision = { id: string; agreementId: string; decision: "Continue" | "Continue with conditions" | "Pause" | "Close"; conditions?: string; by: string; at: Moment };
 export type Site = { id: string; name: string; participants: number };
 export type Programme = { id: string; name: string; orgId: string; agreementId: string; sport: string; purpose: string; sites: Site[]; sessionsPerSite: number; budget: { line: string; amount: number }[] };

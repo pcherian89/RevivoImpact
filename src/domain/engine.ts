@@ -1096,6 +1096,7 @@ export const commands = {
     need(a.evidence?.trim().length > 3, "Say what the proof shows, for example “Kit worn at the Southern Open, photo attached”.");
     d.pending += 1;
     d.status = "in-progress";
+    (d.evidence ??= []).push({ text: a.evidence.trim(), at: c.at, accepted: false });
     audit(c, `Sent proof: ${a.evidence.trim()}`, d.label);
   },
 
@@ -1106,6 +1107,8 @@ export const commands = {
     need(d.pending > 0, "There is no proof waiting to be accepted.");
     d.pending -= 1;
     d.done += 1;
+    const first = d.evidence?.find((x) => !x.accepted);
+    if (first) first.accepted = true;
     d.status = d.done >= d.target ? "complete" : "in-progress";
     audit(c, `Accepted proof (${d.done} of ${d.target})`, d.label);
   },
