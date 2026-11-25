@@ -218,7 +218,7 @@ export function ImageSlot({
     // Decorative: the words beside it carry the meaning, as on the website and in Revivo Pathway.
     return (
       <figure
-        className={cn("photo-frame relative overflow-hidden", className)}
+        className={cn("photo-frame relative overflow-hidden rounded-xl", className)}
         style={{ aspectRatio: `${photo.w}/${photo.h}` }}
         aria-hidden="true"
         data-image={file}
@@ -237,7 +237,7 @@ export function ImageSlot({
   }
   return (
     <figure
-      className={cn("photo-frame relative overflow-hidden rounded-[6px] bg-surface-2", className)}
+      className={cn("photo-frame relative overflow-hidden rounded-xl bg-surface-2", className)}
       style={{ aspectRatio: ratio }}
       aria-label={`Photograph to come${caption ? `: ${caption}` : ""}`}
       data-image={file}
@@ -253,37 +253,40 @@ export function ImageSlot({
 }
 
 /**
- * Cinematic header band: the image shown whole on the right (laptop, tablet) fading into the canvas, with the
- * page title over the fade; on phones the image sits above with a bottom fade, or is moved below (phoneImage="after").
+ * Page header: the title, a plain sentence on what the page is for and the main actions on the left; the photograph
+ * on the right, shown whole, clear and beside the words (never under them). Phones show the photo above the title,
+ * or not at all here (Home screens place it below "Needs you" themselves).
+ * Founder direction (25 Nov 2026): photos must look clear, never faded or see-through, and no text may sit on a photo.
  */
 export function HeroBand({
   file,
   children,
   caption,
   phone = "before",
+  className,
 }: {
   file: string;
   children: ReactNode;
   caption?: string;
   /** Phones: the image above the title (default) or not at all (Home screens place it below "Needs you" themselves). */
   phone?: "before" | "none";
+  /** Home screens pass the width of their sections, so the photo's right edge lines up with the content below. */
+  className?: string;
 }) {
-  // Pathway's header pattern: the photo sits behind the right half of the header, clipped to the header's height and
-  // fading into the canvas on its left and bottom; the title, a short explanation and the key facts fill the left.
   return (
-    <section className="relative border-b border-line md:mb-2">
+    <section className={cn("border-b border-line md:mb-2", className)}>
       {phone === "before" && <PhonePhoto file={file} caption={caption} className="mt-4" />}
-      <div aria-hidden="true" className="header-photo pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] md:block">
-        <ImageSlot file={file} caption={caption} className="fade-header w-full rounded-none" />
+      <div className="grid items-center gap-x-8 py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-x-12">
+        <div className="min-w-0">{children}</div>
+        <ImageSlot file={file} caption={caption} className="hidden w-full md:block" />
       </div>
-      <div className="relative z-10 flex flex-col justify-center pt-6 pb-6 md:min-h-[clamp(13rem,23vw,20rem)] md:w-[60%] md:pt-8 md:pb-8">{children}</div>
     </section>
   );
 }
 
-/** Phones only: a header photo shown whole, full width, fading at its edges (tablet and laptop show it in the HeroBand). */
+/** Phones only: a header photo shown whole and full width (tablet and laptop show it in the HeroBand). */
 export function PhonePhoto({ file, caption, className }: { file: string; caption?: string; className?: string }) {
-  return <ImageSlot file={file} caption={caption} className={cn("hero-fade-phone w-full md:hidden", className)} />;
+  return <ImageSlot file={file} caption={caption} className={cn("w-full md:hidden", className)} />;
 }
 
 export function PageHead({

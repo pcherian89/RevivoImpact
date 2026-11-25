@@ -293,7 +293,7 @@ export function eligibility(_w: World, opp: Opportunity, a: Athlete | undefined)
       }
       case "sport": {
         const ok = opp.id === "ardent-hp" ? a.sport === "Judo" : ["Athletics", "Badminton", "Boxing", "Cycling", "Judo", "Rowing", "Swimming", "Table tennis", "Wheelchair basketball", "Wheelchair racing"].includes(a.sport);
-        c = { label: r.label, result: ok ? "met" : "not", detail: ok ? a.sport : `Only for ${opp.sportsLabel.replace(/ incl\..*$/, "")}; not ${a.sport.toLowerCase()}` };
+        c = { label: r.label, result: ok ? "met" : "not", detail: ok ? `Your sport: ${a.sport.toLowerCase()}` : `Only for ${opp.sportsLabel.replace(/ incl\..*$/, "")}; not ${a.sport.toLowerCase()}` };
         break;
       }
       case "swimming":

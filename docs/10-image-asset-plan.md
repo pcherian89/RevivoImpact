@@ -46,10 +46,7 @@ guessing.
 
 Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
 `tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
-Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. Still to come: im-04 and im-12 (and im-10, no longer shown until a logo-free football photo arrives)
-still show "Photograph to come". The founder's women's football photo (for im-10) is on hold: it carries many Nike marks (bibs, shorts, socks,
-shoes), too many to remove cleanly; a version without logos was requested. The judo photo would also suit im-12 (High Performance Camp Support) if the founder
-wants it reused there.
+Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. Founder decisions (25 Nov 2026, no more photos to generate): the guardian Home reuses im-08 (youth football; children at a distance, parents along the fence) and High Performance Camp Support reuses im-03 (judo); im-04, im-10 and im-12 are no longer needed. Final review the same day: photos are shown clear and whole, with rounded corners, no fading or see-through edges and full colour (grade contrast only); headers are two columns (words left, photo right) so no text sits on a photo; Home headers match the 64rem width of the sections below.
 
 ## 1. What changed since the P1 plan
 

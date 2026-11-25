@@ -32,7 +32,7 @@
   --ri-info: #4fafa3;
   --ri-steel: #a8a8a2;
   --ri-coral: #ef4444;
-  --photo-grade: saturate(0.86) contrast(1.05) brightness(0.92);
+  --photo-grade: contrast(1.03); /* founder: photos full colour and brightness (25 Nov 2026) */
   color-scheme: dark;
 }
 
@@ -58,7 +58,7 @@
   --ri-info: #1d7369;
   --ri-steel: #5c5c57;
   --ri-coral: #b91c1c;
-  --photo-grade: saturate(0.9) contrast(1.02) brightness(1);
+  --photo-grade: contrast(1.02);
   color-scheme: light;
 }
 
@@ -173,17 +173,10 @@
 .photo {
   filter: var(--photo-grade) var(--tone,);
 }
-/* Standalone photographs fade at every edge into the canvas, never a hard rectangle (Pathway .fade-band, copied from
-   pcherian89/RevivoPathway src/app/globals.css, commit c95430c). Hero bands override this with .hero-fade. */
+/* Photographs are shown clear and whole, with softly rounded corners and no fading or see-through edges (founder
+   direction, 25 Nov 2026: "it shouldn't be faded or transparent"). Words never sit on a photo. */
 .photo-frame {
-  -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, #000 6%, #000 82%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, #000 6%, #000 82%, transparent 100%);
-  mask-composite: intersect;
+  border-radius: 0.75rem;
 }
 
 /* Signal light (Funding Line): runs once from the funder to the current node. */
@@ -270,26 +263,6 @@
   text-transform: uppercase;
 }
 
-/* Hero band: the photo shown whole on the right, fading into the canvas on its left and lower edges so the page
-   title can sit over the fade (website .hero-photo-frame / .hero-band pattern). */
-/* Same fade as the website's .hero-photo-frame (left 14%, top 4%, bottom from 82%), so more of the photo stays clear. */
-.hero-fade {
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 14%), linear-gradient(to bottom, transparent 0%, #000 4%, #000 82%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent 0%, #000 14%), linear-gradient(to bottom, transparent 0%, #000 4%, #000 82%, transparent 100%);
-  mask-composite: intersect;
-}
-.hero-fade-phone {
-  -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 5%, #000 95%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, #000 4%, #000 80%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to right, transparent 0%, #000 5%, #000 95%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, #000 4%, #000 80%, transparent 100%);
-  mask-composite: intersect;
-}
-
 /* Phones: focused fields never hide under the sticky prototype bar or the bottom menu (WCAG 2.2, 2.4.11). */
 @media (max-width: 767px) {
   html {
@@ -349,22 +322,4 @@ main > div > :first-child {
   html.ri-guide-open .ri-guide-hide {
     display: none;
   }
-}
-
-/* Header photographs (Pathway .header-photo / .fade-header, copied from pcherian89/RevivoPathway src/app/globals.css,
-   commit c95430c): clipped to the header's height, fading into the canvas on the left and at the bottom. */
-.header-photo {
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
-}
-.fade-header {
-  -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 30%, #000 100%),
-    linear-gradient(to bottom, transparent 0%, #000 6%, #000 70%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to right, transparent 0%, #000 30%, #000 100%),
-    linear-gradient(to bottom, transparent 0%, #000 6%, #000 70%, transparent 100%);
-  mask-composite: intersect;
 }

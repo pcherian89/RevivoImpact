@@ -104,11 +104,11 @@ export function SeekerHome({ persona }: { persona: Person }) {
         { t: persona.role === "coach" ? "See applications you prepared" : "See your applications", to: "applications", icon: CircleCheck },
       ];
   const agreements = rid ? agreementsFor(w, kind, rid) : [];
-  const homePhoto = persona.role === "guardian" ? "im-04-guardian-offer.png" : org ? "im-08-community-programme.png" : "im-03-athlete-home.png";
+  const homePhoto = persona.role === "guardian" || org ? "im-08-community-programme.png" : "im-03-athlete-home.png";
 
   return (
     <div className="pb-8">
-      <HeroBand file={homePhoto} phone="none">
+      <HeroBand file={homePhoto} phone="none" className="max-w-[64rem]">
         <p className="label text-signal">{org ? `${org.type} · ${org.region}` : ath ? `${persona.role === "athlete" ? "Athlete" : persona.role === "guardian" ? "Guardian" : "Coach"} · ${ath.sport.toLowerCase()} · ${ath.region}` : "Guardian"}</p>
         <h1 className="text-title mt-2">
           {persona.role === "athlete" ? `Hello ${first}. Here’s what needs you.` : persona.role === "guardian" ? `What needs you for ${ath?.name.split(" ")[0] ?? ""}, ${first}?` : persona.role === "coach" ? `Your athletes, ${first}` : `${org?.name}: what needs you?`}

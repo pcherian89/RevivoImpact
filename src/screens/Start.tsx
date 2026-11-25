@@ -132,7 +132,7 @@ export function Start() {
         </section>
       </div>
 
-      <ImageSlot file="im-02-landing-phone.png" ratio="9/16" className="hero-fade-phone mx-auto mt-10 w-3/4 sm:hidden" />
+      <ImageSlot file="im-02-landing-phone.png" ratio="9/16" className="mx-auto mt-10 w-3/4 sm:hidden" />
 
       <section aria-labelledby="how" className="mt-16 border-t border-line pt-10">
         <Label>How it works</Label>

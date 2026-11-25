@@ -40,6 +40,9 @@ const shots = [
   ["28-opportunity-eligibility", "app/amira/opportunity/eas", "may06"],
   ["29-sponsor-profile", "app/nadia/profile/halvorsen", "may06"],
   ["30-individual-sponsor-overview", "app/marcus/overview", "may06"],
+  ["31-guardian-home", "app/rosa/home", "jun30"],
+  ["32-camp-grant", "app/amira/opportunity/ardent-hp", "may06"],
+  ["33-brand-profile", "app/nadia/profile/corvane", "may06"],
 ];
 const widths = (process.env.WIDTHS ?? "375,768,1024,1440").split(",").map(Number);
 const themes = (process.env.THEMES ?? "dark").split(",");

@@ -62,7 +62,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const overviewPhoto = f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : "im-06-funder-visit.png";
   return (
     <div className="pb-8">
-      <HeroBand file={overviewPhoto} phone="none">
+      <HeroBand file={overviewPhoto} phone="none" className="max-w-[64rem]">
         <p className="label text-signal">{f.name} · Overview</p>
         <h1 className="text-title mt-2">What needs you, {persona.name.split(" ")[0]}?</h1>
         <p className="text-lead mt-3 max-w-[36rem] text-muted">
