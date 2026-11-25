@@ -226,8 +226,29 @@
 }
 
 @media print {
-  [data-ri-print-hide] {
+  [data-ri-print-hide],
+  nav,
+  header button,
+  [data-ri-banner] + * nav {
     display: none !important;
+  }
+  /* Print is always in Daylight (docs/04): dark ink on white paper, whatever theme is on screen. */
+  :root,
+  [data-ri-theme] {
+    --ri-canvas: #ffffff;
+    --ri-raised: #ffffff;
+    --ri-surface: #f7f7f4;
+    --ri-surface-2: #f7f7f4;
+    --ri-ink: #0a0a0b;
+    --ri-muted: #3f3f46;
+    --ri-subtle: #5c5c57;
+    --ri-line: #dadad4;
+    --ri-line-strong: #b9b9b2;
+    --ri-signal: #4d6600;
+    color-scheme: light;
+  }
+  body {
+    background: #ffffff !important;
   }
 }
 

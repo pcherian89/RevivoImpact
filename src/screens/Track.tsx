@@ -23,6 +23,7 @@ import {
 } from "../domain/model";
 import {
   agreementTotals,
+  counts,
   progressPaused,
   scheduleOf,
   nextInstalment,
@@ -2151,183 +2152,257 @@ function SessionRecorder({
 
 /* ------------------------------------------------------------ reports */
 
+/* ------------------------------------------------------------ reports */
+
+/** The figures a report shows: always calculated from the records at the moment of reading (founder, P4). */
+export function reportFigures(w: World, agreementIds: string[]) {
+  const ts = agreementIds.map((id) => agreementTotals(w, id));
+  const add = (k: keyof ReturnType<typeof agreementTotals>) => ts.reduce((a, t) => a + (t[k] as number), 0);
+  const progs = Object.values(w.programmes).filter((p) => agreementIds.includes(p.agreementId)).map((p) => ({ p, t: programmeTotals(w, p.id) }));
+  const progress = Object.values(w.progress).filter((x) => x.agreementId && agreementIds.includes(x.agreementId) && !progressPaused(w, x.athleteId));
+  const dels = Object.values(w.deliverables).filter((d) => agreementIds.includes(d.agreementId));
+  return {
+    committed: add("committed"),
+    paid: add("paid"),
+    carriedPaid: add("carriedPaid"),
+    received: add("received"),
+    spent: add("spent"),
+    checked: add("checked"),
+    waiting: add("waiting"),
+    notYetSpent: add("notYetSpent"),
+    stillToPay: add("stillToPay"),
+    progs,
+    progress,
+    dels,
+  };
+}
+
+function figureRows(f: ReturnType<typeof reportFigures>) {
+  return [
+    ["Funding committed", f.committed, "Agreed by both sides"],
+    ["Funding paid", f.paid, f.carriedPaid ? `Includes ${fmt(f.carriedPaid)} paid before joining Revivo Impact` : "Payments recorded by the funder (simulated)"],
+    ["Funding received", f.received, "Arrival confirmed by the recipient"],
+    ["Spending reported", f.spent, "What the money was spent on"],
+    ["Spending checked", f.checked, "Checked against receipts by the funder"],
+    ["Waiting to be checked", f.waiting, "Usually waiting for a receipt"],
+    ["Not yet spent", f.notYetSpent, "Paid but not yet accounted for"],
+  ] as const;
+}
+
+/** The figures block: money, activities delivered, progress recorded and impact, each kept apart. */
+function ReportFigures({ f }: { f: ReturnType<typeof reportFigures> }) {
+  return (
+    <div className="mt-2">
+      <h2 className="label mt-6 text-subtle">The money</h2>
+      <table className="mt-2 w-full text-table">
+        <tbody>
+          {figureRows(f).map(([k, v, d]) => (
+            <tr key={k} className="border-b border-line">
+              <th scope="row" className="py-2 pr-4 text-left font-medium">
+                {k}
+                <span className="block text-small font-normal text-subtle">{d}</span>
+              </th>
+              <td className="py-2 text-right font-medium tabular-nums">{fmt(v)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h2 className="label mt-8 text-subtle">Sporting activities delivered</h2>
+      {f.progs.length ? (
+        <ul className="mt-2">
+          {f.progs.map(({ p, t }) => (
+            <li key={p.id} className="border-b border-line py-2">
+              <span className="font-medium">{p.name}:</span> {t.delivered} of {t.planned} planned sessions ran{t.due < t.planned ? ` (${t.due} recorded so far)` : ""}; {t.missed} couldn&rsquo;t run ({t.weather} weather, {t.coach} no coach available); {t.checked} checked against registers; {t.participants} participants registered.
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-muted">No programme sessions for this funding.</p>
+      )}
+      {f.dels.length > 0 && (
+        <>
+          <h2 className="label mt-8 text-subtle">What was agreed in return</h2>
+          <ul className="mt-2">
+            {f.dels.map((d) => (
+              <li key={d.id} className="border-b border-line py-2">
+                {d.label}: {d.done} of {d.target} done
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <h2 className="label mt-8 text-subtle">Sporting progress recorded</h2>
+      {f.progress.length ? (
+        <ul className="mt-2">
+          {f.progress.slice(0, 8).map((x) => (
+            <li key={x.id} className="border-b border-line py-2">
+              {x.text}
+              <span className="text-small text-subtle"> · {x.proof ? "with proof" : x.attestedBy ? "confirmed by the coach" : "self-reported"}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-muted">No progress records.</p>
+      )}
+      <h2 className="label mt-8 text-subtle">Independently established impact</h2>
+      <p className="mt-2 text-muted">None recorded. Progress happened while this funding was in place; the records do not show that the funding caused it.</p>
+    </div>
+  );
+}
+
+/** "Download the figures": a CSV made in the browser from the same figures (nothing is sent anywhere). */
+function downloadCsv(name: string, f: ReturnType<typeof reportFigures>) {
+  const lines = [["Figure", "Amount (USD)"], ...figureRows(f).map(([k, v]) => [k, String(v)]), ...f.progs.map(({ p, t }) => [`${p.name}: sessions ran of planned`, `${t.delivered} of ${t.planned}`])];
+  const blob = new Blob([lines.map((l) => l.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-figures.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function ExportButtons({ name, f }: { name: string; f: ReturnType<typeof reportFigures> }) {
+  return (
+    <div className="mt-6 flex flex-wrap gap-3" data-ri-print-hide>
+      <button type="button" className={btn("secondary")} onClick={() => window.print()}>
+        <Printer className="size-4" aria-hidden="true" /> Print or save as PDF
+      </button>
+      <button type="button" className={btn("quiet")} onClick={() => downloadCsv(name, f)}>
+        <FileText className="size-4" aria-hidden="true" /> Download the figures (CSV)
+      </button>
+    </div>
+  );
+}
+
 export function ReportPage({ persona, id }: { persona: Person; id: string }) {
   const { world: w } = useStore();
   const g = w.agreements[id];
-  const report = Object.values(w.reports)
-    .filter((r) => r.agreementId === id)
-    .pop();
+  const report = Object.values(w.reports).filter((r) => r.agreementId === id).pop();
   const [text, setText] = useState(report?.text ?? "");
   const [reason, setReason] = useState("");
   const act = useAction(persona.id);
   if (!g) return <Empty>This report does not exist.</Empty>;
   const side = sideOf(w, persona, g);
-  if (!side)
-    return (
-      <Empty>
-        Reports are shared only with the organisation and its funder.
-      </Empty>
-    );
+  if (!side) return <Empty>Reports are shared only with the organisation and its funder.</Empty>;
   const staff = side === "recipient" && persona.orgId === g.recipientId;
-  const flags = claimsCheck(text);
-  const gap = text.includes("[What participants");
-  const editable =
-    staff &&
-    (!report || report.status === "draft" || report.status === "returned");
+  const body = text || report?.text || "";
+  const flags = claimsCheck(body, w, id);
+  const editable = staff && (!report || report.status === "draft" || report.status === "returned");
   const funderName = w.funders[w.funds[g.fundId].funderId].name;
+  const who = recipientName(w, g.recipientKind, g.recipientId, persona);
+  const f = reportFigures(w, [id]);
+  const prog = Object.values(w.programmes).find((p) => p.agreementId === id);
   return (
     <div className="max-w-3xl pb-10">
       <PageHead
-        eyebrow={`Report · ${recipientName(w, g.recipientKind, g.recipientId, persona)} → ${funderName}`}
-        title={
-          staff
-            ? editable
-              ? "What can we honestly report?"
-              : "What we reported"
-            : "What does the report say?"
-        }
-        lead={
-          report
-            ? `${report.period} · ${report.status === "accepted" ? `accepted by ${w.people[report.decidedBy ?? ""]?.name}` : report.status === "submitted" ? "sent to the funder" : report.status === "returned" ? `returned: “${report.reason}”` : "draft"}`
-            : "No report yet."
-        }
+        eyebrow={`Report · ${who} → ${funderName}`}
+        title={staff ? (editable ? "What can we honestly report?" : "What we reported") : `What does ${who}'s report say?`}
+        lead={`${report?.period ?? `${prog?.name ?? w.funds[g.fundId].name} · April to June 2027`} · ${report ? (report.status === "accepted" ? `accepted by ${w.people[report.decidedBy ?? ""]?.name}` : report.status === "submitted" ? "sent to the funder" : report.status === "returned" ? `returned: “${report.reason}”` : "draft") : "not written yet"}`}
       />
+      <p className="text-small text-subtle">The figures below come straight from the records each time this page opens, so they always match. The words are the organisation&rsquo;s own.</p>
+      <ReportFigures f={f} />
+
+      <h2 className="label mt-10 text-subtle">In {staff ? "our" : "their"} own words</h2>
       {!report && staff && (
-        <div className="flex flex-wrap items-center gap-3">
-          <ActionButton
-            actor={persona.id}
-            type="draftReport"
-            args={{
-              reportId: `rep-${id}-${Date.now()}`,
-              agreementId: id,
-              period: "April to June 2027",
-            }}
-            success="Drafted from your records. Read it, add your own words, then send it."
-          >
-            <Sparkles className="size-4" aria-hidden="true" /> Draft it from our
-            records
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <ActionButton actor={persona.id} type="draftReport" args={{ reportId: `rep-${id}-${Date.now()}`, agreementId: id, period: "April to June 2027" }} success="Drafted from your records. Add your own words, then send it.">
+            <Sparkles className="size-4" aria-hidden="true" /> Start the narrative from our records
           </ActionButton>
           <SimulatedAI />
         </div>
       )}
+      {!report && !staff && <p className="mt-3 text-muted">The organisation hasn&rsquo;t written its narrative yet. The figures above are already current.</p>}
       {report && editable && (
         <>
-          <div className="flex flex-wrap items-center gap-3">
-            <SimulatedAI />
-            <span className="text-small text-subtle">
-              Drafted only from your records. Every figure can be traced. Edit
-              freely.
-            </span>
-          </div>
           <label htmlFor="rep-text" className="sr-only">
             Report text
           </label>
-          <textarea
-            id="rep-text"
-            rows={14}
-            className="mt-3 w-full rounded-[6px] border border-control bg-surface-2 p-4 leading-relaxed text-ink"
-            value={text || report.text}
-            onChange={(e) => setText(e.target.value)}
-          />
+          <textarea id="rep-text" rows={8} className="mt-3 w-full rounded-[6px] border border-control bg-surface-2 p-4 leading-relaxed text-ink" value={body} onChange={(e) => setText(e.target.value)} />
           <div role="status" className="mt-3 text-small">
             {flags.length ? (
               <p className="text-amber">
-                <CircleAlert
-                  className="mr-1 inline size-4"
-                  aria-hidden="true"
-                />{" "}
-                &ldquo;{flags[0]}&rdquo; claims more than your records show. Say
-                what was measured instead, for example what participants said in
-                a survey and how many answered.
+                <CircleAlert className="mr-1 inline size-4" aria-hidden="true" /> {flags[0].startsWith("$") || /records show/.test(flags[0]) ? `${flags[0]}. Use the figures above, or leave numbers out of the narrative.` : `“${flags[0]}” claims more than your records show. Say what was measured instead, for example what participants said in a survey and how many answered.`}
               </p>
-            ) : (text || report.text).includes("[What participants") ? (
-              <p className="text-muted">
-                Replace the part in square brackets with your own words, or
-                delete it.
-              </p>
+            ) : body.includes("[") ? (
+              <p className="text-muted">Replace the part in square brackets with your own words, or delete it.</p>
             ) : (
               <p className="text-muted">
-                <CircleCheck
-                  className="mr-1 inline size-4 text-ok"
-                  aria-hidden="true"
-                />{" "}
-                Claims check passed: nothing claims more than the records show.
+                <CircleCheck className="mr-1 inline size-4 text-ok" aria-hidden="true" /> Claims check passed: nothing claims more than the records show, and every amount matches them.
               </p>
             )}
           </div>
-          <Button
-            className="mt-5"
-            onClick={() =>
-              act.run(
-                "submitReport",
-                { reportId: report.id, text: text || report.text },
-                `Sent to ${funderName}.`,
-              )
-            }
-            arrow
-          >
+          <Button className="mt-5" onClick={() => act.run("submitReport", { reportId: report.id, text: body }, `Sent to ${funderName}.`)} arrow>
             Send to {funderName}
           </Button>
-          {(flags.length > 0 || gap) && (
-            <span className="sr-only">The report cannot be sent yet.</span>
-          )}
         </>
       )}
-      {report && !editable && (
-        <article className="whitespace-pre-line border-l-2 border-line-strong pl-5 leading-relaxed">
-          {report.text}
-        </article>
-      )}
-      {report?.status === "submitted" &&
-        side === "funder" &&
-        (persona.perms.includes("Review") ||
-          persona.perms.includes("Approve")) && (
-          <div className="mt-6 flex flex-wrap items-end gap-3">
-            <ActionButton
-              actor={persona.id}
-              type="decideReport"
-              args={{ reportId: report.id, accept: true }}
-              success="Accepted."
-            >
-              Accept the report
-            </ActionButton>
-            <div className="min-w-64 flex-1">
-              <label htmlFor="ret" className="block text-small text-subtle">
-                Or return it with a question
-              </label>
-              <input
-                id="ret"
-                className={cn(inputCls, "mt-1")}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="For example: please add the minibus receipt"
-              />
-            </div>
-            <ActionButton
-              actor={persona.id}
-              type="decideReport"
-              args={{ reportId: report.id, accept: false, reason }}
-              variant="secondary"
-              success="Returned with your question."
-            >
-              Return it
-            </ActionButton>
+      {report && !editable && <article className="mt-3 whitespace-pre-line border-l-2 border-line-strong pl-5 leading-relaxed">{report.text}</article>}
+      {report?.status === "submitted" && side === "funder" && (persona.perms.includes("Review") || persona.perms.includes("Approve")) && (
+        <div className="mt-6 flex flex-wrap items-end gap-3" data-ri-print-hide>
+          <ActionButton actor={persona.id} type="decideReport" args={{ reportId: report.id, accept: true }} success="Accepted.">
+            Accept the report
+          </ActionButton>
+          <div className="min-w-64 flex-1">
+            <label htmlFor="ret" className="block text-small text-subtle">
+              Or return it with a question
+            </label>
+            <input id="ret" className={cn(inputCls, "mt-1")} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="For example: please add the minibus receipt" />
           </div>
-        )}
-      {report && report.status !== "draft" && (
-        <button
-          type="button"
-          className={btn("quiet", "mt-6")}
-          onClick={() => window.print()}
-        >
-          <Printer className="size-4" aria-hidden="true" /> Print or save as PDF
-        </button>
+          <ActionButton actor={persona.id} type="decideReport" args={{ reportId: report.id, accept: false, reason }} variant="secondary" success="Returned with your question.">
+            Return it
+          </ActionButton>
+        </div>
       )}
       <Message error={act.error} done={act.done} />
-      <p className="mt-8 text-small text-subtle">
-        {HONESTY} Outputs (sessions, spending), sporting outcomes and wider
-        impact are kept apart.
-      </p>
+      <ExportButtons name={`${who} report`} f={f} />
+      <p className="mt-8 text-small text-subtle">{HONESTY}</p>
+    </div>
+  );
+}
+
+/** A funder's own report across everything it funds (founder: "generate reports"). Figures only from records. */
+export function FunderReportPage({ persona }: { persona: Person }) {
+  const { world: w } = useStore();
+  const fid = persona.funderId;
+  if (!fid) return <Empty>Funding reports are for funders.</Empty>;
+  const funds = Object.values(w.funds).filter((x) => x.funderId === fid && BEHAVIOUR_OF(w, x.id) !== "inkind");
+  const all = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR_OF(w, g.fundId) !== "inkind");
+  const f = reportFigures(w, all.map((g) => g.id));
+  const name = w.funders[fid].name;
+  return (
+    <div className="max-w-3xl pb-10">
+      <PageHead eyebrow={`Funding report · ${name}`} title="What has our funding done so far?" lead={`Everything ${name} funds on Revivo Impact, as at ${({ apr12: "Mon 12 Apr", may06: "Thu 6 May", jun30: "Wed 30 Jun" } as const)[w.moment]} 2027 · calculated from the records each time it opens`} />
+      <ReportFigures f={f} />
+      <h2 className="label mt-10 text-subtle">By fund</h2>
+      <table className="mt-2 w-full text-table">
+        <thead>
+          <tr className="label-data border-b border-line text-left text-subtle">
+            <th className="py-2 pr-3">Fund</th>
+            <th className="py-2 pr-3 text-right">Committed</th>
+            <th className="py-2 pr-3 text-right">Paid</th>
+            <th className="py-2 text-right">Checked</th>
+          </tr>
+        </thead>
+        <tbody>
+          {funds.map((x) => {
+            const ff = reportFigures(w, all.filter((g) => g.fundId === x.id).map((g) => g.id));
+            return ff.committed ? (
+              <tr key={x.id} className="border-b border-line">
+                <td className="py-2 pr-3">
+                  {x.name}
+                  {BEHAVIOUR_OF(w, x.id) === "commercial" ? <span className="block text-small text-subtle">Commercial sponsorship: counted apart</span> : null}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmt(ff.committed)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmt(ff.paid)}</td>
+                <td className="py-2 text-right tabular-nums">{fmt(ff.checked)}</td>
+              </tr>
+            ) : null;
+          })}
+        </tbody>
+      </table>
+      <ExportButtons name={`${name} funding report`} f={f} />
+      <p className="mt-8 text-small text-subtle">{HONESTY}</p>
     </div>
   );
 }

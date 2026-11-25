@@ -24,10 +24,7 @@ export type Journey = { id: string; name: string; minutes: string; steps: Step[]
 
 /** Maya's report after the claims check: what was measured, with who answered (docs/05 §6). */
 const REPORT_TEXT = [
-  "Sessions: 108 of 120 planned sessions ran this quarter across 6 sites; 12 could not run (8 weather, 4 coach availability).",
-  "Participants: 460 registered.",
-  "Behind or needing attention: Hillview Academy (18 of 20), Greenpark School (14 of 20), Westbrook Centre (17 of 20). A recovery plan is in place for Greenpark: a relief coach from week 8 and 4 make-up sessions next quarter.",
-  "Money: $12,000 paid; $10,800 spent, of which $10,368 checked by the funder and $432 waiting for a receipt; $1,200 not yet spent.",
+  "Sites needing attention: Hillview Academy, Greenpark School, Westbrook Centre. Most missed sessions were due to weather; at Greenpark, to coach availability. A recovery plan is in place: Relief coach Jo Adebayo from week 8; 4 make-up sessions next quarter.",
   "What participants told us: 212 of 460 answered our survey at the start and end of the quarter. 71% said they feel confident trying new activities, up from 58%. This is self-reported and there is no comparison group.",
 ].join("\n\n");
 

@@ -1194,6 +1194,17 @@ export function Portfolio({ persona }: { persona: Person }) {
         </Section>
       )}
       {tab === "reports" && (
+        <>
+        <Section title="Our funding report">
+          <ul>
+            <Row>
+              <span>Everything we fund: money committed, paid, received and checked; activities delivered; progress recorded. Calculated from the records each time it opens.</span>
+              <a className={btn("primary", "min-h-10 shrink-0")} href={`#/app/${persona.id}/freport`}>
+                <FileText className="size-4" aria-hidden="true" /> Open the report
+              </a>
+            </Row>
+          </ul>
+        </Section>
         <Section title="Reports from the people we fund">
           {reports.length === 0 ? <Empty>No reports yet. Organisations send them from their funding record; you read, accept or return them here.</Empty> : (
             <ul>
@@ -1211,6 +1222,7 @@ export function Portfolio({ persona }: { persona: Person }) {
             </ul>
           )}
         </Section>
+        </>
       )}
       <AddExisting persona={persona} open={adding} onClose={() => setAdding(false)} />
       <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>

@@ -170,26 +170,44 @@ export function claimsCheck(text: string, w?: World, agreementId?: string) {
     const pt = programmeTotals(w, p.id);
     for (const m of t.matchAll(/(\d+) of (\d+) (?:planned )?sessions/g)) if (Number(m[1]) !== pt.delivered || Number(m[2]) !== pt.planned) out.push(`${m[1]} of ${m[2]} sessions (the records show ${pt.delivered} of ${pt.planned})`);
   }
+  // Money in the narrative must be a figure the records contain (founder, P4): flag any amount that is not.
+  if (w && agreementId) {
+    const known = knownAmounts(w, agreementId);
+    for (const m of text.matchAll(/\$\s?([\d,]+)/g)) {
+      const v = Number(m[1].replace(/,/g, ""));
+      if (v > 0 && !known.has(v)) out.push(`$${v.toLocaleString("en-GB")} does not match any figure in the records`);
+    }
+  }
   return out;
+}
+
+/** Every money figure a report may quote: the totals, each expense, each budget line, each scheduled payment. */
+export function knownAmounts(w: World, agreementId: string) {
+  const t = agreementTotals(w, agreementId);
+  const p = Object.values(w.programmes).find((x) => x.agreementId === agreementId);
+  const set = new Set<number>([t.committed, t.paid, t.received, t.spent, t.checked, t.waiting, t.notYetSpent, t.stillToPay, t.carriedPaid, t.carriedSpent, t.query]);
+  for (const e of Object.values(w.expenses)) if (e.agreementId === agreementId) set.add(e.amount);
+  for (const b of p?.budget ?? []) set.add(b.amount);
+  for (const x of scheduleOf(w, agreementId)) set.add(x.amount);
+  // Spending by budget line, so "Coaching: $6,480" is a known figure.
+  if (p) for (const b of p.budget) set.add(sum(Object.values(w.expenses).filter((e) => e.agreementId === agreementId && e.category === b.line).map((e) => e.amount)));
+  return set;
 }
 
 /** Simulated AI report draft (AI C): built only from the records, every figure from a selector. */
 export function draftReportText(w: World, agreementId: string) {
-  const g = w.agreements[agreementId];
   const p = Object.values(w.programmes).find((x) => x.agreementId === agreementId);
-  const t = agreementTotals(w, agreementId);
   if (p) {
     const pt = programmeTotals(w, p.id);
     const behind = pt.sites.filter((s) => s.status !== "On track");
+    const plan = behind.map((s) => s.plan).find((x) => x?.status === "approved");
+    // Narrative only: the figures appear beside the text, live from the records, so they cannot drift.
     return [
-      `Sessions: ${pt.delivered} of ${pt.planned} planned sessions ran this quarter across ${p.sites.length} sites; ${pt.missed} could not run (${pt.weather} weather, ${pt.coach} coach availability).`,
-      `Participants: ${pt.participants} registered.`,
-      behind.length ? `Behind or needing attention: ${behind.map((s) => `${s.site.name} (${s.delivered} of ${s.due})`).join(", ")}.${behind.some((s) => s.plan?.status === "approved") ? " A recovery plan is in place for Greenpark." : ""}` : "Every site is on track.",
-      `Money: ${fmt(t.paid)} paid; ${fmt(t.spent)} spent, of which ${fmt(t.checked)} checked by the funder and ${fmt(t.waiting)} waiting to be checked; ${fmt(t.notYetSpent)} not yet spent.`,
+      behind.length ? `Sites needing attention: ${behind.map((s) => s.site.name).join(", ")}. Most missed sessions were due to weather; at Greenpark, to coach availability.${plan ? ` A recovery plan is in place: ${plan.text}` : ""}` : "Every site is on track.",
       "[What participants and coaches told you, in your own words. Say who answered and how.]",
     ].join("\n\n");
   }
-  return `Money: ${fmt(t.paid)} paid; ${fmt(t.spent)} spent; ${fmt(t.checked)} checked. ${g.purpose ?? ""}`;
+  return "[What happened this period, in your own words.]";
 }
 
 /** Per line: pledged (agreements), offered (held offers), held for pending applications, other sources, remaining (I4). */

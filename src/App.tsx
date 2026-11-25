@@ -6,7 +6,7 @@ import { Apply, FunderProfile, Join, MyFunding, MyProfile, OpportunityPage, Publ
 import { AthleteForFunder, FunderApplications, FunderDiscover, FunderOpportunities, FunderOverview, Portfolio, RequestPage, ReviewPage, SelectionPage } from "./screens/Funder";
 import { Admin, Safety } from "./screens/Other";
 import { Planned } from "./screens/Planned";
-import { AgreementPage, ProgrammePage, ReportPage, TodayPage, UpdatePage } from "./screens/Track";
+import { AgreementPage, FunderReportPage, ProgrammePage, ReportPage, TodayPage, UpdatePage } from "./screens/Track";
 import { HOME_SCREEN } from "./data/structure";
 import type { Person } from "./domain/model";
 
@@ -50,7 +50,7 @@ export default function App() {
   );
 }
 
-const FUNDER_ONLY = ["request", "athlete", "opps", "apps", "review", "selection"];
+const FUNDER_ONLY = ["request", "athlete", "opps", "apps", "review", "selection", "freport"];
 
 function renderScreen(sc: string, param: string | undefined, p: Person) {
   const funder = !!p.funderId && p.role !== "athlete";
@@ -108,6 +108,8 @@ function renderScreen(sc: string, param: string | undefined, p: Person) {
       return <TodayPage persona={p} />;
     case "report":
       return <ReportPage persona={p} id={param ?? ""} />;
+    case "freport":
+      return <FunderReportPage persona={p} />;
     default: {
       const n = Number(sc.replace(/^s/, ""));
       return <Planned n={Number.isFinite(n) && n > 0 ? n : 3} persona={p} />;

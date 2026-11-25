@@ -415,3 +415,24 @@ describe("payment schedules", () => {
     }
   });
 });
+
+/* P4: reports read the records live; money in the narrative must match a record. */
+describe("report consistency", async () => {
+  const { reportFigures } = await import("../../src/screens/Track");
+  const full = () => {
+    const w = replay(checkpoint("jun30"));
+    for (const j of JOURNEYS) for (const s of j.steps.filter((x) => x.when === "jun30")) for (const e of stepEvents(s)) apply(w, e);
+    return w;
+  };
+  it("report figures follow the records: a new expense changes the report without any typing", () => {
+    const w = full();
+    expect(reportFigures(w, ["ag-pe1"])).toMatchObject({ committed: 60000, paid: 12000, received: 12000, spent: 10800, checked: 10368, waiting: 432, notYetSpent: 1200 });
+    apply(w, { n: 0, at: "jun30", actor: "maya", type: "addExpense", args: { expenseId: "n1", agreementId: "ag-pe1", what: "Bibs for the summer league", amount: 300, paidOn: "Tue 29 Jun", receipt: true } });
+    expect(reportFigures(w, ["ag-pe1"])).toMatchObject({ spent: 11100, waiting: 732, notYetSpent: 900 });
+  });
+  it("the money check flags amounts that match no record and accepts the real ones", () => {
+    const w = full();
+    expect(claimsCheck("We spent $11,000 this quarter.", w, "ag-pe1")[0]).toMatch(/\$11,000 does not match/);
+    expect(claimsCheck("We spent $10,800, of which $10,368 is checked; coaching cost $6,480.", w, "ag-pe1")).toEqual([]);
+  });
+});
