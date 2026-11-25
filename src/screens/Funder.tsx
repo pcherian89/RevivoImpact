@@ -911,6 +911,41 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
 
 /* ================================================================ Selection */
 
+/** One applicant at a time: the decision, and a short respectful message the approver can edit. */
+function DecideOne({ persona, appId }: { persona: Person; appId: string }) {
+  const { world: w } = useStore();
+  const a = w.applications[appId];
+  const funder = w.funders[w.funds[w.opps[a.oppId].fundId].funderId].name;
+  const can = a.status === "shortlisted" && !a.pendingFact;
+  const notes = {
+    offer: `We are pleased to offer you ${fmt(a.recommendedTier ?? 0)}, the published level for your results. Read what ${funder} will see, then accept or decline.`,
+    waiting: "You reached the minimum score, but one fact still needs checking. We have put you on the waiting list and will tell you by the date shown.",
+    notselected: "Thank you for applying. We could not offer funding this time. Other open opportunities that may suit you are listed in Discover.",
+  } as const;
+  const [d, setD] = useState<keyof typeof notes>(can ? "offer" : a.pendingFact ? "waiting" : "notselected");
+  const [note, setNote] = useState<string>(notes[d]);
+  const act = useAction(persona.id);
+  return (
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Decision">
+        {(["offer", "waiting", "notselected"] as const).filter((k) => k !== "offer" || can).map((k) => (
+          <button key={k} type="button" aria-pressed={d === k} onClick={() => (setD(k), setNote(notes[k]))} className={cn("min-h-10 rounded-full border px-4 text-small", d === k ? "border-ink bg-surface-2 font-medium" : "border-line-strong")}>
+            {k === "offer" ? `Offer ${fmt(a.recommendedTier ?? 0)}` : k === "waiting" ? "Waiting list" : "Not this time"}
+          </button>
+        ))}
+      </div>
+      <label htmlFor={`note-${appId}`} className="mt-3 block text-small text-subtle">
+        Message to the applicant
+      </label>
+      <textarea id={`note-${appId}`} rows={2} className="mt-1 w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" value={note} onChange={(e) => setNote(e.target.value)} />
+      <Button className="mt-2" variant="secondary" onClick={() => act.run("decideApplication", { appId, decision: d, note }, "Decision sent.")}>
+        Send this decision
+      </Button>
+      <Message error={act.error} done={act.done} />
+    </div>
+  );
+}
+
 export function SelectionPage({ persona, id }: { persona: Person; id: string }) {
   const { world: w } = useStore();
   const o = w.opps[id];
@@ -934,13 +969,16 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
       </Section>
       <Section title={`Recommendations · ${short.length}`}>
         <ul>
-          {short.filter((a) => !a.light).map((a) => (
-            <Row key={a.id}>
-              <span>
-                {athleteLabel(w, a.applicantId, persona)} · requested {fmt(a.requested)} · scores {a.scores.map((s) => s.total).join(" and ")}
-              </span>
-              <span className="text-small">Recommended tier {fmt(a.recommendedTier!)} (published tier; not the {fmt(a.requested)} requested)</span>
-            </Row>
+          {apps.filter((a) => !a.light && ["shortlisted", "submitted", "info", "offered", "waiting", "notselected"].includes(a.status)).map((a) => (
+            <li key={a.id} className="border-b border-line py-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  <span className="font-medium">{athleteLabel(w, a.applicantId, persona)}</span> · requested {fmt(a.requested)} · scores {a.scores.map((s) => s.total).join(" and ") || "none yet"}
+                </span>
+                <span className="text-small">{a.recommendedTier ? `Recommended: ${fmt(a.recommendedTier)} (the published level, not the amount requested)` : "Not shortlisted"}</span>
+              </div>
+              {o.status !== "decided" && ["shortlisted", "submitted", "info"].includes(a.status) && persona.perms.includes("Approve") ? <DecideOne persona={persona} appId={a.id} /> : ["offered", "waiting", "notselected", "accepted"].includes(a.status) && <p className="mt-2 text-small text-subtle">Decision sent: <AppStatus s={a.status} funderView />{a.decisionNote ? ` · “${a.decisionNote}”` : ""}</p>}
+            </li>
           ))}
           <Row>
             <span className="text-muted">{short.some((a) => !a.light) ? "+ " : ""}{plural(short.filter((a) => a.light).length, short.some((a) => !a.light) ? "more recommendation" : "recommendation")} from the two reviewers (summarised)</span>
@@ -956,7 +994,7 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
             <Button onClick={() => act.run("sendDecisions", { oppId: id }, "Decisions sent.")} arrow>
               Send decisions
             </Button>
-            <p className="mt-2 text-small text-subtle">Decisions go to every applicant together. Nobody who scored an application can approve it.</p>
+            <p className="mt-2 text-small text-subtle">Sends the decisions you haven&rsquo;t sent one by one: offers to every recommendation, the waiting list, and a respectful message to everyone else. Nobody who scored an application can approve it.</p>
           </>
         )}
         <Message error={act.error} done={act.done} />

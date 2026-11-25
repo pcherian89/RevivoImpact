@@ -34,7 +34,12 @@ await check("A1 Ingrid publishes (four-eyes)", await audited("Published opportun
 await go("app/daniel/opps");
 await check("A1 the drafter sees it open", !(await text()).includes("Awaiting approval"));
 await go("join");
-await page.getByLabel("An athlete (18 or over)").check();
+await page.getByLabel("An athlete aged 18 or over").check();
+await click("Continue");
+await check("A2 name and age are required", (await text()).includes("Add your name."));
+await page.getByLabel("Your name").fill("Amira Haddad");
+await page.getByLabel("Your age").fill("19");
+await click("Continue");
 await click("Create my account");
 await check("A2 Amira registered and lands on her profile", (await text()).includes("What do funders see about me?"));
 await click("Add my results, coach and support");
@@ -215,6 +220,47 @@ await click("Report a concern");
 await check("Report a concern reaches the safeguarding team", (await text()).includes("Sent to the platform safeguarding team"));
 await go("app/alex/admin");
 await check("Admin sees the concern without the athlete's name", (await text()).includes("guardian of an athlete under 18") && !(await text()).includes("Tiago"));
+
+// ---- P2 gaps: independent registration of a new athlete, a guardian and a club (any date)
+await go("join");
+await page.getByLabel("An athlete aged 18 or over").check();
+await page.getByLabel("Your name").fill("Leila Okafor");
+await page.getByLabel("Your age").fill("20");
+await page.getByLabel("Your sport").selectOption("Boxing");
+await click("Continue");
+await click("Create my account");
+t = await text();
+await check("Gap: a new athlete gets her own profile, not Amira's", t.includes("Boxing") && !t.includes("Amira") && t.includes("Start your profile"));
+await page.getByLabel("Details").fill("Gold, Northern Region Boxing Championships 2026");
+await click("Add");
+await check("Gap: she adds her first result (self-reported)", (await text()).includes("Gold, Northern Region Boxing Championships 2026"));
+await go("join");
+await page.getByLabel("A parent or guardian").check();
+await page.getByLabel("Your name").fill("Tomas Berg");
+await page.getByLabel("The athlete's name").fill("Freya Berg");
+await page.getByLabel("Their age").fill("14");
+await page.getByLabel("Their sport").selectOption("Rowing");
+await click("Continue");
+await click("Create my account");
+await check("Gap: a guardian registers and manages a young athlete", (await text()).includes("Freya"));
+await go("join");
+await page.getByLabel("A club, academy, federation or programme").check();
+await page.getByLabel("Your name").fill("Nia Hart");
+await page.getByLabel("Organisation name").fill("Harbour Canoe Club");
+await page.getByLabel("Main sport").selectOption("Canoeing");
+await click("Continue");
+await click("Create my account");
+await check("Gap: a club registers independently", (await text()).includes("Harbour Canoe Club"));
+
+// Individual decision with a personal message (6 May, before the bulk decisions)
+await page.evaluate(() => localStorage.clear());
+await page.goto(`${file}?moment=may06&motion=reduced&fresh=1#/app/ingrid/selection/eas`);
+await page.waitForTimeout(200);
+await page.getByRole("button", { name: "Not this time" }).first().click();
+await click("Send this decision");
+await check("Gap: one applicant decided on their own", (await text()).includes("Decision sent"));
+await go("app/amira/applications");
+await check("Gap: the applicant sees the funder's message", (await text()).includes("Thank you for applying"));
 
 // ---- P3: track and review (30 Jun), by real clicks
 await page.goto(`${file}?moment=jun30&motion=reduced#/app/amira/home`);

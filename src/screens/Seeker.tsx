@@ -843,6 +843,7 @@ export function SeekerApplications({ persona }: { persona: Person }) {
                       {a.status === "draft" && a.preparedBy !== persona.id ? `Prepared by ${w.people[a.preparedBy]?.name} · waiting for you to submit` : a.status === "submitted" ? `Next: decisions by ${o.decisions}` : a.status === "offered" ? "An offer is waiting above" : a.status === "notselected" ? "Your profile stays ready; other opportunities are open." : a.status === "waiting" ? "Your score reached the minimum; one fact is still being verified." : ""}
                       {a.info?.status === "open" && ` · The panel asks: ${a.info.text}`}
                     </p>
+                    {a.decisionNote && <p className="mt-1 text-small">From {w.funders[w.funds[o.fundId].funderId].name}: &ldquo;{a.decisionNote}&rdquo;</p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <AppStatus s={a.status} />
@@ -977,6 +978,60 @@ export function MyFunding({ persona }: { persona: Person }) {
 
 /* ================================================================ Profile */
 
+/** Build a profile one fact at a time; every fact starts self-reported and the owner chooses who sees it. */
+function AddFact({ persona, athleteId, minor, empty }: { persona: Person; athleteId: string; minor: boolean; empty: boolean }) {
+  const [kind, setKind] = useState<"result" | "club" | "coach" | "goal">("result");
+  const [value, setValue] = useState("");
+  const [vis, setVis] = useState<"discoverable" | "application" | "private">(minor ? "application" : "discoverable");
+  const act = useAction(persona.id);
+  const LABEL = { result: "Result", club: "Club", coach: "Coach referee", goal: "Season goal" } as const;
+  return (
+    <form
+      className="mt-6 rounded-[10px] border border-line-strong p-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (act.run("addFact", { athleteId, factId: `f-${Date.now()}`, label: LABEL[kind], value, kind, visibility: vis }, "Added. It shows as self-reported until someone confirms it.")) setValue("");
+      }}
+    >
+      <p className="font-medium">{empty ? "Start your profile: add a result, your club or your coach" : "Add to the profile"}</p>
+      <div className="mt-3 grid gap-3 md:grid-cols-[10rem_1fr_13rem]">
+        <div>
+          <label htmlFor="af-kind" className="block text-small text-subtle">
+            What
+          </label>
+          <select id="af-kind" className={cn(inputCls, "mt-1")} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+            {(Object.keys(LABEL) as (keyof typeof LABEL)[]).map((k) => (
+              <option key={k} value={k}>
+                {LABEL[k]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="af-value" className="block text-small text-subtle">
+            Details
+          </label>
+          <input id="af-value" className={cn(inputCls, "mt-1")} value={value} onChange={(e) => setValue(e.target.value)} placeholder={kind === "result" ? "For example: Silver, Regional Championships 2026" : kind === "club" ? "Your club or academy" : kind === "coach" ? "Name and club" : "What you are aiming for this season"} />
+        </div>
+        <div>
+          <label htmlFor="af-vis" className="block text-small text-subtle">
+            Who can see it?
+          </label>
+          <select id="af-vis" className={cn(inputCls, "mt-1")} value={vis} onChange={(e) => setVis(e.target.value as typeof vis)}>
+            {!minor && <option value="discoverable">Funders in Discover</option>}
+            <option value="application">Only funders I apply to</option>
+            <option value="private">Only me</option>
+          </select>
+        </div>
+      </div>
+      <Button className="mt-4" type="submit" variant={empty ? "primary" : "secondary"}>
+        Add
+      </Button>
+      <Message error={act.error} done={act.done} />
+    </form>
+  );
+}
+
 export function MyProfile({ persona }: { persona: Person }) {
   const { world: w } = useStore();
   const ath = useSubject(persona);
@@ -986,7 +1041,7 @@ export function MyProfile({ persona }: { persona: Person }) {
     return (
       <div className="pb-8">
         <PageHead eyebrow="Organisation" title={org.name} lead={`${org.type} · ${org.region} · ${org.sport}`} />
-        <Chip kind="verified">Organisation verified (simulated)</Chip>
+        {org.verified ? <Chip kind="verified">Organisation verified (simulated)</Chip> : <Chip kind="awaiting">Verification requested (simulated)</Chip>}
         <Section title="People and permissions">
           <ul>
             {Object.values(w.people).filter((p) => p.orgId === org.id).map((p) => (
@@ -1010,6 +1065,7 @@ export function MyProfile({ persona }: { persona: Person }) {
           Add my results, coach and support
         </ActionButton>
       )}
+      {own && !(ath.facts.length === 0 && persona.id === "amira") && <AddFact persona={persona} athleteId={ath.id} minor={ath.minor} empty={ath.facts.length === 0} />}
       {!ath.minor && own && (
         <div className="mt-6 rounded-[10px] border border-line-strong p-5">
           <p className="font-medium">Can verified funders find {persona.role === "athlete" ? "you" : ath.name} in Discover?</p>
@@ -1168,47 +1224,117 @@ export function Publish({ persona }: { persona: Person }) {
 
 /* =================================================================== Join */
 
+const SPORT_CHOICES = ["Archery", "Athletics", "Badminton", "Boxing", "Canoeing", "Cycling", "Fencing", "Football", "Judo", "Rowing", "Swimming", "Table tennis", "Triathlon", "Wheelchair basketball", "Wheelchair racing"];
+const REGION_CHOICES = ["Coastal Region", "Northern Region", "Central Region", "Lakes Region", "Southern Region", "Highland Region"];
+
+/** Join (screen 2): five independent routes; sign-in is simulated, so the "email code" is shown on screen. */
 export function Join() {
   const { world: w, act, go } = useStore();
   const [pick, setPick] = useState<string | null>(null);
+  const [step, setStep] = useState<"details" | "code">("details");
   const [name, setName] = useState("");
-  const [age, setAge] = useState("19");
+  const [child, setChild] = useState("");
+  const [age, setAge] = useState("");
   const [sport, setSport] = useState("Judo");
   const [region, setRegion] = useState("Coastal Region");
+  const [cat, setCat] = useState<"woman" | "man">("woman");
   const [org, setOrg] = useState("");
+  const [orgType, setOrgType] = useState("Club");
   const [err, setErr] = useState<string | null>(null);
   const amiraJoining = !w.athletes.amira;
   const options = [
-    { id: "athlete", t: "An athlete (18 or over)", d: "Build one sporting profile and find scholarships, grants and sponsors." },
+    { id: "athlete", t: "An athlete aged 18 or over", d: "One sporting profile to find scholarships, grants and sponsors." },
     { id: "guardian", t: "A parent or guardian", d: "Register a young athlete under 18. You stay in control of everything." },
-    { id: "coach", t: "A coach", d: "Help athletes who authorise you. You can prepare, not decide." },
-    { id: "company", t: "A company, foundation or brand", d: "Find athletes, teams and initiatives; publish opportunities; make offers." },
+    { id: "organisation", t: "A club, academy, federation or programme", d: "Find funding for your teams and programmes and report on it." },
+    { id: "company", t: "A company, foundation or brand", d: "Find athletes, teams and programmes to support; publish opportunities." },
     { id: "individual", t: "An individual sponsor", d: "Support adults, teams and clubs personally, after a verification check." },
+    { id: "coach", t: "A coach", d: "Athletes or guardians add you from their account, with the powers they choose." },
   ];
-  const submit = () => {
-    if (pick === "athlete") {
-      const pid = amiraJoining && (!name || name === "Amira Haddad") ? "amira" : `u-${Date.now()}`;
-      const e = act(pid, "register", { kind: "athlete", personId: pid, name: name || "Amira Haddad", age: Number(age), sport, region, gender: "woman" });
-      setErr(e);
-      if (!e) go(`app/${pid}/me`);
-    } else if (pick === "company" || pick === "individual") {
-      const pid = `u-${Date.now()}`;
-      const e = act(pid, "registerFunder", { personId: pid, name: name || "New sponsor", orgName: org || "New company", type: pick === "individual" ? "Individual sponsor" : "Company", sports: sport });
-      setErr(e);
-      if (!e) go(`app/${pid}/fdiscover`);
-    } else go("roles");
+  const check = () => {
+    if (!name.trim()) return "Add your name.";
+    if (pick === "athlete" && !(Number(age) >= 18)) return Number(age) > 0 ? "Athletes under 18 are registered by a parent or guardian." : "Add your age.";
+    if (pick === "guardian" && (!child.trim() || !(Number(age) > 0))) return "Add the athlete's name and age.";
+    if ((pick === "organisation" || pick === "company") && !org.trim()) return "Add the organisation's name.";
+    return null;
   };
+  const create = () => {
+    const pid = `u-${Date.now()}`;
+    let e: string | null = null;
+    let to = "";
+    if (pick === "athlete") {
+      const id = amiraJoining && name.trim() === "Amira Haddad" ? "amira" : pid;
+      e = act(id, "register", { kind: "athlete", personId: id, name: name.trim(), age: Number(age), sport, region, gender: cat });
+      to = `app/${id}/me`;
+    } else if (pick === "guardian") {
+      e = act(pid, "registerGuardian", { personId: pid, name: name.trim(), childId: `${pid}-a`, childName: child.trim(), age: Number(age), sport, region, gender: cat });
+      to = `app/${pid}/home`;
+    } else if (pick === "organisation") {
+      e = act(pid, "registerOrganisation", { personId: pid, name: name.trim(), orgId: `${pid}-org`, orgName: org.trim(), type: orgType, sport, region });
+      to = `app/${pid}/home`;
+    } else {
+      e = act(pid, "registerFunder", { personId: pid, name: name.trim(), orgName: org.trim() || name.trim(), type: pick === "individual" ? "Individual sponsor" : "Company", sports: sport });
+      to = `app/${pid}/fdiscover`;
+    }
+    setErr(e);
+    if (!e) go(to);
+  };
+  const sportField = (label: string) => (
+    <Field label={label} htmlFor="j-sport">
+      <select id="j-sport" className={inputCls} value={sport} onChange={(e) => setSport(e.target.value)}>
+        {SPORT_CHOICES.map((x) => (
+          <option key={x}>{x}</option>
+        ))}
+      </select>
+    </Field>
+  );
+  const regionField = (
+    <Field label="Region" htmlFor="j-region">
+      <select id="j-region" className={inputCls} value={region} onChange={(e) => setRegion(e.target.value)}>
+        {REGION_CHOICES.map((r) => (
+          <option key={r}>{r}</option>
+        ))}
+      </select>
+    </Field>
+  );
+  const catField = (who: string) => (
+    <Field label={`Does ${who} compete in women's or men's events?`} htmlFor="j-cat" hint="Some funding is for women's sport.">
+      <select id="j-cat" className={inputCls} value={cat} onChange={(e) => setCat(e.target.value as "woman" | "man")}>
+        <option value="woman">Women's events</option>
+        <option value="man">Men's events</option>
+      </select>
+    </Field>
+  );
+  if (step === "code")
+    return (
+      <main id="main" className="container-site max-w-xl pb-20">
+        <p className="label pt-10 text-signal">Join Revivo Impact</p>
+        <h1 className="text-title mt-2">Check your email</h1>
+        <p className="mt-3 text-muted">We would send a 6-digit code. In this demonstration nothing is sent: your code is <span className="font-medium text-ink tabular-nums">482 913</span>.</p>
+        <Field label="Code" htmlFor="j-code">
+          <input id="j-code" inputMode="numeric" className={cn(inputCls, "max-w-[12rem] text-lg tracking-widest")} defaultValue="482913" />
+        </Field>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button arrow onClick={create}>
+            Create my account
+          </Button>
+          <button type="button" className={btn("quiet")} onClick={() => setStep("details")}>
+            Back
+          </button>
+        </div>
+        <Message error={err} />
+      </main>
+    );
   return (
     <main id="main" className="container-site max-w-3xl pb-20">
       <p className="label pt-10 text-signal">Join Revivo Impact</p>
       <h1 className="text-title mt-2">Who are you registering as?</h1>
-      <p className="mt-3 text-muted">Free for athletes, parents, coaches and clubs. No invitation needed, and no other Revivo account. Sign-in is simulated: nothing is sent.</p>
+      <p className="mt-3 text-muted">Free for athletes, families, coaches and clubs. No invitation needed, and no other Revivo account.</p>
       <fieldset className="mt-8">
         <legend className="sr-only">Who are you registering as?</legend>
         <div className="border-t border-line">
           {options.map((o) => (
             <label key={o.id} className="flex cursor-pointer items-start gap-4 border-b border-line py-4">
-              <input type="radio" name="who" value={o.id} checked={pick === o.id} onChange={() => setPick(o.id)} className="mt-1 size-5 shrink-0 appearance-none rounded-full border-2 border-control bg-canvas checked:border-[6px] checked:border-signal" />
+              <input type="radio" name="who" value={o.id} checked={pick === o.id} onChange={() => (setPick(o.id), setErr(null))} className="mt-1 size-5 shrink-0 appearance-none rounded-full border-2 border-control bg-canvas checked:border-[6px] checked:border-signal" />
               <span>
                 <span className="block font-medium">{o.t}</span>
                 <span className="block text-small text-subtle">{o.d}</span>
@@ -1217,41 +1343,75 @@ export function Join() {
           ))}
         </div>
       </fieldset>
-      {(pick === "athlete" || pick === "company" || pick === "individual") && (
+      {pick === "coach" && (
+        <p className="mt-6 text-muted">
+          Coaches don&rsquo;t need to register first: an adult athlete or a guardian adds you from &ldquo;Consent &amp; safety&rdquo; and chooses what you may do (prepare applications, send updates). You never accept money or change consent for them.{" "}
+          <a className="underline underline-offset-4" href="#/app/jonas/home">
+            See a coach&rsquo;s view
+          </a>
+        </p>
+      )}
+      {pick && pick !== "coach" && (
         <div className="mt-4">
-          <Field label="Your name" htmlFor="j-name" hint={pick === "athlete" && amiraJoining ? "Leave empty to join as Amira Haddad (Journey A)" : undefined}>
-            <input id="j-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={pick === "athlete" && amiraJoining ? "Amira Haddad" : "Your name"} />
+          <Field label="Your name" htmlFor="j-name" hint={pick === "athlete" && amiraJoining ? "In Journey A, type Amira Haddad." : undefined}>
+            <input id="j-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           </Field>
-          {pick === "company" && (
-            <Field label="Organisation" htmlFor="j-org">
+          {pick === "athlete" && (
+            <div className="grid gap-x-4 sm:grid-cols-2">
+              <Field label="Your age" htmlFor="j-age">
+                <input id="j-age" inputMode="numeric" className={inputCls} value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))} />
+              </Field>
+              {sportField("Your sport")}
+              {regionField}
+              {catField("you")}
+            </div>
+          )}
+          {pick === "guardian" && (
+            <div className="grid gap-x-4 sm:grid-cols-2">
+              <Field label="The athlete's name" htmlFor="j-child">
+                <input id="j-child" className={inputCls} value={child} onChange={(e) => setChild(e.target.value)} />
+              </Field>
+              <Field label="Their age" htmlFor="j-age">
+                <input id="j-age" inputMode="numeric" className={inputCls} value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))} />
+              </Field>
+              {sportField("Their sport")}
+              {regionField}
+              {catField("they")}
+            </div>
+          )}
+          {(pick === "organisation" || pick === "company") && (
+            <Field label="Organisation name" htmlFor="j-org">
               <input id="j-org" className={inputCls} value={org} onChange={(e) => setOrg(e.target.value)} />
             </Field>
           )}
-          {pick === "athlete" && (
+          {pick === "organisation" && (
             <div className="grid gap-x-4 sm:grid-cols-3">
-              <Field label="Age" htmlFor="j-age">
-                <input id="j-age" inputMode="numeric" className={inputCls} value={age} onChange={(e) => setAge(e.target.value)} />
-              </Field>
-              <Field label="Sport" htmlFor="j-sport">
-                <input id="j-sport" className={inputCls} value={sport} onChange={(e) => setSport(e.target.value)} />
-              </Field>
-              <Field label="Region" htmlFor="j-region">
-                <select id="j-region" className={inputCls} value={region} onChange={(e) => setRegion(e.target.value)}>
-                  {["Coastal Region", "Northern Region", "Central Region", "Lakes Region", "Southern Region", "Highland Region"].map((r) => (
-                    <option key={r}>{r}</option>
+              <Field label="Type" htmlFor="j-type">
+                <select id="j-type" className={inputCls} value={orgType} onChange={(e) => setOrgType(e.target.value)}>
+                  {["Club", "Academy", "Federation", "Programme operator", "School sport programme"].map((x) => (
+                    <option key={x}>{x}</option>
                   ))}
                 </select>
               </Field>
+              {sportField("Main sport")}
+              {regionField}
             </div>
           )}
+          {(pick === "company" || pick === "individual") && sportField("Sport you most want to support")}
         </div>
       )}
-      <div className="mt-8 flex flex-wrap items-center gap-4">
-        <Button arrow onClick={() => (pick ? submit() : setErr("Choose who you are registering as."))}>
-          {pick === "guardian" || pick === "coach" ? "See the guardian and coach examples" : "Create my account"}
-        </Button>
-        <span className="text-small text-subtle">Then a simulated email code. Nothing is sent.</span>
-      </div>
+      {pick !== "coach" && (
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <Button arrow onClick={() => {
+            const e = pick ? check() : "Choose who you are registering as.";
+            setErr(e);
+            if (!e) setStep("code");
+          }}>
+            Continue
+          </Button>
+          {pick === "guardian" && <span className="text-small text-subtle">Young athletes are never shown as profiles. Everything goes through you.</span>}
+        </div>
+      )}
       <Message error={err} />
     </main>
   );
