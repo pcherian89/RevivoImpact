@@ -35,8 +35,13 @@ export default function App() {
   );
 }
 
+const FUNDER_ONLY = ["request", "athlete", "opps", "apps", "review", "selection"];
+
 function renderScreen(sc: string, param: string | undefined, p: Person) {
   const funder = !!p.funderId && p.role !== "athlete";
+  // Screens belong to a role: a link opened by someone else shows a plain note, never another role's records.
+  if (FUNDER_ONLY.includes(sc) && !funder) return <RoleNote />;
+  if (sc === "admin" && p.role !== "admin") return <RoleNote />;
   switch (sc) {
     case "home":
       return <SeekerHome persona={p} />;
@@ -83,4 +88,8 @@ function renderScreen(sc: string, param: string | undefined, p: Person) {
       return <Planned n={Number.isFinite(n) && n > 0 ? n : 3} persona={p} />;
     }
   }
+}
+
+function RoleNote() {
+  return <p className="border-b border-line py-8 text-muted">This screen belongs to another role. Use the menu to continue.</p>;
 }

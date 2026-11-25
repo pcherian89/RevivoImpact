@@ -44,6 +44,8 @@ export type Funder = {
   accepts: "yes" | "commercial" | "opportunities";
   acceptsNote: string;
   acceptsMax?: number;
+  /** Open asks this funder will receive at once (docs/02 §3.3); 20 by default. */
+  askCap?: number;
   /** What an ask must match (sport tags or "any"; support tags) before it can be sent */
   acceptsSupport?: string[];
   adultsOrOrgsOnly?: boolean;
@@ -193,7 +195,7 @@ export type Application = {
 
 export type Ask = { id: string; requestId: string; funderId: string; lineId: string; amount: number; by: string; status: "sent" | "offered" | "notnow" | "question"; at: Moment };
 export type Interest = { id: string; funderId: string; by: string; athleteId: string; reason: string; status: "sent" | "shared" | "declined"; at: Moment };
-export type OfferStatus = "second-approval" | "safeguarding" | "held" | "accepted" | "declined";
+export type OfferStatus = "second-approval" | "safeguarding" | "held" | "accepted" | "declined" | "withdrawn";
 export type Offer = {
   id: string;
   fundId: string;
@@ -206,6 +208,7 @@ export type Offer = {
   amount: number;
   reason: string;
   status: OfferStatus;
+  approvedBy?: string;
   at: Moment;
   deliverables?: string[];
   light?: boolean;

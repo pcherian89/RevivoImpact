@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowRight, ChevronRight, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, type Fund, type Person, type World } from "../domain/model";
-import { fit, fmt, fundTotals, oppStatusAt, platformTotals, released, requestTotals, stateLabel, sum } from "../domain/engine";
+import { fit, fmt, fundTotals, mayReachMinors, oppStatusAt, platformTotals, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, MiniLine, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
@@ -20,12 +20,16 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const needs: { t: string; d: string; a: string; to: string }[] = [];
   for (const o of Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "awaiting"))
     needs.push(o.draftedBy === persona.id ? { t: `Your draft "${o.title}" waits for a colleague's approval`, d: "You prepared it, so a different person must publish it.", a: "See opportunities", to: "opps" } : { t: `${w.people[o.draftedBy!]?.name ?? "A colleague"}'s draft is waiting for approval`, d: `${o.title} · you did not prepare it, so you can publish it`, a: "Review and publish", to: "opps" });
+  const waiting = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "second-approval");
+  const forMe = waiting.filter((o) => o.by !== persona.id);
+  if (forMe.length && persona.perms.includes("Approve")) needs.push({ t: `${forMe.length} offer${forMe.length > 1 ? "s" : ""} waiting for your second approval`, d: "A colleague made them; this fund needs two people.", a: "Give second approval", to: "apps" });
+  else if (waiting.length && persona.perms.includes("Approve")) needs.push({ t: `${waiting.length} of your offers ${waiting.length > 1 ? "are" : "is"} waiting for a second approver`, d: "Nothing reaches the recipient until a colleague with Approve agrees. You can withdraw it.", a: "See offers", to: "apps" });
   const asks = Object.values(w.asks).filter((a) => a.funderId === fid && a.status === "sent");
   if (asks.length) needs.push({ t: `${asks.length} support ${asks.length === 1 ? "ask" : "asks"} to answer`, d: "Answer with an offer, a question or “not now”.", a: "Answer asks", to: "apps" });
   const shortlisted = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "shortlisted");
   if (shortlisted.length && persona.perms.includes("Approve")) needs.push({ t: `${shortlisted.length} recommendations are ready for decision`, d: "See the budget and award levels before you decide.", a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
   const toReview = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "submitted" && a.scores.length < 2 && !a.scores.some((s) => s.by === persona.id) && !a.light);
-  if (toReview.length && persona.perms.includes("Review")) needs.push({ t: `${toReview.length} application${toReview.length > 1 ? "s" : ""} to review`, d: toReview.map((a) => w.athletes[a.applicantId]?.name).join(", "), a: "Review", to: `review/${toReview[0].id}` });
+  if (toReview.length && persona.perms.includes("Review")) needs.push({ t: `${toReview.length} application${toReview.length > 1 ? "s" : ""} to review`, d: toReview.map((a) => athleteLabel(w, a.applicantId, persona)).join(", "), a: "Review", to: `review/${toReview[0].id}` });
   const toRelease = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light && released(w, g.id) === 0 && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
   if (toRelease.length && persona.perms.includes("Finance")) needs.push({ t: `${toRelease.length} payment${toRelease.length > 1 ? "s" : ""} to record`, d: "Recorded, never processed (simulated).", a: "Record payments", to: "portfolio" });
   const main = funds.find((x) => x.id === "eas") ?? funds[0];
@@ -140,8 +144,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
   const short = w.shortlists[fid] ?? [];
   const reqs = Object.values(w.requests)
     .filter((r) => r.status === "open" && r.discoverable && requestTotals(w, r.id).remaining > 0)
-    .filter((r) => !(r.minor && (isIndividual ? !persona.enhancedCheck : false)))
-    .filter((r) => !(r.minor && commercial))
+    .filter((r) => !r.minor || mayReachMinors(w, persona.id))
     .filter((r) => !(r.ownerKind === "athlete" && w.blocks.some((b) => b.athleteId === r.ownerId && b.funderId === fid)));
   const rows = reqs.map((r) => ({ r, m: fit(chips, r.tags) })).sort((a, b) => b.m.length - a.m.length || a.r.neededMonth.localeCompare(b.r.neededMonth));
   const athletes = Object.values(w.athletes)
@@ -299,6 +302,9 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
   const [reason, setReason] = useState("");
   const act = useAction(persona.id);
   if (!r || !t) return <Empty>This request is not available.</Empty>;
+  const mineAny = Object.values(w.offers).some((o) => o.requestId === id && w.funds[o.fundId].funderId === fid);
+  if (r.minor && !mayReachMinors(w, persona.id) && !mineAny) return <Empty>Requests for athletes under 18 are shown only to verified organisations and to individual sponsors with an enhanced safeguarding check.</Empty>;
+  if ((!r.discoverable || (r.ownerKind === "athlete" && w.blocks.some((b) => b.athleteId === r.ownerId && b.funderId === fid))) && !mineAny) return <Empty>This request is no longer in Discover.</Empty>;
   const fund = w.funds[fundId] as Fund | undefined;
   const label = r.ownerKind === "org" ? w.orgs[r.ownerId].name : r.minor ? `${r.sport === "Swimming" ? "Swimmer" : r.sport} · ${r.ageGroup}` : w.athletes[r.ownerId].name;
   const ftot = fund ? fundTotals(w, fund.id) : null;
@@ -354,7 +360,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
           <p className="mt-2 text-small text-muted">{r.minor ? "This offer goes to the athlete's guardian. You cannot contact the athlete directly; you see the first name only if the guardian accepts." : "The recipient can accept or decline. Contact details come only through an accepted agreement."}</p>
           {mine.map((o) => (
             <p key={o.id} role="status" className="mt-4 flex gap-2 text-signal">
-              <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {fmt(o.amount)} offered · {o.status === "held" ? "waiting for acceptance" : o.status === "accepted" ? "accepted" : o.status === "safeguarding" ? "in platform safeguarding review" : o.status === "second-approval" ? "waiting for your second approver" : o.status}
+              <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {fmt(o.amount)} offered · {o.status === "held" ? "waiting for acceptance" : o.status === "accepted" ? "accepted" : o.status === "safeguarding" ? "in platform safeguarding review" : o.status === "second-approval" ? "waiting for a second approver at your organisation" : o.status === "withdrawn" ? "withdrawn" : "declined"}
             </p>
           ))}
           {funds.length === 0 || t.remaining === 0 ? (
@@ -705,8 +711,18 @@ export function FunderApplications({ persona }: { persona: Person }) {
                 <p>
                   {fmt(o.amount)} to <span className="font-medium">{recipientName(w, o.recipientKind, o.recipientId, persona)}</span> · {w.funds[o.fundId].name}
                 </p>
-                <div className="flex items-center gap-3">
-                  <Chip kind={o.status === "accepted" ? "verified" : o.status === "held" ? "awaiting" : "info"}>{o.status === "held" ? "Awaiting acceptance" : o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "Platform safeguarding review" : o.status === "second-approval" ? "Needs a second approver" : "Declined"}</Chip>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Chip kind={o.status === "accepted" ? "verified" : o.status === "held" ? "awaiting" : o.status === "second-approval" ? "attention" : "info"}>{o.status === "held" ? "Awaiting acceptance" : o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "Platform safeguarding review" : o.status === "second-approval" ? `Needs a second approver · ${w.funds[o.fundId].policy}` : o.status === "withdrawn" ? "Withdrawn" : "Declined"}</Chip>
+                  {o.status === "second-approval" && persona.perms.includes("Approve") && o.by !== persona.id && (
+                    <ActionButton actor={persona.id} type="approveOffer" args={{ offerId: o.id }} success="Second approval given. The offer has been sent.">
+                      Give second approval
+                    </ActionButton>
+                  )}
+                  {["second-approval", "held", "safeguarding"].includes(o.status) && !o.applicationId && persona.perms.includes("Approve") && (
+                    <ActionButton actor={persona.id} type="withdrawOffer" args={{ offerId: o.id, reason: o.status === "second-approval" ? "Withdrawn before second approval" : "Withdrawn by the funder before acceptance" }} variant="secondary" success="Withdrawn. The money is available again.">
+                      Withdraw
+                    </ActionButton>
+                  )}
                 </div>
               </Row>
             ))}
@@ -728,6 +744,9 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
   const ath = w.athletes[a.applicantId];
   const o = w.opps[a.oppId];
   const fund = w.funds[o.fundId];
+  // Purpose-based access (docs/02 §8): an application is shared only with the funder it was sent to.
+  if (persona.funderId !== fund.funderId || a.status === "draft") return <Empty>This application is shared only with the funder it was sent to.</Empty>;
+  const tiers = fund.tiers?.filter((t) => t.amount <= a.requested) ?? [];
   const undeclared = ath?.currentSupport.filter((s) => !s.declared) ?? [];
   const canReview = persona.perms.includes("Review");
   const scoredByMe = a.scores.some((s) => s.by === persona.id);
@@ -788,17 +807,17 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
               </Button>
             </>
           )}
-          {canReview && ["submitted", "info"].includes(a.status) && (
+          {canReview && ["submitted", "info"].includes(a.status) && tiers.length > 0 && (
             <div className="mt-6 border-t border-line pt-4">
               <p className="font-medium">Recommend a tier</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {fund.tiers?.map((t) => (
+                {tiers.map((t) => (
                   <ActionButton key={t.amount} actor={persona.id} type="shortlist" args={{ appId: id, tier: t.amount }} variant={t.amount === 4500 ? "primary" : "secondary"} success="Shortlisted.">
                     {fmt(t.amount)}
                   </ActionButton>
                 ))}
               </div>
-              <p className="mt-2 text-small text-subtle">{fund.tiers?.map((t) => `${fmt(t.amount)}: ${t.criterion.toLowerCase()}`).join(" · ")}</p>
+              <p className="mt-2 text-small text-subtle">{tiers.map((t) => `${fmt(t.amount)}: ${t.criterion.toLowerCase()}`).join(" · ")}{tiers.length < (fund.tiers?.length ?? 0) ? ` · Higher tiers are above the ${fmt(a.requested)} requested.` : ""}</p>
             </div>
           )}
           {a.status === "shortlisted" && <p className="mt-4 flex gap-2 text-signal"><CircleCheck className="size-5" aria-hidden="true" /> Shortlisted at {fmt(a.recommendedTier!)}. A different person with Approve decides.</p>}

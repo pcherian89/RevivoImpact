@@ -748,7 +748,8 @@ export function SeekerApplications({ persona }: { persona: Person }) {
   const kind = isOrg ? "org" : "athlete";
   const rid = isOrg ? persona.orgId! : ath?.id;
   const apps = Object.values(w.applications).filter((a) => a.applicantId === rid);
-  const offers = rid ? offersFor(w, kind, rid).filter((o) => !o.light) : [];
+  // An offer reaches the recipient only once the funder's approvals are complete; a withdrawn one before acceptance is not shown.
+  const offers = rid ? offersFor(w, kind, rid).filter((o) => !o.light && o.status !== "second-approval" && o.status !== "withdrawn") : [];
   const asks = Object.values(w.asks).filter((a) => w.requests[a.requestId]?.ownerId === rid);
   const interests = Object.values(w.interests).filter((x) => x.athleteId === rid);
   return (
