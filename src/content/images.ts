@@ -20,6 +20,7 @@ import im09 from "../assets/photos/im-09-para-athlete.webp";
 import im11 from "../assets/photos/im-11-competition-travel.webp";
 import im13 from "../assets/photos/im-13-equipment-handover.webp";
 import im21 from "../assets/photos/im-21-womens-basketball.webp";
+import im14 from "../assets/photos/im-14-sponsorship-sprinter.webp";
 import im20 from "../assets/photos/im-20-swimming-coaching.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
@@ -59,4 +60,7 @@ export const PHOTOS: Record<string, Photo> = {
   // Not in the P1 plan: the founder wanted more sports, so it heads the Women's Sporting Development Fund instead of
   // im-10 (football). Trimmed 10px at each edge (rounded corners); seven shoe and sock logos removed.
   "im-21-womens-basketball.png": { src: im21, w: 1650, h: 922, tone: "", note: "Women's basketball training at sunset" },
+  // Founder's photo "pre-race team spirit at sunset" (25 Nov 2026): adult sprinters and their coach at an evening meet,
+  // a crowd in the stand. Trimmed 10px at each edge (rounded corners).
+  "im-14-sponsorship-sprinter.png": { src: im14, w: 1650, h: 921, tone: "", note: "Sprinters and their coach before a race at an evening meet" },
 };
