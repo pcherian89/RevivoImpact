@@ -292,3 +292,27 @@
 h1[tabindex="-1"]:focus {
   outline: none;
 }
+
+/* A quiet arrival for each screen (no movement across the page, just a short fade and 6px rise). Off for reduced
+   motion, whether set by the system or by the prototype's own switch. */
+@keyframes ri-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+main > div[class] > :first-child {
+  animation: ri-enter 220ms ease-out both;
+}
+[data-ri-motion="reduced"] main > div[class] > :first-child {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  main > div[class] > :first-child {
+    animation: none;
+  }
+}

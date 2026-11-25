@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileStack, Footprints, Hand, House, LayoutGrid, Map, Moon, Pause, RotateCcw, Search, ShieldCheck, Sun, UserRound, UsersRound, Wallet, Wand2, X, type LucideIcon } from "lucide-react";
+import { CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileStack, Footprints, Hand, House, LayoutGrid, Map, Moon, Pause, RotateCcw, Search, Sparkles, ShieldCheck, Sun, UserRound, UsersRound, Wallet, Wand2, X, type LucideIcon } from "lucide-react";
 import { useStore } from "../state/store";
 import { ImpactLockup } from "../brand/RevivoLogo";
 import { MOMENTS, type Person } from "../domain/model";
@@ -279,6 +279,7 @@ export function GuidePanel() {
         ))}
       </div>
 
+      {guide.step === 0 && <p className="mt-4 text-small text-muted">{journey.intro}</p>}
       <div className="mt-5 rounded-[10px] border border-line-strong p-4">
         <p className="label text-subtle">
           {atDate.label} {s.phase && "· coming in the next build"}
@@ -286,6 +287,15 @@ export function GuidePanel() {
         <h3 className="mt-1 font-display text-xl font-bold">{s.title}</h3>
         <p className="mt-1 text-small text-muted">You are now: {s.who}</p>
         <p className="mt-3">{s.what}</p>
+        {s.ai && (
+          <p className="mt-3 flex gap-2 text-small text-muted">
+            <Sparkles className="mt-0.5 size-4 shrink-0 text-steel" aria-hidden="true" />
+            <span>
+              <span className="font-medium text-ink">Where Simulated AI helps: </span>
+              {s.ai}
+            </span>
+          </p>
+        )}
         {done && (
           <p className="mt-3 flex items-center gap-2 text-small text-signal">
             <CheckCircle2 className="size-4" aria-hidden="true" /> Done. See &ldquo;What changed&rdquo;.
@@ -329,6 +339,22 @@ export function GuidePanel() {
         {err && <p role="alert" className="mt-3 text-small text-amber">{err}</p>}
         <p className="mt-3 text-small text-subtle">&ldquo;Show me&rdquo; acts through the same rules as a click. &ldquo;I&rsquo;ll do it&rdquo; opens the screen; the step is marked done when the record exists.</p>
       </div>
+
+      {guide.step === journey.steps.length - 1 && done && (
+        <div className="mt-5 border-l-2 border-signal pl-4">
+          <p className="label text-signal">What you just saw</p>
+          <ul className="mt-2 space-y-1.5 text-small">
+            {journey.outro.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
+          {journey.id !== "E" && (
+            <button type="button" className={btn("secondary", "mt-4")} onClick={() => setGuide({ journey: JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id, step: 0 })}>
+              Next: journey {JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id}
+            </button>
+          )}
+        </div>
+      )}
 
       <ol className="mt-5 border-l border-line-strong">
         {journey.steps.map((x, i) => (
