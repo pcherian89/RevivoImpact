@@ -28,8 +28,8 @@ export function Message({ error, done }: { error?: string | null; done?: string 
     );
   if (done)
     return (
-      <p role="status" className="mt-3 flex gap-2 text-small text-signal">
-        <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {done}
+      <p role="status" className="mt-3 flex gap-2 text-small text-ink">
+        <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden="true" /> {done}
       </p>
     );
   return null;
@@ -74,7 +74,7 @@ export function athleteLabel(w: World, athleteId: string, viewer: Person) {
   if (viewer.role === "guardian" || viewer.role === "coach") return a.name;
   if (viewer.funderId) {
     const accepted = Object.values(w.agreements).some((g) => g.recipientId === athleteId && w.funds[g.fundId].funderId === viewer.funderId);
-    if (accepted) return `${a.name.split(" ")[0]} (first name only)`;
+    if (accepted) return a.name.split(" ")[0];
     return `${a.sport} · ${a.age < 14 ? "under 14" : a.age < 16 ? "14–15" : "16–17"} (anonymised)`;
   }
   return "Athlete under 18 (anonymised)";
@@ -102,6 +102,9 @@ export function AppStatus({ s, funderView }: { s: Application["status"]; funderV
   const label = funderView && s === "shortlisted" ? "Shortlisted" : m.label;
   return <Chip kind={m.kind}>{label}</Chip>;
 }
+
+/** Approval policies in plain words (docs/02 §5.7). */
+export const policyText = (p: "Simple" | "Standard" | "Institutional") => (p === "Institutional" ? "A panel decides; two people sign off" : p === "Standard" ? "Two people sign off" : "One person signs off");
 
 export function Section({ title, children, aside, id }: { title: string; children: ReactNode; aside?: ReactNode; id?: string }) {
   const hid = id ?? title.toLowerCase().replace(/[^a-z]+/g, "-");

@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 const { chromium } = createRequire(import.meta.url)("playwright");
-const file = "file://" + resolve("dist/index.html");
+const file = "file://" + resolve(process.env.DIST ?? "dist/index.html");
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errs = [];
@@ -136,7 +136,8 @@ await go("app/rosa/applications");
 await click("Accept development grant");
 await check("E4 guardian accepts", (await text()).includes("Accepted a development grant of $1,500"));
 await go("app/kenji/apps");
-await check("E4 Kenji now sees the first name only", (await text()).includes("Tiago (first name only)"));
+t = await text();
+await check("E4 Kenji now sees the first name only", t.includes("Tiago") && !t.includes("Esteves"));
 
 // ---- Individual sponsor and safeguarding review (Explore)
 await go("app/marcus/fdiscover");

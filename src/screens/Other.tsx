@@ -26,7 +26,7 @@ export function Safety({ persona }: { persona: Person }) {
     <div className="pb-8">
       <PageHead eyebrow={persona.role === "athlete" ? "Consent & safety" : `My Athletes · ${ath.name}`} title="Who can see what, and how do I stay in control?" lead="Every choice takes effect at once. Saying no changes nothing else." />
       {!canChange && <p className="flex gap-2 text-muted"><Lock className="mt-1 size-4" aria-hidden="true" /> As a coach you cannot change consent, accept offers or publish requests.</p>}
-      <Section title="Consent, per purpose">
+      <Section title="What you have agreed to">
         <ul>
           {(
             [
@@ -58,7 +58,7 @@ export function Safety({ persona }: { persona: Person }) {
             {reqs.map((r) => (
               <Row key={r.id}>
                 <span>
-                  {r.title} {r.minor && <Chip kind="neutral">Anonymised card</Chip>}
+                  {r.title} {r.minor && <Chip kind="neutral">Shown without names</Chip>}
                 </span>
                 {r.discoverable && canChange ? (
                   <ActionButton actor={persona.id} type="hideRequest" args={{ requestId: r.id }} variant="secondary" success="Hidden from Discover. Existing offers and agreements continue.">
@@ -72,7 +72,7 @@ export function Safety({ persona }: { persona: Person }) {
           </ul>
         </Section>
       )}
-      <Section title="Representatives">
+      <Section title={`Who can act for ${ath.name.split(" ")[0]}`}>
         <ul>
           {reps.map((z) => (
             <Row key={z.coachId}>

@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 const { chromium } = createRequire(import.meta.url)("playwright");
-const file = "file://" + resolve("dist/index.html");
+const file = "file://" + resolve(process.env.DIST ?? "dist/index.html");
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errs = [];
@@ -20,7 +20,7 @@ for (const j of ["A", "B", "C", "E"]) {
     await guide.locator("ol > li").nth(i).getByRole("button").click();
     await page.waitForTimeout(40);
     const label = (await guide.locator("h3").innerText()).trim();
-    const p3 = (await guide.innerText()).includes("built in P3");
+    const p3 = (await guide.innerText()).includes("coming in the next build");
     if (p3) continue;
     const load = guide.getByRole("button", { name: "Load the story to this step" });
     if (await load.count()) { await load.click(); await page.waitForTimeout(80); }

@@ -70,8 +70,8 @@ export function SeekerHome({ persona }: { persona: Person }) {
     : [
         { t: "Find scholarships and grants", to: "discover", icon: Search },
         { t: "Find sponsors who accept asks", to: "discover?sponsors", icon: HandHeart },
-        { t: "Publish a funding request", to: "publish", icon: Megaphone },
-        { t: "See your applications", to: "applications", icon: CircleCheck },
+        ...(persona.role === "coach" ? [] : [{ t: "Publish a funding request", to: "publish", icon: Megaphone }]),
+        { t: persona.role === "coach" ? "See applications you prepared" : "See your applications", to: "applications", icon: CircleCheck },
       ];
   const agreements = rid ? agreementsFor(w, kind, rid) : [];
 
@@ -80,7 +80,7 @@ export function SeekerHome({ persona }: { persona: Person }) {
       <HeroBand file={persona.role === "guardian" ? "im-04-guardian-offer.png" : org ? "im-08-community-programme.png" : "im-03-athlete-home.png"} phone="after">
         <p className="label text-signal">{org ? `${org.type} · ${org.region}` : ath ? `${persona.role === "athlete" ? "Athlete" : persona.role === "guardian" ? "Guardian" : "Coach"} · ${ath.sport.toLowerCase()} · ${ath.region}` : "Guardian"}</p>
         <h1 className="text-title mt-2">
-          {persona.role === "athlete" ? `Hello ${first}. Here’s what needs you.` : persona.role === "guardian" ? `${ath?.name.split(" ")[0] ?? ""}: what needs you, ${first}?` : persona.role === "coach" ? `Your athletes, ${first}` : `${org?.name}: what needs you?`}
+          {persona.role === "athlete" ? `Hello ${first}. Here’s what needs you.` : persona.role === "guardian" ? `What needs you for ${ath?.name.split(" ")[0] ?? ""}, ${first}?` : persona.role === "coach" ? `Your athletes, ${first}` : `${org?.name}: what needs you?`}
         </h1>
       </HeroBand>
 
@@ -135,7 +135,7 @@ export function SeekerHome({ persona }: { persona: Person }) {
           <MatchedStrip w={w} ath={ath} personaId={persona.id} />
         </Section>
       )}
-      <p className="mt-6 text-small text-subtle">Demo date: {fmtDate(DATE[moment])} 2027. Lists follow the date you choose in the top bar.</p>
+      <p className="mt-8 text-small text-subtle">{agreements.length ? "Delivery and spending records show what was delivered and spent; they do not on their own prove social impact. " : ""}Demo date: {fmtDate(DATE[moment])} 2027; lists follow the date in the top bar.</p>
     </div>
   );
 }
@@ -145,6 +145,7 @@ function CoachAthletes({ persona }: { persona: Person }) {
   const auth = w.authorisations.filter((a) => a.coachId === persona.id);
   return (
     <Section title={`Athletes who authorised you · ${auth.length}`}>
+      <p className="mt-3 text-small text-muted">For each athlete you may prepare applications and submit updates. You can never submit for an athlete under 18, accept offers, publish requests or change consent.</p>
       <ul>
         {auth.map((z) => {
           const a = w.athletes[z.athleteId];
@@ -156,7 +157,7 @@ function CoachAthletes({ persona }: { persona: Person }) {
                   {a.name} <span className="text-small text-subtle">· {a.sport} · {a.age}</span>
                 </p>
                 <p className="text-small text-subtle">
-                  You may: prepare applications, submit updates · {matched.length ? `${matched.length} open: ${matched.map((o) => `${o.title} (closes ${o.closes.slice(8)} ${new Date(o.closes).toLocaleString("en-GB", { month: "short" })})`).join(" · ")}` : "no open opportunities match"}
+                  {matched.length ? `${matched.length} open: ${matched.map((o) => `${o.title} (closes ${o.closes.slice(8)} ${new Date(o.closes).toLocaleString("en-GB", { month: "short" })})`).join(" · ")}` : "no open opportunities match"}
                 </p>
               </div>
               {matched[0] && (
@@ -168,7 +169,6 @@ function CoachAthletes({ persona }: { persona: Person }) {
           );
         })}
       </ul>
-      <p className="mt-3 text-small text-subtle">You can never submit an application for an athlete under 18, accept offers, publish requests or change consent.</p>
     </Section>
   );
 }
@@ -226,7 +226,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
       <HeroBand file="im-05-discover-opportunities.png">
         <p className="label text-signal">Discover</p>
         <h1 className="text-title mt-2">Who could fund {isOrg ? "us" : persona.role === "athlete" ? "me" : ath?.name.split(" ")[0] ?? "them"}?</h1>
-        <p className="text-lead mt-3 text-muted">Scholarships, grants and sponsors participating on Revivo Impact, checked against {isOrg ? "your organisation" : "the profile"} by each funder&rsquo;s published rules.</p>
+        <p className="text-lead mt-3 text-muted">Scholarships, grants and sponsors on Revivo Impact. We check {isOrg ? "your organisation" : persona.role === "athlete" ? "your profile" : "the profile"} against each funder&rsquo;s own rules.</p>
       </HeroBand>
       <Tabs label="Discover" value={tab} onChange={setTab} tabs={[{ id: "opps", label: "Funding opportunities", count: open.length }, { id: "sponsors", label: "Sponsors & funders", count: funders.length }]} />
       <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Filters">
@@ -257,14 +257,14 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
             {open.length === 0 && <Empty li>No opportunities are open on this date. Save a search and we&rsquo;ll tell you when one opens.</Empty>}
           </ul>
           {upcoming.length > 0 && (
-            <>
-              <h2 className="label mt-10 text-subtle">Upcoming</h2>
+            <details className="mt-8">
+              <summary className="min-h-11 cursor-pointer py-2 font-medium text-muted hover:text-ink">Show {upcoming.length} upcoming</summary>
               <ul className="mt-2 border-t border-line">
                 {upcoming.map(({ o }) => (
-                  <OppRow key={o.id} w={w} o={o} summary={`Opens ${fmtDate(o.opens)}`} kind="check" personaId={persona.id} />
+                  <OppRow key={o.id} w={w} o={o} summary={o.forOrganisations ? "For organisations" : "Check when it opens"} kind="check" personaId={persona.id} />
                 ))}
               </ul>
-            </>
+            </details>
           )}
         </>
       ) : (
@@ -299,7 +299,7 @@ function OppRow({ w, o, summary, kind, personaId }: { w: World; o: Opportunity; 
   const days = (Date.parse(o.closes) - Date.parse(DATE[w.moment])) / 86400000;
   return (
     <li className="border-b border-line">
-      <a href={`#/app/${personaId}/opportunity/${o.id}`} className="group grid gap-2 py-4 md:grid-cols-[1.6fr_1fr_0.8fr_1.4fr_auto] md:items-center md:gap-6">
+      <a href={`#/app/${personaId}/opportunity/${o.id}`} className="group grid gap-2 py-4 lg:grid-cols-[1.6fr_1fr_0.8fr_1.4fr_auto] lg:items-center lg:gap-6">
         <span className="min-w-0">
           <span className="flex flex-wrap items-center gap-2 text-small text-subtle">
             {f.name} {f.verified && <BadgeCheck className="size-3.5 text-muted" aria-label="Verified organisation (simulated)" />} · {f.type}
@@ -309,20 +309,22 @@ function OppRow({ w, o, summary, kind, personaId }: { w: World; o: Opportunity; 
             <Chip kind="neutral">{w.funds[o.fundId].type}</Chip>
           </span>
         </span>
-        <span className="flex flex-wrap items-baseline gap-x-2 md:block">
+        <span className="flex flex-wrap items-baseline gap-x-2 lg:block">
           <span className="block font-medium tabular-nums">{o.amountLabel}</span>
           <span className="block text-small text-subtle">{o.awardsLabel}</span>
         </span>
         <span className="text-small">
-          <span className="text-subtle md:block">{oppStatusAt(w, o) === "upcoming" ? "Opens " : "Closes "}</span>
+          <span className="text-subtle lg:block">{oppStatusAt(w, o) === "upcoming" ? "Opens " : "Closes "}</span>
           <span className="font-medium">{fmtDate(oppStatusAt(w, o) === "upcoming" ? o.opens : o.closes)}</span>
-          {days >= 0 && days <= 7 && oppStatusAt(w, o) === "open" && <span className="ml-2 text-amber md:ml-0 md:block">Closing soon</span>}
+          {oppStatusAt(w, o) === "open" && days >= 0 && <span className={cn("ml-2 lg:ml-0 lg:block", days <= 7 ? "text-amber" : "text-subtle")}>{days === 0 ? "Closes today" : `${days} day${days === 1 ? "" : "s"} left`}</span>}
         </span>
         <span className="flex items-start gap-2 text-small">
           <EligIcon kind={kind} />
           <span className={kind === "not" ? "text-subtle" : "text-ink"}>{summary}</span>
         </span>
-        <ChevronRight className="hidden size-5 text-subtle group-hover:text-ink md:block" aria-hidden="true" />
+        <span className="hidden items-center gap-1 text-small font-medium text-muted group-hover:text-ink lg:flex">
+          {kind !== "not" && oppStatusAt(w, o) === "open" ? "Apply" : "View"} <ChevronRight className="size-4" aria-hidden="true" />
+        </span>
       </a>
     </li>
   );
@@ -332,7 +334,7 @@ function FunderRow({ f, personaId }: { f: Funder; personaId: string }) {
   const Icon = typeIcon[f.type];
   return (
     <li className="border-b border-line">
-      <a href={`#/app/${personaId}/profile/${f.id}`} className="group grid gap-2 py-4 md:grid-cols-[1.5fr_1.2fr_1.3fr_auto] md:items-center md:gap-6">
+      <a href={`#/app/${personaId}/profile/${f.id}`} className="group grid gap-2 py-4 lg:grid-cols-[1.5fr_1.2fr_1.3fr_auto] lg:items-center lg:gap-6">
         <span className="flex items-start gap-3">
           <Icon className="mt-1 size-5 shrink-0 text-muted" aria-hidden="true" />
           <span>
@@ -349,7 +351,7 @@ function FunderRow({ f, personaId }: { f: Funder; personaId: string }) {
           </span>
         </span>
         <span>{f.accepts === "yes" ? <Chip kind="verified">Accepts support asks</Chip> : f.accepts === "commercial" ? <Chip kind="info">Commercial proposals only</Chip> : <Chip kind="self">Only through opportunities</Chip>}</span>
-        <ChevronRight className="hidden size-5 text-subtle md:block" aria-hidden="true" />
+        <ChevronRight className="hidden size-5 text-subtle lg:block" aria-hidden="true" />
       </a>
     </li>
   );
@@ -381,7 +383,7 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
         <div className="mt-3 flex flex-wrap gap-2">
           <Chip kind="neutral">{fund.type}</Chip>
           <Chip kind={st === "open" ? "current" : "self"}>{st === "open" ? `Open · ${o.visibility}` : st === "upcoming" ? "Upcoming" : st === "decided" ? "Decisions sent" : "Closed"}</Chip>
-          <Chip kind="neutral">Approval: {fund.policy}</Chip>
+
         </div>
       </HeroBand>
       <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
@@ -397,6 +399,14 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
           </div>
         ))}
       </dl>
+      {!canApply && st !== "upcoming" && !o.forOrganisations && persona.role !== "organisation" && (
+        <div className="mt-6 flex flex-col gap-4 rounded-[10px] border border-line-strong p-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-medium">{mine ? "You applied to this opportunity." : "This opportunity has closed."} {mine ? "" : "Others are open now."}</p>
+          <a href={`#/app/${persona.id}/${mine ? "applications" : "discover"}`} className={btn("secondary", "shrink-0")}>
+            {mine ? "See my application" : "See open opportunities"} <ArrowRight className="size-4" aria-hidden="true" />
+          </a>
+        </div>
+      )}
       {canApply && (
         <div className="mt-6 flex flex-col gap-4 rounded-[10px] border border-line-strong p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -453,7 +463,7 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
           <section>
             <Label>How decisions are made</Label>
             <p className="mt-2 text-muted">
-              {fund.policy === "Institutional" ? "Two reviewers score each application against four criteria; a different person approves. " : "A reviewer checks the evidence; a different person approves. "}
+              {fund.policy === "Institutional" ? "Two reviewers score each application against four criteria; a different person signs off. " : "A reviewer checks the evidence; a different person signs off. "}
               People decide; AI never does. Decisions by {o.decisions}.
             </p>
           </section>
@@ -542,9 +552,16 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
               <h2 className="text-subtitle mt-3">Ask {f.name.split(" ")[0]} for support</h2>
               <p className="mt-2 text-small text-muted">Ask once, for part of one of your funding requests. {f.name.split(" ")[0]} sees only what you share and answers with an offer, a question or &ldquo;not now&rdquo;. No open messaging.</p>
               {sent ? (
-                <p role="status" className="mt-4 flex gap-2 text-signal">
+                <>
+                <p role="status" className="mt-4 flex gap-2 text-ink">
                   <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> You asked for {fmt(sent.amount)} · {sent.status === "sent" ? "waiting for an answer" : sent.status === "offered" ? "an offer arrived" : sent.status === "notnow" ? "not now" : "a question arrived"}
                 </p>
+                {sent.status === "offered" && (
+                  <a href={`#/app/${persona.id}/applications`} className={btn("primary", "mt-4 w-full")}>
+                    See {f.name.split(" ")[0]}&rsquo;s offer <ArrowRight className="size-4" aria-hidden="true" />
+                  </a>
+                )}
+                </>
               ) : myRequests.length === 0 ? (
                 <p className="mt-4 text-small text-subtle">
                   An ask links to one of your funding requests.{" "}
@@ -756,7 +773,7 @@ export function SeekerApplications({ persona }: { persona: Person }) {
                       {o.deliverables && ` · deliverables: ${o.deliverables.join("; ")}`}
                     </p>
                     <p className="text-small text-subtle">
-                      If you accept, {fr.name.split(" ")[0]} sees {isMinor ? "the athlete's first name, sport and results; never contact details or photos" : "your name, sport, results and updates you share"}.{isMinor ? " This offer came to you as guardian; the funder cannot contact the athlete." : ""}
+                      {o.status === "accepted" ? `${fr.name.split(" ")[0]} now sees` : `If you accept, ${fr.name.split(" ")[0]} sees`} {isMinor ? "the athlete's first name, sport and results; never contact details or photos" : "your name, sport, results and updates you share"}.{isMinor && o.status !== "accepted" ? " This offer came to you as guardian; the funder cannot contact the athlete." : ""}
                     </p>
                   </div>
                   {o.status === "held" && canAnswer ? (
@@ -846,7 +863,7 @@ function AgreementLine({ w, id, to }: { w: World; id: string; to: string }) {
     ? [
         { short: "Agreement", full: "Sponsorship agreement", stat: fmt(g.amount) },
         { short: "Funding", full: "Payments", stat: rel ? `${fmt(rel)}${rec >= rel ? " · received" : ""}` : "—" },
-        { short: "Deliverables", full: "Agreed deliverables", stat: `${w.offers[g.offerId ?? ""]?.deliverables?.length ?? 3} agreed`, note: "Evidence from P3" },
+        { short: "Deliverables", full: "Agreed deliverables", stat: `${w.offers[g.offerId ?? ""]?.deliverables?.length ?? 3} agreed`, note: "Evidence starts 30 Jun" },
         { short: "Evidence", full: "Evidence", stat: "—" },
         { short: "Review", full: "Review", stat: "—" },
       ]
@@ -854,7 +871,7 @@ function AgreementLine({ w, id, to }: { w: World; id: string; to: string }) {
         { short: "Need", full: "Funding need", stat: g.requestId ? fmt(requestTotals(w, g.requestId).requested) : w.applications[w.offers[g.offerId ?? ""]?.applicationId ?? ""] ? fmt(w.applications[w.offers[g.offerId!]!.applicationId!].requested) : "—" },
         { short: "Support", full: "Approved support", stat: fmt(g.amount), note: `Accepted ${g.acceptedAt === "may06" ? "6 May" : g.acceptedAt}` },
         { short: "Released", full: "Funds released and received", stat: rel ? `${fmt(rel)} of ${fmt(g.amount)}` : "Next: payment", note: rel ? (rec >= rel ? "Received" : "Confirm receipt") : undefined },
-        { short: "Spent", full: "Expenditure and verification", stat: "—", note: "Updates from 30 Jun (P3)" },
+        { short: "Spent", full: "Expenditure and verification", stat: "—", note: "Spending updates start 30 Jun" },
         { short: "Progress", full: "Sporting progress", stat: "—" },
         { short: "Review", full: "Funding review", stat: "—" },
       ];
@@ -885,7 +902,7 @@ export function MyFunding({ persona }: { persona: Person }) {
               <AgreementLine w={w} id={g.id} to={isOrg ? w.orgs[rid!].name : ath!.name} />
             </div>
             <div className="mt-6">
-              <FundingBar committed={g.amount} released={rel} reported={0} verified={0} receivedOn={rec >= rel && rel ? "confirmed" : undefined} />
+              <FundingBar committed={g.amount} released={rel} reported={0} verified={0} receivedOn={rec >= rel && rel ? "receipt confirmed" : rel ? "receipt not yet confirmed" : undefined} />
             </div>
             {rel > rec && (persona.role !== "coach") && (
               <ActionButton className="mt-5" actor={persona.id} type="confirmReceipt" args={{ agreementId: g.id, entryId: `rc-${g.id}-${Date.now()}` }} success="Receipt confirmed. This is your confirmation, not a bank check.">
@@ -1162,7 +1179,7 @@ export function Join() {
         <div className="border-t border-line">
           {options.map((o) => (
             <label key={o.id} className="flex cursor-pointer items-start gap-4 border-b border-line py-4">
-              <input type="radio" name="who" value={o.id} checked={pick === o.id} onChange={() => setPick(o.id)} className="mt-1 size-5 accent-[var(--ri-signal)]" />
+              <input type="radio" name="who" value={o.id} checked={pick === o.id} onChange={() => setPick(o.id)} className="mt-1 size-5 shrink-0 appearance-none rounded-full border-2 border-control bg-canvas checked:border-[6px] checked:border-signal" />
               <span>
                 <span className="block font-medium">{o.t}</span>
                 <span className="block text-small text-subtle">{o.d}</span>
@@ -1201,7 +1218,7 @@ export function Join() {
         </div>
       )}
       <div className="mt-8 flex flex-wrap items-center gap-4">
-        <Button arrow disabled={!pick} onClick={submit}>
+        <Button arrow onClick={() => (pick ? submit() : setErr("Choose who you are registering as."))}>
           {pick === "guardian" || pick === "coach" ? "See the guardian and coach examples" : "Create my account"}
         </Button>
         <span className="text-small text-subtle">Then a simulated email code. Nothing is sent.</span>

@@ -5,7 +5,7 @@ import { BEHAVIOUR, type Fund, type Person, type World } from "../domain/model";
 import { fit, fmt, fundTotals, oppStatusAt, platformTotals, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, MiniLine, NeedBar } from "../components/money";
-import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, recipientName, Row, Section, useAction } from "./common";
+import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
 import { fmtDate } from "./Seeker";
 
 const fundsOf = (w: World, funderId: string) => Object.values(w.funds).filter((f) => f.funderId === funderId);
@@ -23,7 +23,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const asks = Object.values(w.asks).filter((a) => a.funderId === fid && a.status === "sent");
   if (asks.length) needs.push({ t: `${asks.length} support ${asks.length === 1 ? "ask" : "asks"} to answer`, d: "Answer with an offer, a question or “not now”.", a: "Answer asks", to: "apps" });
   const shortlisted = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "shortlisted");
-  if (shortlisted.length && persona.perms.includes("Approve")) needs.push({ t: `${shortlisted.length} recommendations are ready for decision`, d: "Budget meter and published tiers on the next screen.", a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
+  if (shortlisted.length && persona.perms.includes("Approve")) needs.push({ t: `${shortlisted.length} recommendations are ready for decision`, d: "See the budget and award levels before you decide.", a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
   const toReview = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "submitted" && a.scores.length < 2 && !a.scores.some((s) => s.by === persona.id) && !a.light);
   if (toReview.length && persona.perms.includes("Review")) needs.push({ t: `${toReview.length} application${toReview.length > 1 ? "s" : ""} to review`, d: toReview.map((a) => w.athletes[a.applicantId]?.name).join(", "), a: "Review", to: `review/${toReview[0].id}` });
   const toRelease = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light && released(w, g.id) === 0 && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
@@ -74,20 +74,25 @@ export function FunderOverview({ persona }: { persona: Person }) {
         </ul>
       </Section>
       {isFoundation && main && (
-        <Section title={main.name} aside={<a href={`#/app/${persona.id}/portfolio`} className={btn("secondary", "min-h-10")}><FileText className="size-4" aria-hidden="true" /> Reports</a>}>
-          <p className="mt-3 text-small text-subtle">Committed means approved and accepted. Held means offered, awaiting acceptance.</p>
+        <Section title={main.name}>
           <div className="mt-4">
             {(() => {
               const t = fundTotals(w, main.id);
               return <FundBar announced={t.announced} committed={t.committed} reserved={t.held} />;
             })()}
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <p className="text-small text-subtle">Committed means approved and accepted.</p>
+            <a href={`#/app/${persona.id}/portfolio`} className={btn("secondary", "min-h-10")}>
+              <FileText className="size-4" aria-hidden="true" /> Reports
+            </a>
+          </div>
         </Section>
       )}
       <section className="mt-10 grid gap-8 border-t border-line pt-8 md:grid-cols-3">
         <Answer q={isFoundation ? "Who applied" : "Who you support"} a={isFoundation ? `${Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length} applications` : `${pt.count} agreements`} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
-        <Answer q="Committed" a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} />
-        <Answer q="Released" a={fmt(pt.released)} d="Recorded payments (simulated); recipients confirm receipt" />
+        <Answer q="Committed · all funds" a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} />
+        <Answer q="Released · all funds" a={fmt(pt.released)} d="Recorded payments (simulated); recipients confirm receipt" />
       </section>
       <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
     </div>
@@ -239,8 +244,8 @@ export function FunderDiscover({ persona }: { persona: Person }) {
 
 function ShortBtn({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
-    <button type="button" aria-pressed={on} onClick={onClick} className={btn("secondary", "min-h-11 justify-self-start px-4 font-sans text-small font-medium tracking-normal")}>
-      <Star className={cn("size-4", on && "fill-current")} aria-hidden="true" /> <span>{on ? "Shortlisted" : "Shortlist"}</span>
+    <button type="button" aria-pressed={on} onClick={onClick} className={btn("secondary", cn("min-h-11 justify-self-start px-4 font-sans text-small font-medium tracking-normal", on && "border-ink bg-surface-2"))}>
+      <Star className={cn("size-4", on && "fill-current text-ok")} aria-hidden="true" /> <span>{on ? "Shortlisted" : "Shortlist"}</span>
     </button>
   );
 }
@@ -251,10 +256,11 @@ function RequestRow({ w, r, m, of, persona, short, toggle }: { w: World; r: Worl
   return (
     <li className="grid gap-3 border-b border-line py-4 md:grid-cols-[1.4fr_1.4fr_1fr_auto] md:items-center md:gap-6">
       <a href={`#/app/${persona.id}/request/${r.id}`} className="group block">
-        <span className="flex items-center gap-2 font-display text-xl font-bold group-hover:text-signal">
-          {r.minor && <Lock className="size-4 text-subtle" aria-label="Anonymised: under 18" />}
+        <span className="flex flex-wrap items-center gap-2 font-display text-xl font-bold group-hover:text-signal">
+          {r.minor && <Lock className="size-4 text-subtle" aria-label="Shown without names: under 18" />}
           {label}
           <ChevronRight className="size-4 text-subtle" aria-hidden="true" />
+          {m.length > 0 && <span className="rounded-full border border-line-strong px-2 py-0.5 font-sans text-small font-medium text-muted">Matches {m.length} of {of}</span>}
         </span>
         <span className="text-small text-subtle">
           {r.sport} · {r.region}
@@ -268,10 +274,9 @@ function RequestRow({ w, r, m, of, persona, short, toggle }: { w: World; r: Worl
           <NeedBar requested={t.requested} pledged={t.pledged} received={t.received} otherSources={t.other} held={t.heldApp + t.offered} compact />
         </span>
       </span>
-      <span className="text-small">
-        <span className="block text-muted">{r.verifiedLabel}</span>
-        <span className="block text-subtle">Needed by {r.minor ? r.neededMonth : r.neededBy}</span>
-        <span className="mt-1 block text-subtle">{m.length ? `Matches ${m.length} of ${of}: ${m.join(" · ").toLowerCase()}` : "Matches none of your filters"}</span>
+      <span className="text-small text-muted">
+        {r.verifiedLabel} · needed by {r.minor ? r.neededMonth : r.neededBy}
+        <span className="mt-1 block text-subtle">{m.length ? `Why: ${m.join(" · ").toLowerCase()}` : "Matches none of your filters"}</span>
       </span>
       <ShortBtn on={short} onClick={() => toggle(r.id)} />
     </li>
@@ -361,7 +366,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
           )}
           {fund && ftot && (
             <p className="mt-4 text-small text-subtle">
-              {fund.name} · approval: {fund.policy}
+              {fund.name} · {policyText(fund.policy).toLowerCase()}
               {fund.delegatedLimit ? ` · your limit ${fmt(fund.delegatedLimit)}` : ""} · available {fmt(ftot.available)}
             </p>
           )}
@@ -424,7 +429,7 @@ export function AthleteForFunder({ persona, id }: { persona: Person; id: string 
   const offer = Object.values(w.offers).find((o) => o.recipientId === id && w.funds[o.fundId].funderId === fid);
   return (
     <div className="pb-8">
-      <PageHead eyebrow="Athlete · discoverable profile" title={a.name} lead={`${a.sport} · ${a.discipline} · ${a.region} · ${a.age}. Only the facts ${a.name.split(" ")[0]} chose to make discoverable; never contact details.`} />
+      <PageHead eyebrow="Athlete · open to sponsors" title={a.name} lead={`${a.sport} · ${a.discipline} · ${a.region} · ${a.age}. Only the facts ${a.name.split(" ")[0]} chose to make discoverable; never contact details.`} />
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
         <section>
           <Label>Sporting facts</Label>
@@ -522,7 +527,7 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
               <div>
                 <p className="font-medium">{o.title}</p>
                 <p className="text-small text-subtle">
-                  {w.funds[o.fundId].type} · {o.amountLabel} · {o.status === "awaiting" ? `drafted by ${w.people[o.draftedBy!]?.name}` : `closes ${fmtDate(o.closes)}`} · approval {w.funds[o.fundId].policy}
+                  {w.funds[o.fundId].type} · {o.amountLabel} · {o.status === "awaiting" ? `drafted by ${w.people[o.draftedBy!]?.name}` : `closes ${fmtDate(o.closes)}`} · {policyText(w.funds[o.fundId].policy).toLowerCase()}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -542,7 +547,7 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
               <select id="co-fund" className={inputCls} value={fundId} onChange={(e) => setFundId(e.target.value)}>
                 {funds.map((x) => (
                   <option key={x.id} value={x.id}>
-                    {x.name} ({x.policy})
+                    {x.name} ({policyText(x.policy).toLowerCase()})
                   </option>
                 ))}
               </select>
@@ -618,7 +623,22 @@ export function FunderApplications({ persona }: { persona: Person }) {
             ))}
           </div>
           <p className="mt-4 text-small text-subtle">{apps.filter((a) => a.nominatedBy).length} by nomination · eligibility checked by rule · two reviewers per application under this fund&rsquo;s policy</p>
-          <div className="relative mt-3 overflow-x-auto">
+          <ul className="mt-3 border-t border-line md:hidden">
+            {shown.slice(0, 40).map((a) => (
+              <li key={a.id} className="border-b border-line py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <span>
+                    <span className="block font-medium">{recipientName(w, a.applicantKind, a.applicantId, persona)}</span>
+                    <span className="block text-small text-subtle">{fmt(a.requested)} requested · scores {a.scores.map((s) => s.total).join(" · ") || "—"}</span>
+                  </span>
+                  <AppStatus s={a.status} funderView />
+                </div>
+                {!a.light && <a className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4" href={`#/app/${persona.id}/review/${a.id}`}>Open the application</a>}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-small text-subtle">Athletes under 18 appear by first name only once their guardian has accepted, otherwise without names.</p>
+          <div className="relative mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[44rem] text-table">
               <thead>
                 <tr className="label-data border-b border-line text-left text-subtle">
@@ -718,19 +738,19 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
         <section>
           <div className="rounded-[10px] border border-line-strong p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Label>Summary (fixed template)</Label>
+              <Label>Summary</Label>
               <SimulatedAI />
             </div>
             <ul className="mt-2 space-y-1 text-small text-muted">
               <li>· Sport and level: {ath?.sport}, {ath?.level.toLowerCase()} (profile).</li>
-              <li>· Results: {ath?.facts.filter((f) => f.kind === "result").map((f) => `${f.value} (${stateLabel(f).toLowerCase()})`).join("; ") || "none on profile"}.</li>
+              <li>· Results: {ath?.facts.filter((f) => f.kind === "result").map((f) => `${f.value} (${stateLabel(f)})`).join("; ") || "none on profile"}.</li>
               <li>· Budget: {fmt(a.requested)} requested; tiers {fund.tiers?.map((t) => fmt(t.amount)).join(" / ")}.</li>
               <li>· Statement: {a.aiDrafted ? "drafted with Simulated AI help, edited by the applicant" : "written by the applicant"}.</li>
               {undeclared.length > 0 && <li className="text-amber">· Rule found: current support on the profile ({undeclared.map((s) => `${s.label}, ${fmt(s.amount)}`).join("; ")}) is not declared under &ldquo;Other funding&rdquo;.</li>}
             </ul>
             <p className="mt-2 text-small text-subtle">AI-assisted, simulated. Check against sources.</p>
           </div>
-          <h2 className="label mt-8 text-subtle">Shared facts</h2>
+          <h2 className="label mt-8 text-subtle">What {ath?.minor ? "the applicant" : ath?.name.split(" ")[0]} shared</h2>
           <ul className="mt-2 border-t border-line">
             {ath?.facts.filter((f) => f.visibility !== "private").map((f) => (
               <li key={f.id} className="flex flex-col gap-2 border-b border-line py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -752,7 +772,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
           <p className="mt-3 text-small text-subtle">{a.info ? `Information request: "${a.info.text}" · ${a.info.status === "answered" ? "answered" : "waiting for the applicant"}` : ""}</p>
         </section>
         <aside className="rounded-[10px] border border-line-strong p-5">
-          <Label>Rubric · 4 criteria, 1–4 each</Label>
+          <Label>How applications are scored</Label>
           <p className="mt-2 text-small text-muted">Sporting level and trajectory · financial need · clarity of the plan for the money · coach or club support.</p>
           <p className="mt-3 text-small">Scores so far: {a.scores.map((s) => `${s.total} (${w.people[s.by]?.name})`).join(" · ") || "none"}</p>
           {canReview && !scoredByMe && ["submitted", "info"].includes(a.status) && (
@@ -807,7 +827,7 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
   const byTier = (fund.tiers ?? []).map((tier) => ({ tier: tier.amount, n: offerable.filter((a) => a.recommendedTier === tier.amount).length }));
   return (
     <div className="pb-8">
-      <PageHead eyebrow={`Selection & decisions · ${o.title}`} title="Who should we fund?" lead={`${apps.length} applications · minimum score ${o.minScore ?? "—"} of 16 · approval: ${fund.policy}`} />
+      <PageHead eyebrow={`Selection & decisions · ${o.title}`} title="Who should we fund?" lead={`${apps.length} applications · minimum score ${o.minScore ?? "—"} of 16 · ${policyText(fund.policy).toLowerCase()}`} />
       <Section title="Budget meter">
         <div className="mt-4">
           <FundBar announced={t.announced} committed={t.committed} reserved={t.held + (o.status === "decided" ? 0 : proposed)} />
@@ -863,7 +883,20 @@ export function Portfolio({ persona }: { persona: Person }) {
       <Tabs label="Funding" value={tab} onChange={setTab} tabs={[{ id: "agreements", label: "Agreements" }, { id: "reports", label: "Reports" }]} />
       {tab === "agreements" ? (
         <>
-          <div className="relative mt-4 overflow-x-auto">
+          <ul className="mt-4 border-t border-line md:hidden">
+            {funds.map((f) => {
+              const t = fundTotals(w, f.id);
+              return (
+                <li key={f.id} className="border-b border-line py-4">
+                  <p className="font-medium">{f.name}</p>
+                  <p className="text-small text-subtle">{f.type} · {policyText(f.policy).toLowerCase()} · {t.count} agreements</p>
+                  <div className="mt-3"><FundBar announced={t.announced} committed={t.committed} reserved={t.held} /></div>
+                  <p className="mt-2 text-small text-muted">Released {fmt(t.released)}</p>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="relative mt-4 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[52rem] text-table">
               <thead>
                 <tr className="label-data border-b border-line text-left text-subtle">
@@ -883,7 +916,7 @@ export function Portfolio({ persona }: { persona: Person }) {
                     <tr key={f.id} className="h-14 border-b border-line">
                       <td className="sticky left-0 bg-canvas pr-4 font-medium">{f.name}</td>
                       <td className="pr-4">
-                        <Chip kind="neutral">{f.type}</Chip> <span className="text-small text-subtle">{f.policy}</span>
+                        <Chip kind="neutral">{f.type}</Chip> <span className="block text-small text-subtle">{policyText(f.policy)}</span>
                       </td>
                       <td className="pr-4 text-right">{t.count}</td>
                       <td className="pr-4 text-right"><SeeSource name={`${f.name} committed`}>{fmt(t.committed)}</SeeSource></td>
@@ -922,11 +955,11 @@ export function Portfolio({ persona }: { persona: Person }) {
               </ul>
             )}
           </Section>
-          <p className="mt-6 text-small text-subtle">Spending updates, verification, deliverables and reviews arrive in P3. In-kind items and commercial agreements are reported apart and never added to development totals.</p>
+          <p className="mt-6 text-small text-subtle">Spending updates, verification, deliverables and reviews start on 30 Jun. In-kind items and commercial agreements are reported apart and never added to development totals.</p>
         </>
       ) : (
         <div className="mt-6 max-w-2xl text-muted">
-          <p>Reports are drafted only from verified records, pass a claims check, and keep outputs, sporting outcomes and impact apart. Built in P3–P4.</p>
+          <p>Reports are drafted only from verified records, pass a claims check, and keep outputs, sporting outcomes and impact apart. Report drafting arrives in the next build.</p>
           <p className="mt-3 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
         </div>
       )}

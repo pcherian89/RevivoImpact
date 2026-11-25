@@ -263,7 +263,7 @@ export function GuidePanel() {
 
       <div className="mt-5 rounded-[10px] border border-line-strong p-4">
         <p className="label text-subtle">
-          {atDate.label} {s.phase && "· built in P3"}
+          {atDate.label} {s.phase && "· coming in the next build"}
         </p>
         <h3 className="mt-1 font-display text-xl font-bold">{s.title}</h3>
         <p className="mt-1 text-small text-muted">You are now: {s.who}</p>
@@ -319,7 +319,7 @@ export function GuidePanel() {
             <button type="button" className="text-left" onClick={() => (setErr(null), setGuide({ step: i }))}>
               <span className="label text-subtle">
                 Step {i + 1} · {MOMENTS.find((m) => m.id === x.when)!.short}
-                {x.phase ? " · P3" : ""}
+                {x.phase ? " · next build" : ""}
               </span>
               <span className={cn("mt-0.5 block font-medium hover:text-signal", i === guide.step ? "text-ink" : "text-muted")}>{x.title}</span>
             </button>

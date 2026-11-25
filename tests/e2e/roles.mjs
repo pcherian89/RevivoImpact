@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 const { chromium } = createRequire(import.meta.url)("playwright");
-const file = "file://" + resolve("dist/index.html");
+const file = "file://" + resolve(process.env.DIST ?? "dist/index.html");
 const ROLES = {
   amira: ["home", "discover", "opportunity/eas", "profile/oriel", "apply/eas", "applications", "funding", "me"],
   nadia: ["home", "discover", "profile/halvorsen", "publish", "applications", "funding", "me"],

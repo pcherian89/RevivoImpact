@@ -86,9 +86,6 @@ export function FundingLine({
         })}
       </ol>
       <p className="label-data mt-1 text-muted md:hidden">To {to}</p>
-      <p className="mt-4 text-small text-subtle">
-        Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.
-      </p>
       <style>{`
         @keyframes ri-grow { from { width: 0; } to { width: var(--pct); } }
         .ri-grow { animation: ri-grow 1.4s cubic-bezier(0.25,1,0.5,1) 0.2s 1 both; }
@@ -174,7 +171,7 @@ export function FundingBar({
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <span className="label-data text-muted">
           Released {fmt(released)}
-          {receivedOn && <span className="normal-case tracking-normal font-sans font-medium text-subtle"> · received {receivedOn}</span>}
+          {receivedOn && <span className="normal-case tracking-normal font-sans font-medium text-subtle"> · {receivedOn}</span>}
         </span>
         <span className="label-data text-subtle">Committed {fmt(committed)}</span>
       </div>
@@ -206,14 +203,15 @@ export function FundBar({ announced, committed, reserved }: { announced: number;
   const available = announced - committed - reserved;
   const parts = [
     { label: "Committed", v: committed, cls: "bg-ink" },
-    { label: "Held for offers awaiting acceptance", v: reserved, cls: "border border-dashed border-ink" },
-    { label: "Available to award", v: available, cls: "border border-control" },
+    { label: "Offered, awaiting reply", v: reserved, cls: "border border-dashed border-ink bg-surface-2" },
+    { label: "Still available", v: available, cls: "bg-line-strong" },
   ];
   return (
     <figure>
-      <div className="flex h-5 w-full gap-[3px]" aria-hidden="true">
+      <div className="flex h-3 w-full gap-[3px]" aria-hidden="true">
         {parts.map((p) => (p.v > 0 ? <div key={p.label} className={cn("h-full rounded-[3px]", p.cls)} style={{ width: `${(p.v / announced) * 100}%` }} /> : null))}
       </div>
+      {committed + reserved === 0 && <p className="mt-2 text-small text-muted">Nothing committed or offered yet: all {fmt(announced)} is still available.</p>}
       <figcaption className="mt-3 flex flex-wrap gap-x-8 gap-y-3 text-small">
         <span>
           <span className="block text-subtle">Announced</span>
@@ -261,7 +259,7 @@ export function NeedBar({
         {pledged - received > 0 && <div className="h-full rounded-[2px] border border-ink" style={{ width: `${((pledged - received) / requested) * 100}%` }} />}
         {otherSources > 0 && <div className="hatch h-full rounded-[2px] border border-steel" style={{ width: `${(otherSources / requested) * 100}%` }} />}
         {held > 0 && <div className="h-full rounded-[2px] border border-dashed border-ink" style={{ width: `${(held / requested) * 100}%` }} />}
-        {remaining > 0 && <div className="h-full flex-1 rounded-[2px] border border-control" />}
+        {remaining > 0 && <div className="h-full flex-1 rounded-[2px] bg-line-strong" />}
       </div>
       <p className="mt-1.5 text-small text-subtle">
         {pledged === 0 && otherSources === 0 && held === 0 ? (

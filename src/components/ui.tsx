@@ -59,7 +59,7 @@ export function Button({
 
 type ChipKind = "verified" | "awaiting" | "self" | "attention" | "info" | "neutral" | "shield" | "current" | "ai";
 const chipMap: Record<ChipKind, { icon: typeof CircleCheck; cls: string }> = {
-  verified: { icon: CircleCheck, cls: "text-signal border-signal/40" },
+  verified: { icon: CircleCheck, cls: "text-ink border-line-strong [&>svg]:text-ok" },
   current: { icon: CircleDot, cls: "text-signal border-signal/40" },
   awaiting: { icon: Clock3, cls: "text-steel border-steel/40" },
   self: { icon: CircleDashed, cls: "text-subtle border-line-strong" },
@@ -178,9 +178,9 @@ export function ImageSlot({
       aria-label={`Illustrative image placeholder: ${caption ?? file}`}
     >
       <div className="absolute inset-0 bg-[radial-gradient(90%_80%_at_70%_40%,var(--ri-line-strong),transparent_70%)] opacity-70" />
-      <figcaption className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-4 text-small text-subtle">
+      <figcaption className="absolute inset-x-0 top-0 flex flex-col gap-0.5 p-4 text-small text-subtle">
         <span className="label">Illustrative</span>
-        <span className="font-mono text-[0.75rem]">{file}</span>
+        <span className="font-mono text-[0.8125rem]">{file}</span>
         {caption && <span>{caption}</span>}
       </figcaption>
     </figure>
@@ -200,21 +200,18 @@ export function HeroBand({
   file: string;
   children: ReactNode;
   caption?: string;
-  /** Phones: show the image above the title (default) or leave it to the screen to place it later ("after"). */
-  phone?: "before" | "after";
+  /** Phones: the image after the content (default on working screens) or not at all. */
+  phone?: "before" | "after" | "none";
 }) {
+  void phone;
   return (
     <div className="relative">
-      <div className="hidden md:absolute md:top-0 md:right-0 md:block md:w-[52%]">
+      {/* A short band: the photo sits to the right of the title, shown whole, fading into the canvas. */}
+      <div className="hidden md:absolute md:top-4 md:right-0 md:block md:w-[min(40%,30rem)]">
         <ImageSlot file={file} caption={caption} className="hero-fade w-full rounded-none" />
       </div>
-      {phone === "before" && (
-        <div className="-mx-4 md:hidden">
-          <ImageSlot file={file} caption={caption} className="hero-fade-phone w-full rounded-none" />
-        </div>
-      )}
-      <div className="relative md:flex md:min-h-[min(calc((100vw-5rem)*0.2925),20rem)] md:items-end">
-        <div className={cn("relative z-10 pb-6 md:w-[62%] md:pt-10 md:pb-8", phone === "before" ? "-mt-14 md:mt-0" : "pt-6")}>{children}</div>
+      <div className="relative md:flex md:min-h-[min(calc((100vw-5rem)*0.225),15rem)] md:items-end">
+        <div className="relative z-10 pt-6 pb-6 md:w-[58%] md:pt-8 md:pb-6">{children}</div>
       </div>
     </div>
   );

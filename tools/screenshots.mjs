@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 const out = resolve(process.argv[2] ?? "docs/p1-previews");
 const scale = Number(process.argv[3] ?? 2);
 mkdirSync(out, { recursive: true });
-const file = "file://" + resolve("dist/index.html");
+const file = "file://" + resolve(process.env.DIST ?? "dist/index.html");
 const shots = [
   ["01-start", "start", "apr12"],
   ["02-join", "join", "apr12"],

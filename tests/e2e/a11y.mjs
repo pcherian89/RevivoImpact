@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 const axe = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
-const file = "file://" + resolve("dist/index.html");
+const file = "file://" + resolve(process.env.DIST ?? "dist/index.html");
 const routes = ["start", "join", "roles", "app/amira/home", "app/amira/discover", "app/amira/opportunity/eas", "app/amira/apply/eas", "app/nadia/applications", "app/nadia/funding", "app/jonah/me", "app/rosa/safety", "app/rosa/publish", "app/kenji/overview", "app/kenji/fdiscover", "app/kenji/request/rq-badminton", "app/ingrid/selection/eas", "app/daniel/review/app-amira", "app/daniel/apps", "app/ingrid/portfolio", "app/alex/admin"];
 const browser = await chromium.launch();
 let total = 0;
