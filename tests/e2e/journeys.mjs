@@ -25,6 +25,11 @@ const audited = async (action) => {
   return found;
 };
 const click = async (name, opts = {}) => { await page.getByRole("button", { name, exact: false, ...opts }).first().click(); await page.waitForTimeout(60); };
+// The offer reason starts empty (the funder's own words); tests take the one-tap suggestion when the box is empty.
+const suggestReason = async () => {
+  const b = page.getByRole("button", { name: "Use a suggested reason, then edit it" });
+  if (await b.count()) await b.first().click();
+};
 
 // ---- Journey A at 12 Apr
 await page.goto(`${file}?moment=apr12&motion=reduced#/app/ingrid/opps`);
@@ -75,6 +80,9 @@ await page.waitForTimeout(200);
 let t = await text();
 await check("A8 bronze arrives confirmed by the federation", t.includes("Confirmed by Ardent Judo Federation"));
 await click("Verify against ID document");
+await click("Record my score");
+await check("A8 the reviewer's score starts empty and is required", (await text()).includes("Add your total"));
+await page.getByLabel("Your total (of 16)").fill("13");
 await click("Record my score");
 await check("A8 scoring needs the no-conflict confirmation", (await text()).includes("conflict of interest"));
 await page.getByLabel("I have no conflict of interest with this applicant").check();
@@ -132,6 +140,7 @@ const nadiaReq = await page.locator('a[href*="request/rq-nadia"]').first().getAt
 await page.evaluate((h) => (location.hash = h.slice(1)), nadiaReq);
 await page.waitForTimeout(80);
 await click("Offer support");
+await suggestReason();
 await page.getByLabel("Amount (USD)").fill("2500");
 await click("Send offer");
 t = await text();
@@ -145,10 +154,12 @@ await check("B3 the waiting offer can be withdrawn", (await text()).includes("Wi
 await page.evaluate((h) => (location.hash = h.slice(1)), nadiaReq);
 await page.waitForTimeout(80);
 await click("Offer support");
+await suggestReason();
 await page.getByLabel("Amount (USD)").fill("2000");
 await click("Send offer");
 await check("B3 $2,000 within the limit is sent", (await text()).includes("waiting for acceptance"));
 await click("Offer support");
+await suggestReason();
 await page.getByLabel("For which line").selectOption({ index: 0 });
 await page.getByLabel("Amount (USD)").fill("1500");
 await click("Send offer");
@@ -171,6 +182,7 @@ const tiagoReq = await page.locator('a[href*="request/rq-tiago"]').first().getAt
 await page.evaluate((h) => (location.hash = h.slice(1)), tiagoReq);
 await page.waitForTimeout(80);
 await click("Offer support");
+await suggestReason();
 await page.getByLabel("Amount (USD)").fill("2600");
 await click("Send offer");
 await check("E4 cap blocks $2,600", (await text()).includes("exceeds the $2,400 still needed by $200"));
@@ -193,6 +205,7 @@ await check("Marcus (enhanced check) sees the anonymised badminton card", t.incl
 await page.evaluate(() => (location.hash = "/app/marcus/request/rq-badminton"));
 await page.waitForTimeout(80);
 await click("Offer support");
+await suggestReason();
 await page.getByLabel("Amount (USD)").fill("750");
 await click("Send offer");
 await check("Individual → minor goes to safeguarding review", (await text()).includes("in platform safeguarding review"));

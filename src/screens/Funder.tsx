@@ -394,7 +394,9 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
   const [amount, setAmount] = useState(String(ask ? ask.amount : r?.minor ? 2600 : Math.min(line?.remaining ?? 0, 2500)));
   const [fundId, setFundId] = useState(funds[0]?.id ?? "");
   // A suggested reason the funder reads and edits (it becomes part of the record), never an empty field.
-  const [reason, setReason] = useState(r?.minor ? "Competition travel to a verified national qualification." : `${r?.lines[0]?.label ?? "Support"} for a verified ${r?.ownerKind === "org" ? "club" : "athlete"}, within our published criteria.`);
+  // The reason is the funder's own words; a suggestion is one tap away, never pre-filled into the record.
+  const [reason, setReason] = useState("");
+  const suggested = r?.minor ? "Competition travel to a verified national qualification." : `${r?.lines[0]?.label ?? "Support"} for a verified ${r?.ownerKind === "org" ? "club" : "athlete"}, within our published criteria.`;
   const act = useAction(persona.id);
   if (!r || !t) return <Empty>This request is not available.</Empty>;
   const mineAny = Object.values(w.offers).some((o) => o.requestId === id && w.funds[o.fundId].funderId === fid);
@@ -503,6 +505,11 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
         </Field>
         <Field label="Reason, linked to the fund's published criteria" htmlFor="of-reason" hint="Required: it becomes part of the selection record.">
           <textarea id="of-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={r.minor ? "Competition travel to a verified national qualification." : "Equipment for a verified adult athlete competing nationally."} className="w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" />
+          {!reason && (
+            <button type="button" className="mt-1 inline-flex min-h-9 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => setReason(suggested)}>
+              Use a suggested reason, then edit it
+            </button>
+          )}
         </Field>
         <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: `of-${fid}-${Date.now()}`, fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: Number(amount.replace(/\D/g, "")), reason }, "Offer sent (simulated).") && setOpen(false)}>
           Send offer
@@ -883,7 +890,8 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
   const { world: w } = useStore();
   const a = w.applications[id];
   const act = useAction(persona.id);
-  const [score, setScore] = useState(13);
+  // The reviewer's own judgement: the score starts empty, never suggested by the system.
+  const [score, setScore] = useState("");
   const [noConflict, setNoConflict] = useState(false);
   if (!a) return <Empty>This application does not exist yet.</Empty>;
   const ath = w.athletes[a.applicantId];
@@ -942,12 +950,12 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
           {canReview && !scoredByMe && ["submitted", "info"].includes(a.status) && (
             <>
               <Field label="Your total (of 16)" htmlFor="score">
-                <input id="score" type="number" min={4} max={16} className={cn(inputCls, "max-w-[8rem]")} value={score} onChange={(e) => setScore(Number(e.target.value))} />
+                <input id="score" type="number" min={4} max={16} className={cn(inputCls, "max-w-[8rem]")} value={score} onChange={(e) => setScore(e.target.value)} />
               </Field>
               <label className="mt-3 flex gap-2 text-small">
                 <input type="checkbox" checked={noConflict} onChange={(e) => setNoConflict(e.target.checked)} className="mt-1 accent-[var(--ri-signal)]" /> I have no conflict of interest with this applicant
               </label>
-              <Button className="mt-4" variant="secondary" onClick={() => act.run("scoreApplication", { appId: id, total: score, noConflict }, "Score recorded.")}>
+              <Button className="mt-4" variant="secondary" onClick={() => (score === "" ? act.fail("Add your total, from 4 to 16.") : act.run("scoreApplication", { appId: id, total: Number(score), noConflict }, "Score recorded."))}>
                 Record my score
               </Button>
             </>
