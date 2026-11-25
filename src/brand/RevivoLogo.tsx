@@ -62,9 +62,9 @@ export function RevivoLogo({
 /** "revivo │ IMPACT" lockup (docs/04 §2): the lockup, a 1px line divider, "IMPACT" in .label muted, ≥ 24px tall. */
 export function ImpactLockup({ className, size = "md" }: { className?: string; size?: "md" | "lg" }) {
   return (
-    <span className={cn("inline-flex items-center gap-3 text-ink", size === "lg" && "gap-4", className)}>
-      <RevivoLogo className={size === "lg" ? "h-8 w-auto sm:h-12" : "h-6 w-auto sm:h-7"} title="Revivo" markColor="var(--ri-signal)" />
-      <span aria-hidden="true" className={cn("w-px bg-line-strong", size === "lg" ? "h-8 sm:h-10" : "h-6")} />
+    <span className={cn("inline-flex items-center gap-2 text-ink sm:gap-3", size === "lg" && "gap-4", className)}>
+      <RevivoLogo className={size === "lg" ? "h-8 w-auto sm:h-12" : "h-5 w-auto sm:h-7"} title="Revivo" markColor="var(--ri-signal)" />
+      <span aria-hidden="true" className={cn("w-px bg-line-strong", size === "lg" ? "h-8 sm:h-10" : "h-5 sm:h-6")} />
       <span className="label text-muted">Impact</span>
     </span>
   );

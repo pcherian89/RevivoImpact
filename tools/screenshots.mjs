@@ -11,26 +11,26 @@ const file = "file://" + resolve(process.env.DIST ?? "dist/index.html");
 const shots = [
   ["01-start", "start", "apr12"],
   ["02-join", "join", "apr12"],
-  ["03-roles", "roles", "apr12"],
-  ["04-athlete-home", "app/amira/home", "jun30"],
-  ["05-athlete-discover", "app/amira/discover", "may06"],
-  ["06-opportunity", "app/amira/opportunity/eas", "may06"],
-  ["07-sponsor-profile", "app/nadia/profile/halvorsen", "jun30"],
-  ["08-funder-discover", "app/kenji/fdiscover", "jun30"],
-  ["09-request-minor", "app/kenji/request/rq-badminton", "jun30"],
-  ["10-my-funding", "app/nadia/funding", "jun30"],
-  ["11-funder-overview", "app/ingrid/overview", "may06"],
-  ["12-portfolio", "app/ingrid/portfolio", "jun30"],
-  ["13-review", "app/daniel/review/app-amira", "jun30"],
-  ["14-applications-pipeline", "app/daniel/apps", "jun30"],
-  ["15-sponsor-overview", "app/kenji/overview", "jun30"],
-  ["16-athlete-commercial", "app/lucy/athlete/jonah", "jun30"],
-  ["17-guardian-home", "app/rosa/home", "jun30"],
-  ["18-safety", "app/rosa/safety", "jun30"],
-  ["19-coach-home", "app/jonas/home", "jun30"],
-  ["20-publish-minor", "app/rosa/publish", "may06"],
-  ["21-admin", "app/alex/admin", "jun30"],
-  ["22-applications-offers", "app/nadia/applications", "jun30"],
+  ["03-athlete-home", "app/amira/home", "jun30"],
+  ["04-athlete-discover", "app/amira/discover", "may06"],
+  ["05-my-funding", "app/amira/funding", "complete"],
+  ["06-send-an-update", "app/amira/update/ag-amira", "jun30"],
+  ["07-funding-record-funder", "app/priya/agreement/ag-amira", "complete"],
+  ["08-funding-record-athlete", "app/amira/agreement/ag-amira", "complete"],
+  ["09-sponsorship-record", "app/jonah/agreement/ag-cv-jonah", "complete"],
+  ["10-programme", "app/maya/programme/play-every-day", "complete"],
+  ["11-programme-funder-view", "app/daniel/programme/play-every-day", "complete"],
+  ["12-today-sessions", "app/sam/today", "may06"],
+  ["13-report", "app/maya/report/ag-pe1", "complete"],
+  ["14-funder-funding", "app/daniel/portfolio", "complete"],
+  ["15-existing-funding", "app/farid/agreement/ag-ostral", "complete"],
+  ["16-funder-overview", "app/ingrid/overview", "may06"],
+  ["17-funder-discover", "app/kenji/fdiscover", "may06"],
+  ["18-selection", "app/ingrid/selection/eas", "may06"],
+  ["19-guardian-safety", "app/rosa/safety", "complete"],
+  ["20-coach-home", "app/jonas/home", "jun30"],
+  ["21-organisation-home", "app/maya/home", "jun30"],
+  ["22-admin", "app/alex/admin", "complete"],
 ];
 const widths = (process.env.WIDTHS ?? "375,768,1024,1440").split(",").map(Number);
 const themes = (process.env.THEMES ?? "dark").split(",");
@@ -41,7 +41,7 @@ for (const theme of themes)
     const page = await browser.newPage({ viewport: { width: w, height: w < 600 ? 812 : w < 1100 ? 1024 : 900 }, deviceScaleFactor: scale });
     for (const [name, route, moment] of shots) {
       if (only && !only.includes(name)) continue;
-      await page.goto(`${file}?moment=${moment}&theme=${theme}&motion=reduced#/${route}`);
+      await page.goto(`${file}?${moment === "complete" ? "story=complete" : `moment=${moment}`}&theme=${theme}&motion=reduced&s=${name}#/${route}`);
       await page.waitForTimeout(250);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       if (overflow > 0) console.log(`OVERFLOW ${overflow}px: ${name} @ ${w} ${theme}`);

@@ -121,7 +121,7 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
     <ManagingCtx.Provider value={managing}>
       <div className="min-h-[calc(100vh-5rem)] pb-24 md:pb-10">
         <header className="border-b border-line bg-canvas">
-          <div className="container-site flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2 xl:flex-nowrap">
+          <div className="container-site flex min-h-16 flex-wrap items-center justify-between gap-x-2 gap-y-2 py-2 sm:gap-x-3 xl:flex-nowrap">
             <div className="flex min-w-0 shrink-0 items-center gap-4">
               <a href="#/start" aria-label="Revivo Impact start screen">
                 <ImpactLockup />
@@ -152,7 +152,7 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
                   </select>
                 </label>
               )}
-              <button type="button" onClick={() => go("roles")} className={btn("secondary", "min-h-10 max-w-[13rem] px-3 font-sans text-small font-medium tracking-normal sm:max-w-[18rem]")}>
+              <button type="button" onClick={() => go("roles")} className={btn("secondary", "min-h-11 max-w-[5.75rem] px-2.5 font-sans text-small font-medium tracking-normal sm:max-w-[18rem] sm:px-3")}>
                 <UserRound className="size-4 shrink-0 text-signal" aria-hidden="true" />
                 <span className="truncate">
                   <span className="hidden sm:inline">Viewing as </span>

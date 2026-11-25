@@ -115,7 +115,7 @@ export function Section({ title, children, aside, id }: { title: string; childre
   const hid = id ?? title.toLowerCase().replace(/[^a-z]+/g, "-");
   return (
     <section aria-labelledby={hid} className="mt-10">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
         <h2 id={hid} className="label text-subtle">
           {title}
         </h2>
