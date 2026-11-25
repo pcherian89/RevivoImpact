@@ -350,3 +350,21 @@ main > div > :first-child {
     display: none;
   }
 }
+
+/* Header photographs (Pathway .header-photo / .fade-header, copied from pcherian89/RevivoPathway src/app/globals.css,
+   commit c95430c): clipped to the header's height, fading into the canvas on the left and at the bottom. */
+.header-photo {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+.fade-header {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 30%, #000 100%),
+    linear-gradient(to bottom, transparent 0%, #000 6%, #000 70%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 30%, #000 100%),
+    linear-gradient(to bottom, transparent 0%, #000 6%, #000 70%, transparent 100%);
+  mask-composite: intersect;
+}

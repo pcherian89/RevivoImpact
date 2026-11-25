@@ -3,7 +3,7 @@ import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, 
 import { useStore } from "../state/store";
 import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
 import { agreementsFor, agreementTotals, counts, nextInstalment, eligibility, type Criterion, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
-import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SimulatedAI, Tabs } from "../components/ui";
+import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SimulatedAI, Tabs } from "../components/ui";
 import { FundingBar, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
 import { ThemeButtons, useManaging } from "../components/Shell";
@@ -104,14 +104,24 @@ export function SeekerHome({ persona }: { persona: Person }) {
         { t: persona.role === "coach" ? "See applications you prepared" : "See your applications", to: "applications", icon: CircleCheck },
       ];
   const agreements = rid ? agreementsFor(w, kind, rid) : [];
+  const homePhoto = persona.role === "guardian" ? "im-04-guardian-offer.png" : org ? "im-08-community-programme.png" : "im-03-athlete-home.png";
 
   return (
     <div className="pb-8">
-      <HeroBand file={persona.role === "guardian" ? "im-04-guardian-offer.png" : org ? "im-08-community-programme.png" : "im-03-athlete-home.png"} phone="after">
+      <HeroBand file={homePhoto} phone="none">
         <p className="label text-signal">{org ? `${org.type} · ${org.region}` : ath ? `${persona.role === "athlete" ? "Athlete" : persona.role === "guardian" ? "Guardian" : "Coach"} · ${ath.sport.toLowerCase()} · ${ath.region}` : "Guardian"}</p>
         <h1 className="text-title mt-2">
           {persona.role === "athlete" ? `Hello ${first}. Here’s what needs you.` : persona.role === "guardian" ? `What needs you for ${ath?.name.split(" ")[0] ?? ""}, ${first}?` : persona.role === "coach" ? `Your athletes, ${first}` : `${org?.name}: what needs you?`}
         </h1>
+        <p className="text-lead mt-3 max-w-[36rem] text-muted">
+          {persona.role === "athlete"
+            ? "Your funding in one place: what needs you now, the money you have received, and where to find more."
+            : persona.role === "guardian"
+              ? `You decide for ${ath?.name.split(" ")[0] ?? "your child"}. Offers, questions and consent come to you, and only you can accept.`
+              : persona.role === "coach"
+                ? "The athletes you support and the applications you prepared. Only the athlete, or a parent for under-18s, can accept an offer."
+                : "Your organisation’s funding in one place: what needs you, your grants and programmes, and where to find more."}
+        </p>
       </HeroBand>
 
       {persona.role === "coach" ? (
@@ -137,6 +147,8 @@ export function SeekerHome({ persona }: { persona: Person }) {
           )}
         </Section>
       )}
+      {/* Phones: the photo comes after "Needs you", so the most important task stays at the top. */}
+      <PhonePhoto file={homePhoto} className="mt-8" />
 
       <Section title="Find funding your way">
         <ul className="grid gap-x-8 sm:grid-cols-2">
@@ -443,6 +455,7 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
           <BadgeCheck className="size-4 text-muted" aria-label="Verified organisation (simulated)" /> · {f.type}
         </p>
         <h1 className="text-title mt-2">{o.title}</h1>
+        <p className="text-lead mt-3 max-w-[36rem] text-muted">{o.purpose}.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Chip kind="neutral">{fund.type}</Chip>
           <Chip kind={st === "open" ? "current" : "self"}>{st === "open" ? `Open · ${o.visibility}` : st === "upcoming" ? "Upcoming" : st === "decided" ? "Decisions sent" : "Closed"}</Chip>
@@ -512,10 +525,6 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
           <p className="mt-3 text-small text-subtle">Whether you qualify is checked against the funder&rsquo;s published rules. Qualifying doesn&rsquo;t guarantee an award: people decide.</p>
         </section>
         <aside className="space-y-8">
-          <section>
-            <Label>What it pays for</Label>
-            <p className="mt-2 text-muted">{o.purpose}.</p>
-          </section>
           {fund.tiers && (
             <section>
               <Label>How the amount is set</Label>

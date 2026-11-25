@@ -265,24 +265,25 @@ export function HeroBand({
   file: string;
   children: ReactNode;
   caption?: string;
-  /** Phones: the image above the title (default), after it (Home screens, so "what needs you" stays near the top), or not at all. */
-  phone?: "before" | "after" | "none";
+  /** Phones: the image above the title (default) or not at all (Home screens place it below "Needs you" themselves). */
+  phone?: "before" | "none";
 }) {
-  // Phones: the photo whole, full width, above the title ("before") or just after it ("after").
-  const phoneImage = phone !== "none" && <ImageSlot file={file} caption={caption} className="hero-fade-phone mt-4 w-full md:hidden" />;
+  // Pathway's header pattern: the photo sits behind the right half of the header, clipped to the header's height and
+  // fading into the canvas on its left and bottom; the title, a short explanation and the key facts fill the left.
   return (
-    <div className="relative">
-      {phone === "before" && phoneImage}
-      {/* A short band: the photo sits to the right of the title, shown whole, fading into the canvas. */}
-      <div className="hidden md:absolute md:top-4 md:right-0 md:block md:w-[min(40%,30rem)]">
-        <ImageSlot file={file} caption={caption} className="hero-fade w-full rounded-none" />
+    <section className="relative border-b border-line md:mb-2">
+      {phone === "before" && <PhonePhoto file={file} caption={caption} className="mt-4" />}
+      <div aria-hidden="true" className="header-photo pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] md:block">
+        <ImageSlot file={file} caption={caption} className="fade-header w-full rounded-none" />
       </div>
-      <div className="relative md:flex md:min-h-[min(calc((100vw-5rem)*0.225),15rem)] md:items-end">
-        <div className="relative z-10 pt-6 pb-6 md:w-[58%] md:pt-8 md:pb-6">{children}</div>
-      </div>
-      {phone === "after" && phoneImage}
-    </div>
+      <div className="relative z-10 flex flex-col justify-center pt-6 pb-6 md:min-h-[clamp(13rem,23vw,20rem)] md:w-[60%] md:pt-8 md:pb-8">{children}</div>
+    </section>
   );
+}
+
+/** Phones only: a header photo shown whole, full width, fading at its edges (tablet and laptop show it in the HeroBand). */
+export function PhonePhoto({ file, caption, className }: { file: string; caption?: string; className?: string }) {
+  return <ImageSlot file={file} caption={caption} className={cn("hero-fade-phone w-full md:hidden", className)} />;
 }
 
 export function PageHead({

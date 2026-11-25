@@ -15,6 +15,8 @@ import im02 from "../assets/photos/im-02-landing-phone.webp";
 import im03 from "../assets/photos/im-03-athlete-home.webp";
 import im05 from "../assets/photos/im-05-discover-opportunities.webp";
 import im06 from "../assets/photos/im-06-funder-visit.webp";
+import im08 from "../assets/photos/im-08-community-programme.webp";
+import im09 from "../assets/photos/im-09-para-athlete.webp";
 import im11 from "../assets/photos/im-11-competition-travel.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
@@ -34,6 +36,12 @@ export const PHOTOS: Record<string, Photo> = {
   // football session; the players are distant and not identifiable. As supplied. Brightness at the solver's floor
   // (0.75), so it sits slightly brighter than the set (p75 ~87): the sun and sky are in frame.
   "im-06-funder-visit.png": { src: im06, w: 1670, h: 942, tone: "" /* solved: saturate(0.7) brightness(0.75) */, note: "Funders and coaches watch a football session from a balcony at sunset" },
+  // Founder's photo "sunset youth soccer training session" (25 Nov 2026): coaches in the foreground; children at
+  // mid-distance with parents watching along the fence (safeguarding: open setting, several adults, no close-ups). As supplied.
+  "im-08-community-programme.png": { src: im08, w: 1672, h: 941, tone: "" /* solved: saturate(0.7) brightness(0.89) */, note: "Coaches talk while children play a passing game at sunset" },
+  // Founder's photo "sunset wheelchair racing team sprint" (25 Nov 2026): adult para athletes and their coaches.
+  // Trimmed 10px at each edge (rounded corners); four shoe logos removed.
+  "im-09-para-athlete.png": { src: im09, w: 1650, h: 922, tone: "" /* solved: saturate(0.7) brightness(0.75) */, note: "Wheelchair racers sprint while their coaches time them" },
   // Founder's photo "sunset poolside coaching huddle" (25 Nov 2026): adult swimmers only, so it suits the swimming
   // travel grant; never used on screens about young athletes. Trimmed 8px at each edge (rounded corners).
   "im-11-competition-travel.png": { src: im11, w: 1654, h: 925, tone: "" /* solved: saturate(0.7) brightness(0.84) */, note: "A coach talking with adult swimmers by the pool at sunset" },

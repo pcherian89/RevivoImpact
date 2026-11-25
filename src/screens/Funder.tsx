@@ -3,7 +3,7 @@ import { ArrowRight, ChevronRight, MessageCircleQuestion, CircleCheck, CircleHel
 import { useStore } from "../state/store";
 import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
 import { agreementTotals, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
-import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
+import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
 import { FunderAskRevivo } from "./Track";
@@ -59,18 +59,22 @@ export function FunderOverview({ persona }: { persona: Person }) {
     { t: "Manage funding and track progress", to: "portfolio", icon: FileText },
   ];
   const pt = funderTotals(w, fid);
+  const overviewPhoto = f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : "im-06-funder-visit.png";
   return (
     <div className="pb-8">
-      <HeroBand file={f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : "im-06-funder-visit.png"} phone="after">
+      <HeroBand file={overviewPhoto} phone="none">
         <p className="label text-signal">{f.name} · Overview</p>
         <h1 className="text-title mt-2">What needs you, {persona.name.split(" ")[0]}?</h1>
+        <p className="text-lead mt-3 max-w-[36rem] text-muted">
+          Your funding at a glance: decisions waiting for you, money promised and paid, and how athletes and programmes are using it.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button type="button" className={btn("secondary")} onClick={() => setAsk(true)}>
+            <MessageCircleQuestion className="size-4" aria-hidden="true" /> Ask Revivo about our funding
+          </button>
+          <SimulatedAI />
+        </div>
       </HeroBand>
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="button" className={btn("secondary")} onClick={() => setAsk(true)}>
-          <MessageCircleQuestion className="size-4" aria-hidden="true" /> Ask Revivo about our funding
-        </button>
-        <SimulatedAI />
-      </div>
       <FunderAskRevivo open={ask} onClose={() => setAsk(false)} persona={persona} />
       <Section title={`Needs you · ${Math.min(needs.length, 3)}`}>
         {needs.length === 0 ? <Empty>Nothing needs you right now. Discover athletes and requests, or follow your funding.</Empty> : (
@@ -89,6 +93,8 @@ export function FunderOverview({ persona }: { persona: Person }) {
           </ul>
         )}
       </Section>
+      {/* Phones: the photo comes after "Needs you", so the most important task stays at the top. */}
+      <PhonePhoto file={overviewPhoto} className="mt-8" />
       <Section title="Find and fund sport">
         <ul className="grid gap-x-8 sm:grid-cols-2">
           {quick.map((q) => (
