@@ -308,3 +308,22 @@ complete programme-operator and coach workflows; every action updates its connec
 At the end of P3 the founder expects: the standalone prototype, a plain summary, phone/tablet/laptop screenshots,
 completed workflows, financial and safeguarding results, accessibility results, wording before/after examples,
 simplified workflows, what was removed, remaining limitations and updated image requirements.
+
+## P3 approval and P4 direction (25 Nov 2026)
+
+The founder approved P3 (functionality, architecture and direction) and asked to proceed with P4, keeping every
+permanent principle (`CLAUDE.md` §0). P4 scope:
+- complete the three AI experiences without adding new ones: matching explanations from records; application and
+  request help that never invents facts; Ask Revivo as a useful funder assistant with figures and links;
+- a simple payment schedule on agreements (approved, paid, next payment date, conditions outstanding, still to pay;
+  scheduled kept apart from recorded and received) and a funder view of upcoming payments; no accounting module;
+- reports whose figures come live from the records, a check that flags money in the narrative that differs from the
+  records, the eight-way distinction (committed, paid, received, spending reported, spending checked, activities
+  delivered, progress recorded, independently established impact), and print or export;
+- a few embedded fictional supporting documents (receipts, travel, training fee, coach-confirmed result, sponsorship
+  activity), openable from records and labelled fictional;
+- a final design refinement; the complete image asset plan before final photographs (images generated separately by
+  the founder in ChatGPT; placeholders meanwhile);
+- another first-time-user review without the guide; a review of the 10-minute guided demonstration;
+- the seven reviews, with failing checks blocking "tested"; at the end: prototype, screenshots, summary, image plan, AI
+  examples, wording examples, reporting consistency, test results, limitations and a focused P5 plan.

@@ -536,7 +536,7 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
   const sent = Object.values(w.asks).find((a) => a.funderId === f.id && a.by === persona.id);
   return (
     <div className="pb-8">
-      <HeroBand file={f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : "im-06-funder-visit.png"}>
+      <HeroBand file={f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : f.type === "Sports brand" ? "im-14-sponsorship-sprinter.png" : "im-06-funder-visit.png"}>
         <p className="flex items-center gap-2 text-small text-muted">
           <Icon className="size-4" aria-hidden="true" /> {f.type} · participating on Revivo Impact
         </p>
