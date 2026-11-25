@@ -47,3 +47,4 @@ for (const moment of ["apr12", "may06", "jun30"]) {
 }
 await browser.close();
 console.log(`${pages} pages checked at ${width}px, ${problems} problems`);
+process.exitCode = problems ? 1 : 0;

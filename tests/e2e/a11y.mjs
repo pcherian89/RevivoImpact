@@ -26,3 +26,4 @@ for (const theme of ["dark", "daylight"]) {
 }
 await browser.close();
 console.log(`${total} serious/critical issues`);
+process.exitCode = total ? 1 : 0;

@@ -46,3 +46,4 @@ for (const j of ["A", "B", "C", "E"]) {
 if (errs.length) { bad++; console.log(errs.slice(0, 3)); }
 console.log(`${ok} guided steps passed, ${bad} failed`);
 await browser.close();
+process.exitCode = bad ? 1 : 0;

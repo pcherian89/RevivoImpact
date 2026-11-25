@@ -162,3 +162,4 @@ await check("What changed closes when switching person", !(await page.locator('[
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(`${ok} checks passed, ${bad} failed`);
 await browser.close();
+process.exitCode = bad ? 1 : 0;
