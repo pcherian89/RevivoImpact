@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, BadgeCheck, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
 import { DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
-import { agreementsFor, eligibility, fmt, fundTotals, offersFor, oppStatusAt, received, released, requestTotals, stateLabel } from "../domain/engine";
+import { agreementsFor, eligibility, fmt, fundTotals, identifiability, offersFor, oppStatusAt, received, released, requestTotals, stateLabel } from "../domain/engine";
 import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SimulatedAI, Tabs } from "../components/ui";
 import { FundingBar, FundingLine, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
@@ -217,6 +217,7 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
   const opps = Object.values(w.opps).filter((o) => o.status !== "draft" && o.status !== "awaiting");
   const scored = opps
     .map((o) => ({ o, st: oppStatusAt(w, o), e: isOrg ? { kind: o.forOrganisations ? ("eligible" as const) : ("not" as const), summary: o.forOrganisations ? "For organisations like yours" : "For individual athletes", criteria: [] } : eligibility(w, o, ath) }))
+    .filter((x) => isOrg || !x.o.forOrganisations)
     .filter((x) => (isOrg ? true : ath ? x.o.sportsLabel.toLowerCase().includes(ath.sport.toLowerCase()) || !/^(Swimming|Judo)$/.test(x.o.sportsLabel) : true));
   const open = scored.filter((x) => x.st === "open" && (!eligibleOnly || x.e.kind !== "not")).sort((a, b) => rank(a.e.kind) - rank(b.e.kind) || a.o.closes.localeCompare(b.o.closes));
   const upcoming = scored.filter((x) => x.st === "upcoming");
@@ -408,7 +409,8 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
         </div>
       )}
       {canApply && (
-        <div className="mt-6 flex flex-col gap-4 rounded-[10px] border border-line-strong p-5 sm:flex-row sm:items-center sm:justify-between">
+        // On phones the next step stays in view above the bottom menu (docs/04: the next step is always visible).
+        <div className="mt-6 flex flex-col gap-4 rounded-[10px] border border-line-strong bg-canvas p-5 max-md:sticky max-md:bottom-[4.5rem] max-md:z-20 max-md:gap-3 max-md:p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-display text-xl font-bold">{ath ? e.summary : "Join to check your eligibility"}</p>
             <p className="text-small text-muted">{mine ? "You have already applied. Follow it in Applications." : "Your profile fills the form; you choose what the funder sees."}</p>
@@ -639,7 +641,8 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
   const existing = ath && Object.values(w.applications).find((a) => a.oppId === oppId && a.applicantId === ath.id);
   const linkedReq = ath && Object.values(w.requests).find((r) => r.ownerId === ath.id && r.status === "open");
   const remaining = linkedReq ? requestTotals(w, linkedReq.id).remaining : 0;
-  const [requested, setRequested] = useState(existing?.requested ?? (linkedReq ? remaining : 4800));
+  const fundMax = w.funds[w.opps[oppId]?.fundId ?? ""]?.max ?? 4800;
+  const [requested, setRequested] = useState(existing?.requested ?? Math.min(fundMax, linkedReq ? remaining : 4800));
   const [statement, setStatement] = useState(existing?.statement ?? "");
   const [other, setOther] = useState(existing?.otherFunding ?? "");
   const [ai, setAi] = useState(false);
@@ -778,9 +781,14 @@ export function SeekerApplications({ persona }: { persona: Person }) {
                     </p>
                   </div>
                   {o.status === "held" && canAnswer ? (
-                    <ActionButton actor={persona.id} type="acceptOffer" args={{ offerId: o.id, agreementId: `ag-${o.id}` }} success="Accepted. Committed.">
-                      Accept {fund.type.toLowerCase()}
-                    </ActionButton>
+                    <div className="flex flex-wrap items-start gap-3">
+                      <ActionButton actor={persona.id} type="acceptOffer" args={{ offerId: o.id, agreementId: `ag-${o.id}` }} success="Accepted. Committed.">
+                        Accept {fund.type.toLowerCase()}
+                      </ActionButton>
+                      <ActionButton actor={persona.id} type="declineOffer" args={{ offerId: o.id }} variant="secondary" success="Declined. No reason is needed and nothing else changes.">
+                        Decline
+                      </ActionButton>
+                    </div>
                   ) : (
                     <Chip kind={o.status === "accepted" ? "verified" : o.status === "safeguarding" ? "awaiting" : "self"}>{o.status === "accepted" ? "Accepted" : o.status === "safeguarding" ? "In safeguarding review" : o.status === "held" ? "Waiting for the guardian" : o.status === "second-approval" ? "Awaiting the funder's second approver" : "Declined"}</Chip>
                   )}
@@ -870,7 +878,7 @@ function AgreementLine({ w, id, to }: { w: World; id: string; to: string }) {
       ]
     : [
         { short: "Need", full: "Funding need", stat: g.requestId ? fmt(requestTotals(w, g.requestId).requested) : w.applications[w.offers[g.offerId ?? ""]?.applicationId ?? ""] ? fmt(w.applications[w.offers[g.offerId!]!.applicationId!].requested) : "—" },
-        { short: "Support", full: "Approved support", stat: fmt(g.amount), note: `Accepted ${g.acceptedAt === "may06" ? "6 May" : g.acceptedAt}` },
+        { short: "Support", full: "Approved support", stat: fmt(g.amount), note: `Accepted ${{ apr12: "before 12 Apr", may06: "6 May", jun30: "30 Jun" }[g.acceptedAt] ?? g.acceptedAt}` },
         { short: "Released", full: "Funds released and received", stat: rel ? `${fmt(rel)} of ${fmt(g.amount)}` : "Next: payment", note: rel ? (rec >= rel ? "Received" : "Confirm receipt") : undefined },
         { short: "Spent", full: "Expenditure and verification", stat: "—", note: "Spending updates start 30 Jun" },
         { short: "Progress", full: "Sporting progress", stat: "—" },
@@ -978,7 +986,7 @@ export function MyProfile({ persona }: { persona: Person }) {
   const own = persona.role === "athlete" || persona.role === "guardian";
   return (
     <div className="pb-8">
-      <PageHead eyebrow={persona.role === "athlete" ? "Profile" : `My Athletes · ${ath.name}`} title="What do funders see about me?" lead={`${ath.sport} · ${ath.discipline} · ${ath.region}${ath.club ? ` · ${ath.club}` : ""}. One profile for every application and request.`} />
+      <PageHead eyebrow={persona.role === "athlete" ? "Profile" : `My Athletes · ${ath.name}`} title={persona.role === "athlete" ? "What do funders see about me?" : `What do funders see about ${ath.name.split(" ")[0]}?`} lead={`${ath.sport} · ${ath.discipline} · ${ath.region}${ath.club ? ` · ${ath.club}` : ""}. One profile for every application and request.`} />
       {ath.facts.length === 0 && own && persona.id === "amira" && (
         <ActionButton actor={persona.id} type="buildProfile" args={{ athleteId: ath.id }} success="Profile built. Choose what is discoverable.">
           Add my results, coach and support
@@ -1078,12 +1086,14 @@ export function Publish({ persona }: { persona: Person }) {
   const preview = useMemo(() => {
     if (!ath?.minor) return null;
     const ageGroup = ath.age < 14 ? "Under 14" : ath.age < 16 ? "14–15" : "16–17";
-    const n = Object.values(w.athletes).filter((a) => a.minor && a.sport === ath.sport && a.age >= (ageGroup === "14–15" ? 14 : 16) && a.age <= (ageGroup === "14–15" ? 15 : 17) && a.region === ath.region).length;
-    return { ageGroup, n };
+    const chk = identifiability(w, ath.sport, ageGroup, ath.region);
+    return { ageGroup, n: chk.count, region: chk.region, ok: chk.ok, widened: !!chk.widened };
   }, [ath, w]);
   if (persona.role === "coach") return <Empty>Only an adult athlete, a guardian or an organisation publishes funding requests. A coach cannot publish for a minor.</Empty>;
   const total = lines.reduce((a, l) => a + (l.amount || 0), 0);
   const ownerId = isOrg ? persona.orgId! : ath?.id;
+  const nVerified = ath?.facts.filter((f) => f.state === "verified" || f.state === "confirmed").length ?? 0;
+  const verifiedLabel = isOrg ? "Organisation verified" : nVerified ? `${nVerified} ${nVerified === 1 ? "fact" : "facts"} verified or confirmed` : "No facts verified yet";
   const sport = isOrg ? w.orgs[persona.orgId!].sport : ath?.sport ?? "";
   return (
     <div className="max-w-3xl pb-10">
@@ -1115,10 +1125,10 @@ export function Publish({ persona }: { persona: Person }) {
             <Lock className="size-4 text-subtle" aria-hidden="true" /> {ath.sport === "Swimming" ? "Swimmer" : ath.sport} · {preview.ageGroup}
           </p>
           <p className="text-muted">
-            {ath.region} · {title || "Support"} · {fmt(total)} · needed in {month} · qualification verified by a national federation
+            {preview.region} · {title || "Support"} · {fmt(total)} · needed in {month} · {verifiedLabel.toLowerCase()}
           </p>
           <p className="mt-3 flex gap-2 text-small text-subtle">
-            <CircleCheck className="mt-0.5 size-4 shrink-0 text-signal" aria-hidden="true" /> Identifiability check: {preview.n} registered athletes share this sport, age group and region (10 or more needed). No name, club, school, photo or exact date is ever shown. Offers come to you, never to {ath.name.split(" ")[0]}.
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-signal" aria-hidden="true" /> Identifiability check: {preview.ok ? preview.widened ? `${preview.n} registered athletes share this sport and age group across all regions (10 or more needed), so the card shows “Any region”.` : `${preview.n} registered athletes share this sport, age group and region (10 or more needed).` : `only ${preview.n} share this sport and age group, so this card could identify the athlete and cannot be published.`} No name, club, school, photo or exact date is ever shown. Offers come to you, never to {ath.name.split(" ")[0]}.
           </p>
         </div>
       )}
@@ -1127,7 +1137,7 @@ export function Publish({ persona }: { persona: Person }) {
         arrow
         onClick={() => {
           if (!ownerId) return;
-          const ok = act.run("publishRequest", { requestId: `rq-${ownerId}-${Date.now()}`, ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: `${ath?.facts.filter((f) => f.state === "verified").length ?? 0} facts verified`, tags: [sport, ...(ath?.para ? ["Para athletics"] : []), "Equipment", "Travel", "Any region", "Verified evidence", ath && !ath.minor ? "Adults only" : "Organisation"] }, "Published. Funders can now find it.");
+          const ok = act.run("publishRequest", { requestId: `rq-${ownerId}-${Date.now()}`, ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: verifiedLabel, tags: [sport, ...(ath?.para ? ["Para athletics"] : []), "Equipment", "Travel", "Any region", "Verified evidence", ath && !ath.minor ? "Adults only" : "Organisation"] }, "Published. Funders can now find it.");
           if (ok) go(`app/${persona.id}/funding`);
         }}
       >

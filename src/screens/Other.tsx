@@ -106,7 +106,12 @@ export function Safety({ persona }: { persona: Person }) {
           ))}
           {funders.length === 0 && <Empty li>No funder has contacted you yet.</Empty>}
         </ul>
-        <p className="mt-3 text-small text-subtle">To report a concern about any contact, use &ldquo;Report a concern&rdquo;: it goes to the platform&rsquo;s safeguarding team (simulated).</p>
+        {canChange ? (
+          <ActionButton className="mt-4" actor={persona.id} type="reportConcern" args={{ concernId: `cn-${ath.id}-${w.concerns.length + 1}`, athleteId: ath.id, funderId: funders[0], about: "Contact that did not feel right" }} variant="secondary" success="Sent to the platform safeguarding team (simulated). A person reviews it; nothing is decided automatically.">
+            Report a concern
+          </ActionButton>
+        ) : null}
+        <p className="mt-3 text-small text-subtle">&ldquo;Report a concern&rdquo; goes to the platform&rsquo;s safeguarding team (simulated), which a person reviews. Blocking takes effect at once.</p>
       </Section>
     </div>
   );
@@ -123,7 +128,7 @@ export function Admin({ persona }: { persona: Person }) {
   return (
     <div className="pb-8">
       <PageHead eyebrow="Audit & admin" title="Who did what, when and why?" lead="Platform administration (simulated): safeguarding reviews, verification and the audit. Administrators never see athletes' documents." />
-      <Tabs label="Admin" value={tab} onChange={setTab} tabs={[{ id: "safeguarding", label: "Safeguarding", count: reviews.length }, { id: "verification", label: "Verification", count: unverified.length }, { id: "audit", label: "Audit", count: w.audit.length }]} />
+      <Tabs label="Admin" value={tab} onChange={setTab} tabs={[{ id: "safeguarding", label: "Safeguarding", count: reviews.length + w.concerns.length }, { id: "verification", label: "Verification", count: unverified.length }, { id: "audit", label: "Audit", count: w.audit.length }]} />
       {tab === "safeguarding" && (
         <>
           <Section title="Offers to young athletes from individual sponsors">
@@ -140,6 +145,20 @@ export function Admin({ persona }: { persona: Person }) {
                     <ActionButton actor={persona.id} type="clearSafeguarding" args={{ offerId: o.id }} success="Released to the guardian.">
                       Release to the guardian
                     </ActionButton>
+                  </Row>
+                ))}
+              </ul>
+            )}
+          </Section>
+          <Section title="Concerns reported">
+            {w.concerns.length === 0 ? <Empty>No concerns reported.</Empty> : (
+              <ul>
+                {w.concerns.map((x) => (
+                  <Row key={x.id}>
+                    <span>
+                      {x.about} · {x.funderId ? w.funders[x.funderId]?.name : "no funder named"} · reported by the {w.athletes[x.athleteId]?.minor ? "guardian of an athlete under 18" : "athlete"}
+                    </span>
+                    <Chip kind="attention">For a person to review</Chip>
                   </Row>
                 ))}
               </ul>

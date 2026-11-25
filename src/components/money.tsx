@@ -269,7 +269,7 @@ export function NeedBar({
         ) : (
           <>
             <span className="font-medium text-ink">{fmt(pledged)}</span> pledged of {fmt(requested)}
-            {held > 0 && <> · {fmt(held)} held for a pending application</>} ·{" "}
+            {held > 0 && <> · {fmt(held)} held for offers and applications in progress</>} ·{" "}
             <span className="font-medium text-ink">{fmt(Math.max(0, remaining))}</span> still needed
           </>
         )}

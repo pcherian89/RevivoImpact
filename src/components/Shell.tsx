@@ -229,7 +229,8 @@ export function GuidePanel() {
   const done = stepDone(s);
   // Earlier steps of the same date that have not happened yet: load the story so this step makes sense.
   const prevPending = journey.steps.slice(0, guide.step).some((x) => x.when === s.when && x.cmds.length > 0 && !x.phase && !stepDone(x));
-  const open = () => go(`app/${s.as}/${s.to}`);
+  // A step whose screen is a public page (Join) opens it directly; every other step opens as its person.
+  const open = () => go(s.to.startsWith("/") ? s.to.slice(1) : `app/${s.as}/${s.to}`);
   const next = () => {
     setErr(null);
     if (guide.step < journey.steps.length - 1) setGuide({ step: guide.step + 1 });

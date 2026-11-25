@@ -19,7 +19,8 @@ export default function App() {
     const sc = (screen ?? HOME_SCREEN[persona.role]).split("?")[0];
     body = (
       <AppFrame persona={persona} active={sc}>
-        {renderScreen(sc, param?.split("?")[0], persona)}
+        {/* Keyed by person and record, so a form or message never carries over from one person's screen to another's. */}
+        <div key={`${pid}/${sc}/${param ?? ""}`}>{renderScreen(sc, param?.split("?")[0], persona)}</div>
       </AppFrame>
     );
   } else body = <Start />;

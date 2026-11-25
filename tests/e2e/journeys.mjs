@@ -42,6 +42,10 @@ await go("app/amira/apply/eas");
 await click("Help me organise this");
 await page.getByLabel("Amount requested (USD)").fill("4800");
 await click("Submit application");
+await check("A6 an unedited AI draft cannot be submitted", (await text()).includes("statement in your own words"));
+await page.getByLabel("Statement").fill("I compete in judo at national U21 level and train at Saltmere Sports Academy. My family cannot cover coaching fees and travel this season.");
+await page.locator("#other").fill("None");
+await click("Submit application");
 await check("A6–A7 submitted", (await text()).includes("Submitted · in review"));
 await go("app/daniel/apps");
 await check("A7 Daniel sees Amira's application in the pipeline", (await text()).includes("Amira Haddad"));
@@ -52,6 +56,9 @@ await page.waitForTimeout(200);
 let t = await text();
 await check("A8 bronze arrives confirmed by the federation", t.includes("Confirmed by Ardent Judo Federation"));
 await click("Verify against ID document");
+await click("Record my score");
+await check("A8 scoring needs the no-conflict confirmation", (await text()).includes("conflict of interest"));
+await page.getByLabel("I have no conflict of interest with this applicant").check();
 await click("Record my score");
 await click("$4,500");
 await check("A8 shortlisted at $4,500", (await text()).includes("Shortlisted at $4,500"));
@@ -165,6 +172,34 @@ await check("Individual → minor goes to safeguarding review", (await text()).i
 await go("app/alex/admin");
 await click("Release to the guardian");
 await check("Platform releases it to the guardian", (await text()).includes("Safeguarding review passed"));
+
+// ---- End-to-end review fixes (docs/11 §4)
+await go("app/kenji/fdiscover");
+await page.locator("#brief").fill("judo athletes in the coastal region needing travel");
+await click("Turn into filters");
+t = await text();
+await check("Brief turns into filters (judo, Coastal Region, travel)", (await page.getByRole("button", { name: "Remove filter Judo" }).count()) === 1 && (await page.getByRole("button", { name: "Remove filter Coastal Region" }).count()) === 1);
+await page.getByRole("tab", { name: /Athletes/ }).click();
+await check("Discover athletes: the first athlete matches judo", (await page.locator("main li").first().innerText()).includes("Judo"));
+await go("app/kenji/portfolio");
+await check("Funding lists agreements from before this date", (await text()).includes("Accepted before this demonstration date") && !(await text()).includes("No agreements yet"));
+await go("app/kenji/review/app-amira");
+await check("Another funder cannot open an application", (await text()).includes("shared only with the funder it was sent to"));
+await go("app/nadia/review/app-amira");
+await check("An athlete cannot open a funder screen", (await text()).includes("belongs to another role"));
+await go("app/jonah/publish");
+await click("Publish request");
+await check("An empty request cannot be published", (await text()).includes("what the funding is for"));
+await page.locator("#pr-title").fill("Holiday in the sun");
+await page.getByLabel("Line 1 description").fill("Beach holiday");
+await page.getByLabel("Line 1 amount").fill("500");
+await click("Publish request");
+await check("A non-sporting request is refused", (await text()).includes("sport only"));
+await go("app/rosa/safety");
+await click("Report a concern");
+await check("Report a concern reaches the safeguarding team", (await text()).includes("Sent to the platform safeguarding team"));
+await go("app/alex/admin");
+await check("Admin sees the concern without the athlete's name", (await text()).includes("guardian of an athlete under 18") && !(await text()).includes("Tiago"));
 
 await check("no page errors", errs.length === 0);
 // Privacy: "What changed" never carries one person's names onto another person's screen

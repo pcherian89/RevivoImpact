@@ -252,6 +252,7 @@ export type World = {
   authorisations: Authorisation[];
   consents: Consent[];
   blocks: { athleteId: string; funderId: string }[];
+  concerns: { id: string; athleteId: string; funderId?: string; about: string; by: string; at: Moment; status: "open" | "reviewed" }[];
   audit: AuditRow[];
   seq: number;
 };
@@ -276,7 +277,7 @@ const PEOPLE: Person[] = [
   P({ id: "jonah", name: "Jonah Reyes", role: "athlete", title: "Athlete, 22 · sprinter", athleteId: "jonah", perms: [], group: "Seeking funding", journeys: "B", tasks: ["See your commercial profile", "Accept a sponsorship agreement", "See it kept apart from development funding"] }),
   P({ id: "rosa", name: "Rosa Esteves", role: "guardian", title: "Guardian of Tiago (16) and Inês (13)", perms: [], group: "Seeking funding", journeys: "E", tasks: ["Switch athletes", "Publish an anonymised request", "Authorise a coach"] }),
   P({ id: "jonas", name: "Jonas Becker", role: "coach", title: "Head swim coach · 6 athletes", orgId: "saltmere", perms: [], group: "Seeking funding", journeys: "E", tasks: ["Prepare an application (you cannot submit it)", "See only athletes who authorised you"] }),
-  P({ id: "maya", name: "Maya Torres", role: "organisation", title: "Programme director", orgId: "lanternfield", perms: ["Admin", "Approve"], group: "Delivering programmes", journeys: "C", tasks: ["Find programme funding", "See Play Every Day"] }),
+  P({ id: "maya", name: "Maya Torres", role: "organisation", title: "Programme director", orgId: "lanternfield", perms: ["Admin", "Approve"], group: "Delivering programmes", journeys: "C", tasks: ["Find programme funding", "See what your organisation can apply for"] }),
   P({ id: "ewan", name: "Morag Linden", role: "organisation", title: "Club secretary · Admin", orgId: "highland", perms: ["Admin", "Approve", "Finance"], group: "Seeking funding", journeys: "C", tasks: ["See your request and the offer you received"], persona: true }),
   P({ id: "sam", name: "Sam Rivera", role: "programme-coach", title: "Coach · Greenpark and Westbrook", orgId: "lanternfield", perms: [], group: "Delivering programmes", journeys: "C", tasks: ["Record a session (next build)"] }),
   P({ id: "ingrid", name: "Ingrid Solberg", role: "funder", title: "Director of Programmes · Approve", orgId: "tallwater", funderId: "tallwater", perms: ["Approve", "Admin"], group: "Providing funding", journeys: "A", tasks: ["Publish Daniel's draft", "Decide the scholarship offers", "Try to approve your own draft"] }),
@@ -359,6 +360,16 @@ const FIRST_W = ["Aisha", "Mei", "Sofia", "Zanele", "Priyanka", "Lena", "Yara", 
 const FIRST_M = ["Tomas", "Kofi", "Arjun", "Mateo", "Ilyas", "Daniel", "Kai", "Omar", "Felix", "Jun", "Rafael", "Sami", "Theo", "Emeka", "Luca", "Ravi", "Anders", "Diego", "Hamza", "Niko", "Ade", "Jonas", "Malik", "Ezra", "Viktor", "Tariq", "Bruno", "Kenta", "Idris", "Oskar"];
 const LAST = ["Okafor", "Lindgren", "Haddou", "Petrov", "Mensah", "Castillo", "Nakamura", "Rahman", "Fischer", "Adeleke", "Moreno", "Kowalski", "Osei-Bonsu", "Varga", "Sato", "Nilsen", "Delgado", "Achterberg", "Kamara", "Bianchi", "Duarte", "Haugen", "Ibrahim", "Laine", "Mwangi", "Novotny", "Quiroga", "Rasku", "Tembo", "Wiltshire", "Yilmaz", "Zielinski", "Abara", "Brennan", "Chua", "Dossou"];
 
+/** Generated, deterministic evidence for light profiles: n verified facts, then one self-reported. */
+function lightFacts(id: string, sport: string, level: string, n: number, visibility: Visibility): Fact[] {
+  const all = [
+    fact(`${id}-r1`, "Result", `${level}, National ${sport} Championships 2026`, "result", "verified", visibility, `${sport} national federation (results list)`, "8 Mar"),
+    fact(`${id}-coach`, "Coach reference", "Club coach", "coach", "confirmed", visibility, "Club (Verify)", "10 Mar"),
+    fact(`${id}-r2`, "Result", `Regional ${sport} Open 2026`, "result", "verified", visibility, "Regional association", "2 Feb"),
+  ];
+  return [...all.slice(0, Math.max(0, Math.min(n, 3))), fact(`${id}-goal`, "Season goal", `Compete at national level in ${sport.toLowerCase()}`, "goal", "self", visibility)];
+}
+
 function fact(id: string, label: string, value: string, kind: Fact["kind"], state: FactState, visibility: Visibility = "discoverable", by?: string, date?: string): Fact {
   return { id, label, value, kind, state, visibility, by, date };
 }
@@ -389,6 +400,7 @@ export function baseWorld(): World {
     authorisations: [],
     consents: [],
     blocks: [],
+    concerns: [],
     audit: [],
     seq: 0,
   };
@@ -444,7 +456,12 @@ export function baseWorld(): World {
   for (let i = 0; i < 57; i++) mk(pick(EAS_SPORTS), 18, 21, null);
   for (let i = 0; i < 59; i++) {
     const sp = pick(["Athletics", "Boxing", "Cycling", "Rowing", "Table tennis", "Judo", "Fencing", "Archery", "Triathlon", "Badminton"]);
-    mk(sp, 18, 31, null, { discoverable: true, tags: [sp.toLowerCase(), "Adults only", "Verified evidence", "National level"] });
+    const need = ["Equipment", "Travel", "Coaching"][i % 3];
+    mk(sp, 18, 31, null, { discoverable: true, tags: [sp.toLowerCase(), "Adults only", "Verified evidence", "National level", need] });
+    const a = w.athletes[`l${n}`];
+    a.tags.push(a.region);
+    a.facts = lightFacts(a.id, sp, a.level, 2, "discoverable");
+    a.facts.push(fact(`${a.id}-need`, "Support needed", need, "goal", "self"));
   }
   // → named + Jonas's athletes + light ≈ 240 profiles; 60+ adults discoverable (59 light + Nadia, Jonah, Elif)
 
@@ -478,6 +495,15 @@ export function baseWorld(): World {
   RQ({ id: "rq-triathlete", ownerKind: "athlete", ownerId: "a-tri", title: "Race entries", sport: "Triathlon", region: "Central Region", minor: false, lines: [{ id: "l1", label: "Race entries", amount: 900, otherSources: 0 }], visibility: "Public", neededBy: "Fri 6 Aug", neededMonth: "August", publishedBy: "a-tri", verifiedLabel: "1 fact verified", tags: ["Travel", "Adults only"] });
   RQ({ id: "rq-badm-closed", ownerKind: "athlete", ownerId: "a-badm2", title: "Competition travel", sport: "Badminton", region: "Central Region", minor: false, lines: [{ id: "l1", label: "Travel", amount: 1500, otherSources: 0 }], visibility: "Public", neededBy: "Feb", neededMonth: "February", publishedBy: "a-badm2", verifiedLabel: "", tags: [], status: "closed" });
   RQ({ id: "rq-wbb-closed", ownerKind: "org", ownerId: "saltmere", title: "Wheelchair basketball team kit", sport: "Wheelchair basketball", region: "Coastal Region", minor: false, lines: [{ id: "l1", label: "Team kit", amount: 1200, otherSources: 0 }], visibility: "Public", neededBy: "Mar", neededMonth: "March", publishedBy: "saltmere", verifiedLabel: "", tags: [], status: "closed" });
+
+  // Facts behind each seeded request's "verified" label, so the card and the request page always agree.
+  for (const r of Object.values(w.requests)) {
+    const a = r.ownerKind === "athlete" ? w.athletes[r.ownerId] : undefined;
+    if (!a || a.facts.length) continue;
+    const n = Number(/^(\d+)/.exec(r.verifiedLabel)?.[1] ?? 1);
+    a.facts = lightFacts(a.id, a.sport, a.level, n, a.minor ? "application" : "discoverable");
+    a.tags.push(r.region, ...r.tags.filter((t) => !a.tags.includes(t)));
+  }
 
   // Agreements that existed before 12 Apr (docs/05 §9.4: development 11,900; commercial 8,000; programme 145,000)
   const AG = (id: string, fundId: string, kind: "athlete" | "org", rid: string, amount: number, requestId?: string, released = amount) => {

@@ -203,3 +203,48 @@ describe("verifier regressions", () => {
     expect(card("Competition travel", "August")).toBeNull();
   });
 });
+
+describe("brief to filters (deterministic word list)", async () => {
+  const { briefToChips } = await import("../../src/screens/Funder");
+  it("reads sport, region and support from plain words", () => {
+    expect(briefToChips("judo athletes in the coastal region needing travel")).toEqual(["Judo", "Coastal Region", "Travel"]);
+    expect(briefToChips("adult sprinters competing nationally, open to a kit partnership")).toEqual(expect.arrayContaining(["Athletics: sprint", "Adults only", "National level", "Open to commercial partners"]));
+    expect(briefToChips("")).toEqual(["Any region", "Verified evidence"]);
+  });
+});
+
+/* Regressions found by the P2 end-to-end test across every role (docs/11 §4). */
+describe("end-to-end regressions", () => {
+  const mayAll = () => replay(checkpoint("jun30").filter((e) => !(e.type === "arrivals" && e.args.to === "jun30")));
+  const pub = (w: ReturnType<typeof baseWorld>, title: string, lines: { label: string; amount: number }[]) => tryCmd(w, { at: "may06", actor: "jonah", type: "publishRequest", args: { requestId: `rq-j-${title}`, ownerKind: "athlete", ownerId: "jonah", title, sport: "Athletics", lines, visibility: "Public", neededBy: "June", neededMonth: "June", verifiedLabel: "", tags: [] } });
+  it("a request needs a title, items with positive amounts and a sporting purpose", () => {
+    const w = mayAll();
+    expect(pub(w, "", [])).toMatch(/what the funding is for/);
+    expect(pub(w, "Spikes", [])).toMatch(/at least one item/);
+    expect(pub(w, "Holiday in the sun", [{ label: "Beach holiday", amount: 500 }])).toMatch(/sport only/);
+    expect(pub(w, "Spikes and meet entries", [{ label: "Spikes", amount: 180 }])).toBeNull();
+  });
+  it("an opportunity names a real sport and a sporting purpose", () => {
+    const w = mayAll();
+    const draft = (title: string, sport: string, purpose: string) => tryCmd(w, { at: "may06", actor: "daniel", type: "createOpportunity", args: { fundId: "fdg", title, sport, purpose, amountLabel: "Up to $24,000", closes: "2027-07-30" } });
+    expect(draft("Art scholarship", "Painting", "Paint supplies")).toMatch(/not a sport|sport only/);
+    expect(draft("Coach education fund", "Any sport", "Coaching courses for volunteer coaches")).toBeNull();
+  });
+  it("an application is complete before submission and asks no more than the fund's maximum", () => {
+    const w = mayAll();
+    expect(tryCmd(w, { at: "may06", actor: "jonas", type: "saveApplication", args: { appId: "k1", oppId: "ostral-ctg", athleteId: "tiago", requested: 2400, statement: "x", otherFunding: "None" } })).toMatch(/up to \$1,500|already applied/);
+    const ad = Object.values(w.athletes).find((a) => !a.minor && a.discoverable && a.light && a.age >= 18 && a.age <= 21)!;
+    w.people[ad.id] = { ...w.people.jonah, id: ad.id, athleteId: ad.id };
+    apply(w, { n: 0, at: "may06", actor: ad.id, type: "saveApplication", args: { appId: "k2", oppId: "crsc-tb", athleteId: ad.id, requested: 1000, statement: "(statement to add)", otherFunding: "Not declared" } });
+    expect(tryCmd(w, { at: "may06", actor: ad.id, type: "submitApplication", args: { appId: "k2" } })).toMatch(/statement in your own words/);
+  });
+  it("offers can be declined; a reviewer confirms no conflict of interest", () => {
+    const w = replay(checkpoint("may06"));
+    apply(w, { n: 0, at: "may06", actor: "kenji", type: "makeOffer", args: { offerId: "d1", fundId: "oas", recipientKind: "athlete", recipientId: "jonah", amount: 800, reason: "Equipment for a verified adult athlete." } });
+    expect(tryCmd(w, { at: "may06", actor: "nadia", type: "declineOffer", args: { offerId: "d1" } })).toMatch(/Only the athlete/);
+    apply(w, { n: 0, at: "may06", actor: "jonah", type: "declineOffer", args: { offerId: "d1" } });
+    expect(w.offers.d1.status).toBe("declined");
+    expect(fundTotals(w, "oas").held).toBe(fundTotals(replay(checkpoint("may06")), "oas").held);
+    expect(tryCmd(w, { at: "may06", actor: "daniel", type: "scoreApplication", args: { appId: "app-amira", total: 13, noConflict: false } })).toMatch(/conflict of interest/);
+  });
+});

@@ -147,7 +147,7 @@ export function eligibility(_w: World, opp: Opportunity, a: Athlete | undefined)
   const check = out.filter((c) => c.result === "check").length;
   const todo = out.filter((c) => c.result === "todo").length;
   const not = out.filter((c) => c.result === "not");
-  if (not.length) return { criteria: out, summary: `Not eligible: ${not[0].detail.charAt(0).toLowerCase()}${not[0].detail.slice(1)}`, kind: "not" };
+  if (not.length) return { criteria: out, summary: `Not eligible: ${/^(You|For) /.test(not[0].detail) ? not[0].detail.charAt(0).toLowerCase() + not[0].detail.slice(1) : not[0].detail}`, kind: "not" };
   const parts = [`${met} of ${out.length} met`];
   if (check) parts.push(`${check} for the panel to check`);
   if (todo) parts.push(`${todo} to add`);
@@ -206,6 +206,14 @@ const need = (cond: unknown, msg: string) => {
 const positive = (n: unknown, what = "The amount") => need(typeof n === "number" && Number.isInteger(n) && n > 0, `${what} must be a whole number of dollars above zero.`);
 /** A new record never replaces an existing one. */
 const fresh = (map: Record<string, unknown>, rid: string) => need(rid && !map[rid], "That record already exists. Nothing was changed.");
+/** Sports only (docs/02 §4.4): a fixed word list catches costs that are plainly not sporting. Deterministic, never AI. */
+const NOT_SPORT = ["holiday", "vacation", "beach", "rent", "mortgage", "tuition", "school fees", "university", "college fees", "wedding", "painting", "paint ", "art ", "art scholarship", "music", "piano", "groceries", "phone", "laptop", "car loan", "debt", "medical bills", "general expenses", "donation", "crowdfund"];
+const SPORT_WORDS = ["sport", "athlet", "archery", "badminton", "boxing", "canoe", "cycling", "fencing", "football", "judo", "rowing", "swim", "table tennis", "triathlon", "wheelchair", "para", "netball", "basketball", "hockey", "rugby", "tennis", "gymnast", "running", "sprint"];
+export function sportingCheck(...texts: string[]) {
+  const t = ` ${texts.join(" ").toLowerCase()} `;
+  const hit = NOT_SPORT.find((x) => t.includes(x));
+  need(!hit, `Revivo Impact funds sport only. “${hit?.trim()}” is not a sporting cost: describe the sporting purpose, for example competition travel, coaching or equipment.`);
+}
 /** Purpose-based access: a person acts only for their own funder. */
 const memberOf = (w: World, actor: string, funderId: string, perm?: Person["perms"][number]) => {
   const p = w.people[actor];
@@ -256,7 +264,10 @@ export const commands = {
   createOpportunity(c: Ctx, a: { fundId: string; title: string; sport: string; purpose: string; amountLabel: string; closes: string; oppId?: string }) {
     const f = c.w.funds[a.fundId];
     need(c.w.people[c.actor]?.funderId === f.funderId, "Only members of this funder can draft its opportunities.");
-    need(a.sport && a.purpose, "Revivo Impact is for sport. Add the sport and the sporting purpose this funding supports.");
+    need(a.title?.trim().length >= 3, "Give the opportunity a title.");
+    need(a.sport?.trim() && a.purpose?.trim(), "Revivo Impact is for sport. Add the sport and the sporting purpose this funding supports.");
+    need(SPORT_WORDS.some((x) => a.sport.toLowerCase().includes(x)), `“${a.sport}” is not a sport on Revivo Impact. Name the sport or sports, for example judo, or “any sport”.`);
+    sportingCheck(a.title, a.sport, a.purpose);
     const oid = a.oppId ?? id(c.w, "opp");
     fresh(c.w.opps, oid);
     c.w.opps[oid] = { id: oid, fundId: a.fundId, title: a.title, sportsLabel: a.sport, purpose: a.purpose, amountLabel: a.amountLabel, awardsLabel: "", rules: [], status: "awaiting", draftedBy: c.actor, opens: "2027-04-01", closes: a.closes, decisions: "", visibility: "Public", nominations: false, image: "im-05-discover-opportunities.png" };
@@ -354,6 +365,8 @@ export const commands = {
     const prior = c.w.applications[a.appId];
     need(!prior || (prior.applicantId === a.athleteId && prior.oppId === a.oppId && prior.status === "draft"), "That application already exists and is no longer a draft.");
     positive(a.requested, "The amount requested");
+    const maxFund = c.w.funds[c.w.opps[a.oppId].fundId];
+    need(a.requested <= maxFund.max, `This opportunity funds up to ${fmt(maxFund.max)}. Ask for that or less.`);
     const existing = Object.values(c.w.applications).find((x) => x.oppId === a.oppId && x.applicantId === a.athleteId && x.id !== a.appId);
     need(!existing, "This athlete has already applied to this fund.");
     need(oppStatusAt(c.w, c.w.opps[a.oppId]) === "open", "This opportunity is not open.");
@@ -364,6 +377,9 @@ export const commands = {
   submitApplication(c: Ctx, a: { appId: string }) {
     const app = c.w.applications[a.appId];
     need(canActForAthlete(c.w, c.actor, app.applicantId, "submit"), "Only the adult athlete or a guardian can submit. A coach can prepare, not submit.");
+    need(app.status === "draft", "This application has already been submitted.");
+    need(app.statement.trim().length >= 40 && !app.statement.includes("(statement to add)") && !app.statement.includes("[In your own words"), "Add your statement in your own words (at least a few sentences) before submitting.");
+    need(app.otherFunding.trim() && app.otherFunding !== "Not declared", "Declare other funding for the same costs, or write “None”.");
     if (app.linked) {
       const t = requestTotals(c.w, app.linked.requestId);
       need(app.linked.amount <= t.remaining, `This would ask for more than the ${fmt(t.remaining)} still needed.`);
@@ -394,7 +410,8 @@ export const commands = {
     audit(c, "Supplied the invoice and declared other funding", ath.name);
   },
 
-  scoreApplication(c: Ctx, a: { appId: string; total: number }) {
+  scoreApplication(c: Ctx, a: { appId: string; total: number; noConflict?: boolean }) {
+    need(a.noConflict !== false, "Confirm you have no conflict of interest with this applicant before scoring.");
     const app = c.w.applications[a.appId];
     need(memberOf(c.w, c.actor, funderOfApp(c.w, app), "Review"), "Only a reviewer at the funder this application was sent to can score it.");
     need(["submitted", "info"].includes(app.status), "This application is no longer being scored.");
@@ -448,7 +465,9 @@ export const commands = {
   publishRequest(c: Ctx, a: { requestId: string; ownerKind: "athlete" | "org"; ownerId: string; title: string; sport: string; lines: { label: string; amount: number }[]; visibility: FundingRequest["visibility"]; neededBy: string; neededMonth: string; verifiedLabel: string; tags: string[] }) {
     need(a.sport, "Revivo Impact is for sport. Add the sport and the sporting purpose this funding supports.");
     fresh(c.w.requests, a.requestId);
+    need(a.title?.trim().length >= 3, "Say what the funding is for.");
     need(a.lines.length > 0, "Add at least one item with an amount.");
+    sportingCheck(a.title, ...a.lines.map((l) => l.label));
     a.lines.forEach((l) => positive(l.amount, `“${l.label}”`));
     let minor = false;
     let ageGroup: string | undefined;
@@ -629,7 +648,7 @@ export const commands = {
     const o = c.w.offers[a.offerId] ?? fail("That offer does not exist.");
     need(o.status === "safeguarding", "This offer is not waiting for a safeguarding review.");
     o.status = "held";
-    audit(c, "Safeguarding review passed; offer released to the guardian", a.offerId);
+    audit(c, "Safeguarding review passed; offer released to the guardian", offerRecord(c.w, o));
   },
 
   acceptOffer(c: Ctx, a: { offerId: string; agreementId: string }) {
@@ -645,6 +664,26 @@ export const commands = {
     c.w.agreements[a.agreementId] = { id: a.agreementId, offerId: o.id, fundId: o.fundId, recipientKind: o.recipientKind, recipientId: o.recipientId, amount: o.amount, acceptedBy: c.actor, acceptedAt: c.at, origin: o.applicationId ? "Application" : "Offer", requestId: o.requestId, lineId: o.lineId, light: o.light };
     if (o.applicationId) c.w.applications[o.applicationId].status = "accepted";
     audit(c, `Accepted a ${fund.type.toLowerCase()} of ${fmt(o.amount)}`, fund.name);
+  },
+
+  declineOffer(c: Ctx, a: { offerId: string }) {
+    const o = c.w.offers[a.offerId] ?? fail("That offer does not exist.");
+    need(o.status === "held", "Only an offer waiting for an answer can be declined.");
+    if (o.recipientKind === "athlete") {
+      const ath = c.w.athletes[o.recipientId];
+      need(ath.minor ? ath.guardianId === c.actor : c.actor === ath.id, ath.minor ? "Only the guardian answers for an athlete under 18." : "Only the athlete answers.");
+    } else need(c.w.people[c.actor]?.orgId === o.recipientId && c.w.people[c.actor].perms.includes("Approve"), "Only someone with Approve at the organisation answers.");
+    o.status = "declined";
+    if (o.applicationId) c.w.applications[o.applicationId].status = "notselected";
+    audit(c, `Declined an offer of ${fmt(o.amount)} (no reason needed; nothing else changes)`, c.w.funds[o.fundId].name);
+  },
+
+  reportConcern(c: Ctx, a: { concernId: string; athleteId: string; funderId?: string; about: string }) {
+    const ath = c.w.athletes[a.athleteId];
+    need(ath && (ath.minor ? ath.guardianId === c.actor : ath.id === c.actor), "Only the athlete (or guardian) reports a concern here.");
+    fresh(Object.fromEntries(c.w.concerns.map((x) => [x.id, x])), a.concernId);
+    c.w.concerns.push({ id: a.concernId, athleteId: a.athleteId, funderId: a.funderId, about: a.about, by: c.actor, at: c.at, status: "open" });
+    audit(c, "Reported a concern to the platform safeguarding team (simulated)", a.funderId ? c.w.funders[a.funderId]?.name ?? "A funder" : "Platform");
   },
 
   recordRelease(c: Ctx, a: { agreementId: string; amount: number; ref: string; entryId: string }) {

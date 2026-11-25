@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { ArrowRight, ChevronRight, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
-import { BEHAVIOUR, type Fund, type Person, type World } from "../domain/model";
+import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
 import { fit, fmt, fundTotals, mayReachMinors, oppStatusAt, platformTotals, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, MiniLine, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
 import { fmtDate } from "./Seeker";
 
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const fundsOf = (w: World, funderId: string) => Object.values(w.funds).filter((f) => f.funderId === funderId);
 
 /* ================================================================= Overview */
@@ -35,7 +36,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const main = funds.find((x) => x.id === "eas") ?? funds[0];
   const isFoundation = f.type === "Foundation";
   const quick = [
-    { t: "Discover athletes", to: "fdiscover", icon: Search },
+    { t: "Discover athletes", to: "fdiscover?athletes", icon: Search },
     { t: "Discover funding requests and teams", to: "fdiscover?requests", icon: HandHeart },
     ...(f.type === "Individual sponsor" ? [] : [{ t: "Publish a sports funding opportunity", to: "opps", icon: Megaphone }]),
     { t: "Manage funding and track progress", to: "portfolio", icon: FileText },
@@ -94,7 +95,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
         </Section>
       )}
       <section className="mt-10 grid gap-8 border-t border-line pt-8 md:grid-cols-3">
-        <Answer q={isFoundation ? "Who applied" : "Who you support"} a={isFoundation ? `${Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length} applications` : `${pt.count} agreements`} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
+        <Answer q={isFoundation ? "Who applied" : "Who you support"} a={isFoundation ? plural(Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length, "application") : plural(pt.count, "agreement")} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
         <Answer q="Committed · all funds" a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} />
         <Answer q="Released · all funds" a={fmt(pt.released)} d="Recorded payments (simulated); recipients confirm receipt" />
       </section>
@@ -128,7 +129,37 @@ const BRIEFS: Record<string, { text: string; chips: string[] }> = {
   lucy: { text: "adult sprinters competing nationally, open to a kit partnership", chips: ["Athletics: sprint", "Adults only", "Open to commercial partners", "National level"] },
   marcus: { text: "clubs and athletes needing equipment or travel", chips: ["Equipment", "Organisation", "Any region", "Verified evidence"] },
 };
-const VOCAB = ["Para athletics", "Equipment", "Travel", "Coaching", "Any region", "Verified evidence", "Adults only", "National level", "Organisation", "Athletics: sprint", "Open to commercial partners", "Swimming", "Cycling", "Football", "Boxing"];
+const SPORTS = ["Archery", "Athletics", "Athletics: sprint", "Badminton", "Boxing", "Canoeing", "Cycling", "Fencing", "Football", "Judo", "Rowing", "Swimming", "Table tennis", "Triathlon", "Wheelchair basketball", "Wheelchair racing"];
+const VOCAB = ["Para athletics", "Equipment", "Travel", "Coaching", "Any region", ...REGIONS, "Verified evidence", "Adults only", "National level", "Organisation", "Open to commercial partners", ...SPORTS];
+
+/**
+ * Brief → filters (the matching experience, Simulated AI). A fixed word list turns the brief into editable filters;
+ * nothing is inferred about any person and the order of results stays the deterministic match count (docs/02 §9.4).
+ */
+export function briefToChips(text: string): string[] {
+  const t = ` ${text.toLowerCase()} `;
+  const has = (...ws: string[]) => ws.some((x) => t.includes(x));
+  const out: string[] = [];
+  const add = (c: string) => !out.includes(c) && out.push(c);
+  const sportWords: [string, string[]][] = [
+    ["Athletics: sprint", ["sprint"]], ["Athletics", ["athletics", "runner", "track and field"]], ["Archery", ["archer"]], ["Badminton", ["badminton"]], ["Boxing", ["box"]], ["Canoeing", ["canoe", "kayak", "paddl"]],
+    ["Cycling", ["cycl", "bike", "bmx"]], ["Fencing", ["fenc"]], ["Football", ["football", "soccer"]], ["Judo", ["judo"]], ["Rowing", ["rowing", "rower", "scull"]], ["Swimming", ["swim"]],
+    ["Table tennis", ["table tennis", "ping pong"]], ["Triathlon", ["triath"]], ["Wheelchair basketball", ["wheelchair basketball"]], ["Wheelchair racing", ["wheelchair rac", "racing wheelchair"]],
+  ];
+  for (const [chip, ws] of sportWords) if (has(...ws)) add(chip);
+  if (has("para ", "paralymp", "wheelchair", "disab")) add("Para athletics");
+  for (const r of REGIONS) if (has(r.split(" ")[0].toLowerCase())) add(r);
+  if (has("any region", "anywhere", "any area", "nationwide")) add("Any region");
+  if (has("equipment", "kit ", "gear", "wheels", "bike", "bow", "boat")) add("Equipment");
+  if (has("travel", "transport", "flight", "trip")) add("Travel");
+  if (has("coach", "training", "camp")) add("Coaching");
+  if (has("adult", "over 18", "senior")) add("Adults only");
+  if (has("national", "international", "elite", "competing")) add("National level");
+  if (has("club", "team", "academy", "organisation", "organization", "community")) add("Organisation");
+  if (has("commercial", "partner", "sponsorship", "brand", "ambassador")) add("Open to commercial partners");
+  if (has("verified", "evidence", "proven results")) add("Verified evidence");
+  return out.length ? out : ["Any region", "Verified evidence"];
+}
 
 export function FunderDiscover({ persona }: { persona: Person }) {
   const { world: w } = useStore();
@@ -137,7 +168,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
   const isIndividual = f.type === "Individual sponsor";
   const commercial = f.accepts === "commercial";
   const brief = BRIEFS[persona.id] ?? { text: "", chips: ["Any region", "Verified evidence"] };
-  const [tab, setTab] = useState<"athletes" | "requests" | "teams" | "shortlist">(location.hash.includes("requests") ? "requests" : commercial ? "athletes" : persona.id === "marcus" ? "teams" : "requests");
+  const [tab, setTab] = useState<"athletes" | "requests" | "teams" | "shortlist">(location.hash.includes("requests") ? "requests" : location.hash.includes("athletes") ? "athletes" : commercial ? "athletes" : persona.id === "marcus" ? "teams" : "requests");
   const [chips, setChips] = useState(brief.chips);
   const [briefText, setBriefText] = useState(brief.text);
   const act = useAction(persona.id);
@@ -155,6 +186,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
   const athleteCount = Object.values(w.athletes).filter((a) => !a.minor && a.discoverable).length;
   const athleteRows = rows.filter((x) => x.r.ownerKind === "athlete");
   const teamRows = rows.filter((x) => x.r.ownerKind === "org");
+  const canShort = persona.perms.includes("Review");
   const toggle = (id: string) => act.run("toggleShortlist", { targetId: id });
   return (
     <div className="pb-8">
@@ -166,7 +198,18 @@ export function FunderDiscover({ persona }: { persona: Person }) {
           </label>
           <SimulatedAI />
         </div>
-        <input id="brief" value={briefText} onChange={(e) => setBriefText(e.target.value)} className={cn(inputCls, "mt-2")} />
+        <form
+          className="mt-2 flex flex-col gap-2 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setChips(briefToChips(briefText));
+          }}
+        >
+          <input id="brief" value={briefText} onChange={(e) => setBriefText(e.target.value)} placeholder="For example: judo athletes in Coastal Region needing travel" className={cn(inputCls, "flex-1")} />
+          <button type="submit" className={btn("secondary", "shrink-0")}>
+            Turn into filters
+          </button>
+        </form>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-small text-subtle">Filters from your brief (edit freely):</span>
           {chips.map((c) => (
@@ -194,8 +237,8 @@ export function FunderDiscover({ persona }: { persona: Person }) {
       </div>
       <p className="mt-5 text-small text-subtle">Ordered by how many of your filters match, then by date needed. Never by popularity, followers or any score of a person.{isIndividual && persona.enhancedCheck ? " You hold an enhanced safeguarding check (simulated), so anonymised requests for young athletes appear; your offers to them are reviewed by the platform first." : ""}</p>
       <Message error={act.error} />
-      {tab === "requests" && <ul className="mt-2 border-t border-line">{athleteRows.map(({ r, m }) => <RequestRow key={r.id} w={w} r={r} m={m} of={chips.length} persona={persona} short={short.includes(r.id)} toggle={toggle} />)}</ul>}
-      {tab === "teams" && <ul className="mt-2 border-t border-line">{teamRows.map(({ r, m }) => <RequestRow key={r.id} w={w} r={r} m={m} of={chips.length} persona={persona} short={short.includes(r.id)} toggle={toggle} />)}</ul>}
+      {tab === "requests" && <ul className="mt-2 border-t border-line">{athleteRows.map(({ r, m }) => <RequestRow key={r.id} w={w} r={r} m={m} of={chips.length} persona={persona} short={short.includes(r.id)} toggle={canShort ? toggle : undefined} />)}</ul>}
+      {tab === "teams" && <ul className="mt-2 border-t border-line">{teamRows.map(({ r, m }) => <RequestRow key={r.id} w={w} r={r} m={m} of={chips.length} persona={persona} short={short.includes(r.id)} toggle={canShort ? toggle : undefined} />)}</ul>}
       {tab === "athletes" && (
         <ul className="mt-2 border-t border-line">
           {athletes.map(({ a, m }) => (
@@ -211,13 +254,13 @@ export function FunderDiscover({ persona }: { persona: Person }) {
               </a>
               <span className="text-small">
                 <span className="block">{a.level}</span>
-                <span className="block text-subtle">{a.facts.filter((x) => x.state === "verified" || x.state === "confirmed").length || (a.light ? 2 : 0)} verified · {a.facts.filter((x) => x.state === "self").length || 1} self-reported</span>
+                <span className="block text-subtle">{a.facts.filter((x) => x.state === "verified" || x.state === "confirmed").length} verified · {a.facts.filter((x) => x.state === "self").length} self-reported</span>
               </span>
               <span className="text-small">
                 {a.openToCommercial && <Chip kind="info">Open to commercial partners</Chip>}
                 <span className="mt-1 block text-subtle">{m.length ? `Matches ${m.length} of ${chips.length}: ${m.join(" · ").toLowerCase()}` : "Matches none of your filters"}</span>
               </span>
-              <ShortBtn on={short.includes(a.id)} onClick={() => toggle(a.id)} />
+              {canShort ? <ShortBtn on={short.includes(a.id)} onClick={() => toggle(a.id)} /> : <span />}
             </li>
           ))}
           <li className="py-3 text-small text-subtle">
@@ -235,7 +278,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
                 <a className="font-medium hover:text-signal" href={`#/app/${persona.id}/${r ? `request/${id}` : `athlete/${id}`}`}>
                   {r ? `${r.ownerKind === "org" ? w.orgs[r.ownerId].name : athleteLabel(w, r.ownerId, persona)} · ${r.title}` : a?.name}
                 </a>
-                <ShortBtn on onClick={() => toggle(id)} />
+                {canShort && <ShortBtn on onClick={() => toggle(id)} />}
               </Row>
             );
           })}
@@ -253,7 +296,7 @@ function ShortBtn({ on, onClick }: { on: boolean; onClick: () => void }) {
   );
 }
 
-function RequestRow({ w, r, m, of, persona, short, toggle }: { w: World; r: World["requests"][string]; m: string[]; of: number; persona: Person; short: boolean; toggle: (id: string) => void }) {
+function RequestRow({ w, r, m, of, persona, short, toggle }: { w: World; r: World["requests"][string]; m: string[]; of: number; persona: Person; short: boolean; toggle?: (id: string) => void }) {
   const t = requestTotals(w, r.id);
   const label = r.ownerKind === "org" ? w.orgs[r.ownerId].name : r.minor ? `${r.sport === "Swimming" ? "Swimmer" : r.sport} · ${r.ageGroup}` : w.athletes[r.ownerId].name;
   return (
@@ -281,7 +324,7 @@ function RequestRow({ w, r, m, of, persona, short, toggle }: { w: World; r: Worl
         {r.verifiedLabel} · needed by {r.minor ? r.neededMonth : r.neededBy}
         <span className="mt-1 block text-subtle">{m.length ? `Why: ${m.join(" · ").toLowerCase()}` : "Matches none of your filters"}</span>
       </span>
-      <ShortBtn on={short} onClick={() => toggle(r.id)} />
+      {toggle ? <ShortBtn on={short} onClick={() => toggle(r.id)} /> : <span />}
     </li>
   );
 }
@@ -295,9 +338,11 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
   const funds = fundsOf(w, fid).filter((f) => BEHAVIOUR[f.type] === "development" && f.id !== "eas");
   const [open, setOpen] = useState(false);
   const t = r ? requestTotals(w, id) : null;
-  const [lineId, setLineId] = useState(r?.lines[0].id ?? "l1");
+  // An offer answering a support ask starts from what was asked: that line and that amount.
+  const ask = r ? Object.values(w.asks).find((x) => x.requestId === r.id && x.funderId === fid && x.status === "sent") : undefined;
+  const [lineId, setLineId] = useState(ask?.lineId ?? r?.lines[0].id ?? "l1");
   const line = t?.lines.find((l) => l.id === lineId);
-  const [amount, setAmount] = useState(String(r?.minor ? 2600 : Math.min(line?.remaining ?? 0, 2500)));
+  const [amount, setAmount] = useState(String(ask ? ask.amount : r?.minor ? 2600 : Math.min(line?.remaining ?? 0, 2500)));
   const [fundId, setFundId] = useState(funds[0]?.id ?? "");
   const [reason, setReason] = useState("");
   const act = useAction(persona.id);
@@ -354,7 +399,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
             </p>
           )}
         </section>
-        <aside className="rounded-[10px] border border-line-strong p-5">
+        <aside className="rounded-[10px] border border-line-strong p-5 max-lg:order-first">
           <UsersRound className="size-6 text-signal" aria-hidden="true" />
           <h2 className="text-subtitle mt-3">Offer support</h2>
           <p className="mt-2 text-small text-muted">{r.minor ? "This offer goes to the athlete's guardian. You cannot contact the athlete directly; you see the first name only if the guardian accepts." : "The recipient can accept or decline. Contact details come only through an accepted agreement."}</p>
@@ -364,7 +409,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
             </p>
           ))}
           {funds.length === 0 || t.remaining === 0 ? (
-            <p className="mt-4 text-small text-subtle">{t.remaining === 0 ? "Nothing is still needed (fully pledged or held for a pending application)." : "Your organisation has no development fund for direct offers."}</p>
+            <p className="mt-4 text-small text-subtle">{t.remaining === 0 ? "Nothing is still needed: fully pledged, or held for offers and applications in progress." : "Your organisation has no development fund for direct offers."}</p>
           ) : (
             <Button className="mt-4 w-full" onClick={() => setOpen(true)} arrow>
               Offer support
@@ -521,6 +566,7 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
   const [title, setTitle] = useState("");
   const [sport, setSport] = useState("");
   const [purpose, setPurpose] = useState("");
+  const [closes, setCloses] = useState("2027-07-30");
   const [fundId, setFundId] = useState(funds[0]?.id ?? "");
   const act = useAction(persona.id);
   return (
@@ -567,7 +613,17 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
             <Field label="Sporting purpose" hint="Required: for example competition travel, coaching, equipment" htmlFor="co-purpose">
               <input id="co-purpose" className={inputCls} value={purpose} onChange={(e) => setPurpose(e.target.value)} />
             </Field>
-            <Button className="mt-6" onClick={() => act.run("createOpportunity", { fundId, title: title || "New opportunity", sport, purpose, amountLabel: `Up to ${fmt(w.funds[fundId].max)}`, closes: "2027-07-30" }, "Drafted. A different person with Approve publishes it (four-eyes).")}>
+            <Field label="Applications close" htmlFor="co-closes">
+              <select id="co-closes" className={cn(inputCls, "max-w-xs")} value={closes} onChange={(e) => setCloses(e.target.value)}>
+                {["2027-06-30", "2027-07-30", "2027-08-31", "2027-09-30"].map((d) => (
+                  <option key={d} value={d}>
+                    {fmtDate(d)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {w.funds[fundId] && <p className="mt-3 text-small text-subtle">From this fund: {w.funds[fundId].type.toLowerCase()}, up to {fmt(w.funds[fundId].max)} each, {policyText(w.funds[fundId].policy).toLowerCase()}. The type and maximum come from the fund.</p>}
+            <Button className="mt-6" onClick={() => act.run("createOpportunity", { fundId, title, sport, purpose, amountLabel: `Up to ${fmt(w.funds[fundId].max)}`, closes }, "Drafted. A different person with Approve publishes it (four-eyes).")}>
               Submit for approval
             </Button>
             <Message error={act.error} done={act.done} />
@@ -628,7 +684,18 @@ export function FunderApplications({ persona }: { persona: Person }) {
               </button>
             ))}
           </div>
-          <p className="mt-4 text-small text-subtle">{apps.filter((a) => a.nominatedBy).length} by nomination · eligibility checked by rule · two reviewers per application under this fund&rsquo;s policy</p>
+          <p className="mt-4 text-small text-subtle">{apps.filter((a) => a.nominatedBy).length} by nomination · eligibility checked by rule · {w.funds[w.opps[oppId]?.fundId]?.policy === "Institutional" ? "two reviewers" : "one reviewer"} per application under this fund&rsquo;s policy</p>
+          {(() => {
+            const fundId = w.opps[oppId]?.fundId;
+            const lightOffers = Object.values(w.offers).filter((o) => o.fundId === fundId && o.light && !o.applicationId);
+            if (!lightOffers.length) return null;
+            const open = lightOffers.filter((o) => o.status === "held");
+            return (
+              <p className="mt-2 text-small text-muted">
+                This round was decided before this demonstration date: {plural(lightOffers.length, "offer")} ({fmt(sum(lightOffers.map((o) => o.amount)))}){open.length ? `, ${open.length} still awaiting acceptance` : ", all accepted"}. Its applications are summarised, not listed.
+              </p>
+            );
+          })()}
           <ul className="mt-3 border-t border-line md:hidden">
             {shown.slice(0, 40).map((a) => (
               <li key={a.id} className="border-b border-line py-3">
@@ -740,6 +807,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
   const a = w.applications[id];
   const act = useAction(persona.id);
   const [score, setScore] = useState(13);
+  const [noConflict, setNoConflict] = useState(false);
   if (!a) return <Empty>This application does not exist yet.</Empty>;
   const ath = w.athletes[a.applicantId];
   const o = w.opps[a.oppId];
@@ -800,9 +868,9 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
                 <input id="score" type="number" min={4} max={16} className={cn(inputCls, "max-w-[8rem]")} value={score} onChange={(e) => setScore(Number(e.target.value))} />
               </Field>
               <label className="mt-3 flex gap-2 text-small">
-                <input type="checkbox" defaultChecked className="mt-1 accent-[var(--ri-signal)]" /> I have no conflict of interest with this applicant
+                <input type="checkbox" checked={noConflict} onChange={(e) => setNoConflict(e.target.checked)} className="mt-1 accent-[var(--ri-signal)]" /> I have no conflict of interest with this applicant
               </label>
-              <Button className="mt-4" variant="secondary" onClick={() => act.run("scoreApplication", { appId: id, total: score }, "Score recorded.")}>
+              <Button className="mt-4" variant="secondary" onClick={() => act.run("scoreApplication", { appId: id, total: score, noConflict }, "Score recorded.")}>
                 Record my score
               </Button>
             </>
@@ -864,7 +932,7 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
             </Row>
           ))}
           <Row>
-            <span className="text-muted">+ {short.filter((a) => a.light).length} more recommendations from the two reviewers</span>
+            <span className="text-muted">{short.some((a) => !a.light) ? "+ " : ""}{plural(short.filter((a) => a.light).length, short.some((a) => !a.light) ? "more recommendation" : "recommendation")} from the two reviewers (summarised)</span>
             <span className="text-small text-subtle">{short.filter((a) => a.pendingFact).length} with one fact still to verify → waiting list</span>
           </Row>
         </ul>
@@ -891,9 +959,16 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
 export function Portfolio({ persona }: { persona: Person }) {
   const { world: w } = useStore();
   const fid = persona.funderId!;
-  const funds = fundsOf(w, fid).filter((f) => Object.values(w.agreements).some((g) => g.fundId === f.id) || Object.values(w.offers).some((o) => o.fundId === f.id));
+  const funds = fundsOf(w, fid);
   const [tab, setTab] = useState<"agreements" | "reports">("agreements");
   const own = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light);
+  // Agreements from before the demonstration dates are summarised per fund, so the list and the table always agree.
+  const earlier = funds
+    .map((f) => {
+      const gs = Object.values(w.agreements).filter((g) => g.fundId === f.id && g.light);
+      return { fund: f, n: gs.length, committed: sum(gs.map((g) => g.amount)), released: sum(gs.map((g) => released(w, g.id))) };
+    })
+    .filter((e) => e.n > 0);
   const pt = platformTotals(w);
   void pt;
   return (
@@ -908,7 +983,7 @@ export function Portfolio({ persona }: { persona: Person }) {
               return (
                 <li key={f.id} className="border-b border-line py-4">
                   <p className="font-medium">{f.name}</p>
-                  <p className="text-small text-subtle">{f.type} · {policyText(f.policy).toLowerCase()} · {t.count} agreements</p>
+                  <p className="text-small text-subtle">{f.type} · {policyText(f.policy).toLowerCase()} · {plural(t.count, "agreement")}</p>
                   <div className="mt-3"><FundBar announced={t.announced} committed={t.committed} reserved={t.held} /></div>
                   <p className="mt-2 text-small text-muted">Released {fmt(t.released)}</p>
                 </li>
@@ -949,8 +1024,17 @@ export function Portfolio({ persona }: { persona: Person }) {
             </table>
           </div>
           <Section title="Agreements to follow">
-            {own.length === 0 ? <Empty>No agreements yet.</Empty> : (
+            {own.length === 0 && earlier.length === 0 ? <Empty>No agreements yet.</Empty> : (
               <ul>
+                {earlier.map((e) => (
+                  <Row key={e.fund.id}>
+                    <div>
+                      <p className="font-medium">{plural(e.n, w.funds[e.fund.id].type.toLowerCase())} · {e.fund.name}</p>
+                      <p className="mt-1 text-small text-subtle">Accepted before this demonstration date · {fmt(e.committed)} committed · {fmt(e.released)} released · summarised, each one opens in the full product</p>
+                    </div>
+                    <SeeSource name={`${e.fund.name} earlier agreements`}>{fmt(e.committed)}</SeeSource>
+                  </Row>
+                ))}
                 {own.map((g) => {
                   const rel = released(w, g.id);
                   return (
