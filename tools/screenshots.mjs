@@ -43,6 +43,10 @@ const shots = [
   ["31-guardian-home", "app/rosa/home", "jun30"],
   ["32-camp-grant", "app/amira/opportunity/ardent-hp", "may06"],
   ["33-brand-profile", "app/nadia/profile/corvane", "may06"],
+  ["34-sponsor-discovery", "app/nadia/discover?sponsors", "may06"],
+  ["35-athlete-profile-for-sponsor", "app/lucy/athlete/jonah", "may06"],
+  ["36-scholarship-applications", "app/daniel/apps", "may06"],
+  ["37-guide-ending", "app/daniel/agreement/ag-ostral", "complete", ["Guided journeys", "tab:D", "step:4"]],
 ];
 const widths = (process.env.WIDTHS ?? "375,768,1024,1440").split(",").map(Number);
 const themes = (process.env.THEMES ?? "dark").split(",");
@@ -56,7 +60,18 @@ for (const theme of themes)
       await page.goto(`${file}?${moment === "complete" ? "story=complete" : `moment=${moment}`}&theme=${theme}&motion=reduced&s=${name}#/${route}`);
       await page.waitForTimeout(250);
       for (const c of clicks) {
-        await page.getByRole("button", { name: c }).first().click();
+        const guide = page.getByRole("complementary", { name: "Guided journeys" });
+        if (c.startsWith("tab:")) await guide.getByRole("tab", { name: c.slice(4), exact: true }).click();
+        else if (c.startsWith("step:")) await guide.locator("ol > li").nth(Number(c.slice(5)) - 1).getByRole("button").click();
+        else {
+          // On phones the guide and roles buttons live inside the "Demo" menu.
+          const b = page.getByRole("button", { name: c }).filter({ visible: true });
+          if (await b.count()) await b.first().click();
+          else {
+            await page.getByRole("button", { name: /^Demo/ }).first().click();
+            await page.getByRole("menuitem", { name: c }).first().click();
+          }
+        }
         await page.waitForTimeout(250);
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

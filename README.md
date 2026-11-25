@@ -1,6 +1,6 @@
 # Revivo Impact
 
-**Sports funding & sponsorship platform — a Revivo Sportech prototype on fictional data (P1: design package and clickable shell).**
+**Sports funding & sponsorship platform — a Revivo Sportech prototype on fictional data (P5: complete, awaiting the founder's approval).**
 
 Revivo Impact is an open, controlled, two-sided sports funding and sponsorship platform. If you need funding for sport,
 it helps you find it; if you want to fund sport, it helps you find credible opportunities and understand how your
@@ -15,7 +15,7 @@ never moves money.
 | Company | Revivo Sportech — "Pulse of Sport. Mind of the Game." (company tagline, never used as Impact's) |
 | Product tagline | "Connecting sport with opportunity." (founder decision D1) |
 | Supporting line | "Find funding. Support sporting talent. See how your support is used." |
-| Status | **P2 built (`docs/11-p2-report.md`).** Run it: `npm install`, then `npm run dev`; `npm run build` makes one offline HTML file in `dist/`. Checks: `npm run check` (types, unit tests, copy lint, build, journeys, guided steps, every role at three widths, accessibility). |
+| Status | **P5 complete; waiting for the founder's approval gate.** Open `prototype/revivo-impact-final.html` in any browser (offline). Presenter guide: `docs/14-presenter-guide.md`. QA report: `docs/15-p5-qa-report.md`. Screenshots: `docs/p5-previews/`. To build it yourself: `npm install`, then `npm run dev`; `npm run build` makes one offline HTML file in `dist/`. Checks: `npm run check` (types, unit tests, copy lint, build, journeys, guided steps, every role at three widths, accessibility). |
 | Prototype form | One self-contained offline HTML file, like the Revivo Pathway prototype. Fictional data, simulated AI, no backend. |
 | Relationship to Revivo Pathway | Fully independent. An optional, simulated "import from Revivo Pathway" exists on the profile only. |
 
@@ -36,6 +36,9 @@ Delivery and spending records show what was delivered and spent; they do not on 
 | `docs/07-decisions-for-founder.md` | The 18 decisions with the founder's answers (25 Nov 2026) and further direction. |
 | `docs/09-p1-design-package.md` | The P1 package: index of the 20 deliverables, what changed and why, expert review, the shell, open points. |
 | `docs/11-p2-report.md` | What P2 built, how it was tested, the review findings and what remains. |
+| `docs/12-p3-report.md`, `docs/13-p4-report.md` | What P3 and P4 built and how they were tested. |
+| `docs/14-presenter-guide.md` | How to open and present the prototype: the guided journey, supporting journeys, roles, discovery, AI, funding and reporting, reset, what is simulated, limitations. |
+| `docs/15-p5-qa-report.md` | The final quality report: completed work, the seven reviews, test results, financial and safeguarding results, visual and offline checks, unresolved issues, production recommendations and an optional human testing plan. |
 | `docs/10-image-asset-plan.md` | Every image: filename, screen, ratio, subject, composition, light, setting, purpose and ChatGPT prompt. |
 | `docs/08-research-and-competitors.md` | Competitor and programme research, legal notes, sources, verified facts vs judgement. |
 | `docs/90-founder-master-brief.md` | The founder's original brief, verbatim. Where the docs above differ, they take precedence and say why. |

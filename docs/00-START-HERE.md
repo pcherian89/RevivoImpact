@@ -1,10 +1,12 @@
 # Revivo Impact — start here
 
-**Status (25 Nov 2026): P1, P2 and P3 approved; P4 built, reviewed and tested (report: `13-p4-report.md`). Next: P5 (human sessions, images, QA and packaging), then the founder's approval gate.** The founder approved P1's architecture with
+**Status (25 Nov 2026): P1–P4 approved; P5 complete and waiting for the founder's approval gate.** Final build:
+`prototype/revivo-impact-final.html`; presenter guide: `14-presenter-guide.md`; QA report: `15-p5-qa-report.md`;
+screenshots: `p5-previews/`. Nothing is published, deployed or linked from the website until the founder approves. The founder approved P1's architecture with
 refinements (`07` §"P1 approval and refinements"). P2 turned the shell into a working two-sided prototype on one
 event-sourced rules engine: registration, profiles, discovery in both directions, applications, support asks, offers,
 selection, acceptance, payments and receipts, guardian safety and platform safeguarding. What P2 covers and how it was
-tested: **`11-p2-report.md`**. P3 (spending updates, programme monitoring, reports, existing funding) comes next.
+tested: **`11-p2-report.md`**. P3 to P5 followed (reports `12`, `13`, `15`).
 
 This file is for a new session with no prior context. Read it fully, then follow the read order in §4.
 
@@ -71,7 +73,7 @@ independent products that share one design family.
    `pcherian89/RevivoPathway` (`docs/03-design-brief.md`, `tools/tone/`).
 8. `archive/` — the superseded v1 programme-monitoring concept. Reference only.
 
-## 5. Where the work stands (P1 approved; P2 built)
+## 5. Where the work stands (P1–P4 approved; P5 complete)
 
 1. Decisions answered and recorded in `07`; every document updated (summary of changes: `09` §3).
 2. The P1 package: `09` (index, expert review, open points), `02` (product definition), `03` (experience, screens,
@@ -83,8 +85,9 @@ independent products that share one design family.
    P4 report (AI experiences, payment schedules, reports, documents, reviews, limitations, P5 plan): `13-p4-report.md`;
    build `prototype/revivo-impact-p4.html`; previews `docs/p4-previews/`.
    Permanent quality principles: `CLAUDE.md` §0 (founder, 25 Nov 2026).
-5. **Next:** P5 (human sessions with three first-time viewers, images, the P4 leftovers in `13` §8, full QA, presenter
-   guide and packaging), then the founder's approval gate, `06` §8.
+5. **P5 (done):** the P4 leftovers, independent AI first-time-user and specialist reviews, the fixes they led to,
+   full regression, the final offline file, the presenter guide (`14`) and the QA report (`15`). Human sessions are
+   optional (plan in `15` §9). **Next:** the founder's approval gate, `06` §8.
 
 ## 6. Approval gates
 

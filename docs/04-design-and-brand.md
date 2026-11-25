@@ -161,8 +161,8 @@ screen, prototype bar, banner, guide panel, role pill, panels, chips, tables, bu
 
 The ten rules in `03` §1 apply to every screen (one question per screen; at most five navigation items; "what needs
 you" first; next step always visible; one primary per view; progressive disclosure; forgiving forms; plain words for
-seekers; device priorities; guided mode first). Proof of ease (P5): three first-time viewers each complete "find and
-apply" and "approve an award" unaided.
+seekers; device priorities; guided mode first). Proof of ease: in P5 (founder's brief), independent AI reviewers
+acted as first-time users for every role; human sessions are optional, with a ready plan in `15` §9.
 
 ## 5. The Funding Line
 

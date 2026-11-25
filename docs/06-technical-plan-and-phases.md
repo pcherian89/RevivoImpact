@@ -117,7 +117,7 @@ API is ever integrated without the founder's approval.
 | Reduced motion | Playwright | With `prefers-reduced-motion`, no light travel; everything still works |
 | Offline | Playwright | The single HTML file opened from `file://` with the network blocked renders fully (fonts and images included) and runs Journey A |
 | Copy lint | Script | Fails on banned words and names (`CLAUDE.md` §4), "Impact" without "Revivo" in product-name positions, American spellings on a short list, seeker-side jargon ("disbursement"), and a missing banner |
-| Quality bar | People | P5: three first-time viewers complete "find and apply" and "approve an award" unaided; a side-by-side review with the Pathway prototype finds no family drift |
+| Quality bar | AI reviewers (people optional) | P5 (founder's brief): independent AI reviewers act as first-time users for every role; optional human sessions follow the plan in `15` §9; a side-by-side review with the Pathway prototype finds no family drift |
 
 ### 6.1 The seven end-of-phase reviews (founder, 25 Nov 2026; permanent, every phase from P3)
 
@@ -128,7 +128,7 @@ Automated tests are necessary but do not show that the experience is intuitive. 
    where confusing (`04` §1.1, money vocabulary `04` §6). Record before/after examples.
 3. **Usability:** each role tried as an untrained first-time user, without guided mode. Use independent AI reviewers
    given only a goal ("find funding for your judo season"), not navigation instructions. Label them as AI reviews;
-   they are not human usability testing (the human sessions are P5).
+   they are not human usability testing (human sessions are optional; plan in `15` §9).
 4. **Workflow efficiency:** count the actions for the key tasks (register, find funding, find a sponsor, apply,
    publish a request, find an athlete, make an offer, review, record a payment, confirm receipt, add an expense,
    record progress, check spending, produce a report); remove unnecessary steps, repeats and duplicate entry.
@@ -201,7 +201,7 @@ cover (24–29).
 | 23 | Excellent mobile, tablet and desktop experiences | All | Playwright at 375 / 768 / 1024 / 1440, Dark and Daylight; first-time-viewer sessions |
 | 24 | Commitments, payments and expenditure clearly differentiated | Everywhere · status labels, bars | Visual check in both themes; copy lint |
 | 25 | Important reported figures reconcile with the underlying records | Everywhere · Source records | Reconciliation suite |
-| 26 | Each role has an understandable interface | All · navigation (`03` §2) | ≤ 5 navigation items per role (test); P5 first-time viewers |
+| 26 | Each role has an understandable interface | All · navigation (`03` §2) | ≤ 5 navigation items per role (test); P5 first-time-user reviews (AI, `15` §2) |
 | 27 | Every major journey works end to end | A–E | Playwright in both modes and from every checkpoint |
 | 28 | No real data, payments or unapproved external services | All | Offline test with the network blocked; no fetch calls in the bundle; copy lint; banner on every screen |
 | 29 | Meets or exceeds the clarity, visual quality and completeness of Revivo Pathway | All | Side-by-side review; three outside viewers never ask "is this real?" |

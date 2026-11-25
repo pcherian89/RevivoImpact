@@ -585,3 +585,39 @@ describe("claims check (P5 review): true sentences pass, common overclaims are c
     expect(tryCmd(w2, { at: "may06", actor: "ingrid", type: "sendDecisions", args: { oppId: "eas" } })).toMatch(/still need|still needs/);
   });
 });
+
+describe("recovering from mistakes (P5 review)", () => {
+  // Replay journey B up to (and including) Nadia's ask, before Marcus answers it.
+  const upTo = (pred: (e: Event) => boolean) => {
+    const evs = checkpoint("jun30");
+    return replay(evs.slice(0, evs.findIndex(pred) + 1));
+  };
+  const cmd = (w: ReturnType<typeof baseWorld>, actor: string, type: string, args: Record<string, unknown>, when: "may06" | "jun30" = "may06") => tryCmd(w, { at: when, actor, type: type as Event["type"], args });
+  it("an unanswered ask can be cancelled by the person who sent it, and only then", () => {
+    const w = upTo((e) => e.type === "sendAsk" && e.args.askId === "ask-nadia-1");
+    expect(cmd(w, "kenji", "cancelAsk", { askId: "ask-nadia-1" })).toMatch(/Only the person who asked/);
+    expect(cmd(w, "nadia", "cancelAsk", { askId: "ask-nadia-1" })).toBeNull();
+    expect(w.asks["ask-nadia-1"]).toBeUndefined();
+  });
+  it("a request is withdrawn only while nobody has offered on it", () => {
+    const w = at("jun30");
+    expect(cmd(w, "nadia", "closeRequest", { requestId: "rq-nadia" }, "jun30")).toMatch(/offered or agreed/);
+  });
+  it("spending can be removed by the person who added it until it is checked", () => {
+    const w = at("jun30");
+    expect(cmd(w, "amira", "addExpense", { expenseId: "x-oops", agreementId: "ag-amira", what: "Physio session", amount: 125, paidOn: "2027-06-20", receipt: false }, "jun30")).toBeNull();
+    expect(cmd(w, "priya", "removeExpense", { expenseId: "x-oops" }, "jun30")).toMatch(/Only the person who added/);
+    expect(cmd(w, "amira", "removeExpense", { expenseId: "x-oops" }, "jun30")).toBeNull();
+    expect(w.expenses["x-oops"]).toBeUndefined();
+  });
+  it("a coach corrects attendance with a reason, within the site's register", () => {
+    const w = at("may06");
+    expect(cmd(w, "sam", "recordSession", { sessionId: "s-fix", programmeId: "play-every-day", siteId: "greenpark", slot: Object.values(w.sessions).filter((x) => x.siteId === "greenpark").length, status: "delivered", attendance: 41 })).toBeNull();
+    const sid = Object.values(w.sessions).find((x) => x.attendance === 41 && x.by === "sam")?.id ?? "s-fix";
+    expect(cmd(w, "sam", "correctSession", { sessionId: sid, attendance: 14, reason: "" })).toMatch(/why/);
+    expect(cmd(w, "sam", "correctSession", { sessionId: sid, attendance: 999, reason: "typo" })).toMatch(/1 to/);
+    expect(cmd(w, "sam", "correctSession", { sessionId: sid, attendance: 14, reason: "Typed 41 instead of 14" })).toBeNull();
+    expect(w.sessions[sid].attendance).toBe(14);
+    expect(w.audit.at(-1)!.action).toMatch(/from 41 to 14/);
+  });
+});
