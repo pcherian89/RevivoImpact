@@ -182,7 +182,7 @@ await check("Brief turns into filters (judo, Coastal Region, travel)", (await pa
 await page.getByRole("tab", { name: /Athletes/ }).click();
 await check("Discover athletes: the first athlete matches judo", (await page.locator("main li").first().innerText()).includes("Judo"));
 await go("app/kenji/portfolio");
-await check("Funding lists agreements from before this date", (await text()).includes("Accepted before this demonstration date") && !(await text()).includes("No agreements yet"));
+await check("Funding lists agreements from before this date", (await text()).includes("Earlier agreements, shown as one line") && !(await text()).includes("No agreements yet"));
 await go("app/kenji/review/app-amira");
 await check("Another funder cannot open an application", (await text()).includes("shared only with the funder it was sent to"));
 await go("app/nadia/review/app-amira");

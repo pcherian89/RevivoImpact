@@ -320,6 +320,11 @@ interface shows it on every offer and agreement ("Approval: Institutional").
 | **Standard** | Publishing and award decisions need a second person (four-eyes); one reviewer per application; finance may be the approver | Company and federation funds, small grant rounds | Women's Sporting Development Fund, Ostral Competition Travel Grant, Coastal Region Athlete Travel Bursary, Ardent Camp Support, Verran grants, Oriel Kit Scheme |
 | **Institutional** | Two reviewers per application (gap flags), a different approver, and finance separate from the approver (the approver never records the release); existing funding needs Approve | Large foundation rounds and programme grants | Tallwater: Emerging Athletes Scholarship, Community Sports Programme Grant, Federation Development Grants |
 
+Direct offers follow the same policy: under Standard and Institutional every direct offer waits for a second person
+with Approve at the funder before the recipient sees it; under Simple it goes straight to the recipient unless the
+offers from that Fund to that recipient together pass the delegated limit (splitting an offer does not avoid it). An
+offer not yet accepted can be withdrawn by the funder with a reason; a recipient can decline without giving one.
+
 Under every policy: nobody approves their own draft or recommendation; every action is in the audit; caps, holds,
 the sports-only check and invariants I1–I13 always apply.
 

@@ -1030,7 +1030,7 @@ export function Portfolio({ persona }: { persona: Person }) {
                   <Row key={e.fund.id}>
                     <div>
                       <p className="font-medium">{plural(e.n, w.funds[e.fund.id].type.toLowerCase())} · {e.fund.name}</p>
-                      <p className="mt-1 text-small text-subtle">Accepted before this demonstration date · {fmt(e.committed)} committed · {fmt(e.released)} released · summarised, each one opens in the full product</p>
+                      <p className="mt-1 text-small text-subtle">Earlier agreements, shown as one line · {fmt(e.committed)} committed · {fmt(e.released)} released</p>
                     </div>
                     <SeeSource name={`${e.fund.name} earlier agreements`}>{fmt(e.committed)}</SeeSource>
                   </Row>

@@ -1,4 +1,4 @@
-// Captures the P1 shell at phone, tablet and laptop widths (docs/06 §6). Usage: node tools/screenshots.mjs <outDir> [scale]
+// Captures the prototype at phone, tablet and laptop widths (docs/06 §6). Usage: node tools/screenshots.mjs <outDir> [scale]
 import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright"); // pre-installed browser (not a project dependency)
 import { mkdirSync } from "node:fs";

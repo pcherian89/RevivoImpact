@@ -1,6 +1,6 @@
 # Revivo Impact — start here
 
-**Status (25 Nov 2026): P1 approved; P2 built and under review.** The founder approved P1's architecture with
+**Status (25 Nov 2026): P1 approved; P2 built, reviewed end to end and fixed.** The founder approved P1's architecture with
 refinements (`07` §"P1 approval and refinements"). P2 turned the shell into a working two-sided prototype on one
 event-sourced rules engine: registration, profiles, discovery in both directions, applications, support asks, offers,
 selection, acceptance, payments and receipts, guardian safety and platform safeguarding. What P2 covers and how it was
@@ -76,9 +76,12 @@ independent products that share one design family.
 1. Decisions answered and recorded in `07`; every document updated (summary of changes: `09` §3).
 2. The P1 package: `09` (index, expert review, open points), `02` (product definition), `03` (experience, screens,
    journeys), `05` (dataset and reconciliation), `10` (image plan), `06` (phases and acceptance criteria).
-3. The clickable shell: `npm install && npm run dev` (or `npm run build` for one offline HTML file in `dist/`);
-   previews in `docs/p1-previews/`.
-4. **Next:** the founder approves the P1 package (or asks for changes). Then P2 starts (`06` §8).
+3. The working prototype: `npm install && npm run dev` (or `npm run build` for one offline HTML file in `dist/`).
+   The P2 build is also saved as `prototype/revivo-impact-p2.html` (open it in any browser, offline). Previews:
+   `docs/p2-previews/` (P1's shell: `docs/p1-previews/`).
+4. P2 report, tested workflows, review findings and limitations: `11-p2-report.md`.
+5. **Next:** the founder's P2 progress review (non-blocking), then P3: spending updates, deliverable evidence,
+   programme monitoring, reports and existing funding (`06` §8). The next approval gate is after P3.
 
 ## 6. Approval gates
 
