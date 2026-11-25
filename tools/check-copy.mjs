@@ -14,6 +14,7 @@ let bad = 0;
 for (const file of walk("src").filter((f) => /\.(tsx?|css)$/.test(f))) {
   readFileSync(file, "utf8").split("\n").forEach((line, i) => {
     if (/^\s*(\/\/|\*|\/\*)/.test(line)) return; // comments are not visible copy
+    if (line.includes("copy-check: allow")) return; // a list of words the product itself refuses (the claims check)
     for (const re of BANNED) if (re.test(line)) { console.log(`${file}:${i + 1}  ${re}  ${line.trim().slice(0, 100)}`); bad++; }
   });
 }

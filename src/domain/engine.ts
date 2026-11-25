@@ -98,7 +98,7 @@ export function programmeTotals(w: World, programmeId: string) {
 }
 
 /** Claims check for reports (docs/02 §10): words that claim more than records show. Deterministic. */
-const CLAIMS = ["improved confidence", "transformed", "changed lives", "life-changing", "proven", "proves", "guaranteed", "impact on wellbeing", "caused", "because of the programme"];
+const CLAIMS = ["improved confidence", "transformed", "changed lives", "life-changing", "proven", "proves", "guaranteed", "impact on wellbeing", "caused", "because of the programme"]; // copy-check: allow (the words the claims check refuses)
 export function claimsCheck(text: string) {
   const t = text.toLowerCase();
   return CLAIMS.filter((c) => t.includes(c));
