@@ -21,6 +21,13 @@ sunset rather than morning daylight). Later images should follow the same look; 
 | im-06-funder-visit (funder Overview band; public profiles of foundations, companies and federations) | Sunset strategy training field: funders, staff and coaches on a balcony watching a football session | none | saturate(0.7) brightness(0.75) |
 | im-11-competition-travel (Competition Travel Grant and Athlete Travel Bursary headers) | Sunset poolside coaching huddle: adult swimmers and their coach (close faces, so never used for young athletes such as Tiago) | 8 px trimmed at each edge (rounded corners) | saturate(0.7) brightness(0.84) |
 
+**Founder direction, 25 Nov 2026 (after seeing the first screenshots):** the solved tones made the photos too dim and
+too grey, and phones showed no header photos. Revivo Impact now shows the founder's photos with the shared grade only
+(no per-photo tone; the solved values are kept in `src/content/images.ts` for reference), hero bands use the
+website's lighter `.hero-photo-frame` fade, and every header photo also shows on phones (above the title on
+opportunity and Discover pages, just after the greeting on Home screens). This supersedes the p75/saturation target in
+`04` §9 for Impact.
+
 Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
 `tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
 Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. The other 10 slots

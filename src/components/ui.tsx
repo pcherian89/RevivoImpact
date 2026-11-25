@@ -230,7 +230,7 @@ export function ImageSlot({
           height={photo.h}
           decoding="async"
           className="photo absolute inset-0 h-full w-full object-contain"
-          style={{ "--tone": photo.tone } as CSSProperties}
+          style={photo.tone ? ({ "--tone": photo.tone } as CSSProperties) : undefined}
         />
       </figure>
     );
@@ -265,12 +265,14 @@ export function HeroBand({
   file: string;
   children: ReactNode;
   caption?: string;
-  /** Phones: the image after the content (default on working screens) or not at all. */
+  /** Phones: the image above the title (default), after it (Home screens, so "what needs you" stays near the top), or not at all. */
   phone?: "before" | "after" | "none";
 }) {
-  void phone;
+  // Phones: the photo whole, full width, above the title ("before") or just after it ("after").
+  const phoneImage = phone !== "none" && <ImageSlot file={file} caption={caption} className="hero-fade-phone mt-4 w-full md:hidden" />;
   return (
     <div className="relative">
+      {phone === "before" && phoneImage}
       {/* A short band: the photo sits to the right of the title, shown whole, fading into the canvas. */}
       <div className="hidden md:absolute md:top-4 md:right-0 md:block md:w-[min(40%,30rem)]">
         <ImageSlot file={file} caption={caption} className="hero-fade w-full rounded-none" />
@@ -278,6 +280,7 @@ export function HeroBand({
       <div className="relative md:flex md:min-h-[min(calc((100vw-5rem)*0.225),15rem)] md:items-end">
         <div className="relative z-10 pt-6 pb-6 md:w-[58%] md:pt-8 md:pb-6">{children}</div>
       </div>
+      {phone === "after" && phoneImage}
     </div>
   );
 }
