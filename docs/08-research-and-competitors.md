@@ -12,6 +12,9 @@ reviewed". Re-verify before quoting any figure externally.
 
 ## 1. Bottom line
 
+*(P0 text. Superseded in part on 25 Nov 2026: the founder made two-way discovery mandatory (D6); any advice below to
+keep athlete requests and funder discovery secondary now applies to launch priorities only. See §2.0.)*
+
 1. The founder's brief joins two businesses: Routes A and D (a funder runs scholarships, grants or programmes, then
    tracks money and progress) are coherent institutional software; Routes B and C (athletes post needs; sponsors
    browse athletes) are a two-sided marketplace with different buyers, budgets, law and economics. Lead with A and D;
@@ -52,6 +55,35 @@ marketing) and outputs (evidence of use versus proof of exposure). Upshot and Vi
 tools own *intake and award*. The credible gap is the join **for individual athletes**: award → released → spent →
 verified → sporting progress → renewal. Matching, AI summaries, reviewer portals, dashboards and payments are table
 stakes.
+
+### 2.0 Two-sided athlete and club sponsorship platforms (P1 check, 25 Nov 2026)
+
+Added because the founder made two-way discovery mandatory (D6). Light check, not a new P0. Facts from official pages
+as surfaced by search; the sites themselves could not be opened from this environment, and several pages are old, so
+fees may have changed. [V] = official page; [3p] = third party.
+
+| Platform | What it does | Who pays | Minors | After funding |
+|---|---|---|---|---|
+| Opendorse (US, NIL) | Marketplace where fans, brands and collectives book athletes for fixed-price offerings [V] | Buyer pays a 30% fee; athletes never pay [V] | Minimum age 13; under-18s need a parent or guardian on the account agreeing to deals [V] | Deal disclosure and completion, not spending or progress [V] |
+| Team USA Athlete Marketing Platform (built by Opendorse) | Closed marketplace: only authorised Team USA sponsors see enrolled athletes [V] | Brands pay a fee per deal [V] | Under-18s managed by a parent, guardian or agent [V] | Deliverables |
+| OpenSponsorship (US, international) | Marketplace of athletes, teams and events; escrow until deliverables are done [V] | Free to join; brands pay plans and commission on cash deals [V] | Not found | Deliverables |
+| SponsorPitch (US) | Sponsorship sales software; sellers post, brands get matching alerts [V] | Per-user subscription with monthly contact-unlock caps [V] | Not stated | None stated |
+| SponsorUnited | Sponsorship data and intelligence (not a marketplace) [V] | Subscription | — | — |
+| SNAP Sponsorship (UK grassroots) | Club profiles, sponsor directory, template contracts, instalments, sponsor reports [V] | Club subscription; commission and pricing reports conflict [V/3p] | Not stated | Sponsorship reports |
+| Kit Funder (UK) | Matches local businesses to clubs; money spent on a kit order (closed loop) [V] | Not found | Not found | Kit delivered |
+| PledgeSports (UK, global) | Crowdfunding plus sponsorship for athletes and clubs [V] | 5–8% of funds raised [V] | Under-18s need written guardian approval or a family member runs the campaign [V] | Rewards are the creator's responsibility |
+| Australian Sports Foundation (charity, comparison) | Tax-deductible giving to approved clubs and athletes [V] | 5% of online donations [V] | — | Grant acquittals (spending reports) required [V] |
+
+**Takeaways for Revivo Impact [J].** (1) Supply is seeded through institutions (schools, national bodies, county
+associations), not one athlete at a time; matches the institutional-first sales motion. (2) Unsolicited contact is
+controlled by rationing and structure (contact caps, fixed offerings, authorised-only visibility); matches Revivo
+Impact's request limits and "accepts requests" flag. (3) Minors: guardian on the account and guardian consent per
+deal is standard; none of these hides minors from search, so Revivo Impact's anonymised cards are stricter. (4)
+Commercial and charitable money are separated by legal route; supports keeping commercial and in-kind out of
+development totals. (5) **No marketplace above tracks spending or sporting progress after funding**; only the
+charitable funder requires acquittals. Following support through to verified spending and progress remains Revivo
+Impact's clearest hypothesis of difference. Could not verify: MakeMyAthlete, Sponsorseeker, RallyMe (current status),
+Sport Endorse and Sponza fees.
 
 ### 2.1 Earlier competitor notes (v1, Nov 2026; programme monitoring)
 

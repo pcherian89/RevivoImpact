@@ -5,10 +5,11 @@ Read this whole file before any change. It holds the decisions that must survive
 ## 1. Read order
 
 1. `docs/00-START-HERE.md` — what the product is, where the work stands, what to do next.
-2. `docs/07-decisions-for-founder.md` — open decisions. Until the founder answers, the recommended defaults apply only
-   if the founder approves the list; never re-decide them yourself.
+2. `docs/07-decisions-for-founder.md` — the founder's answers (25 Nov 2026) and further direction. Never re-decide
+   them yourself. Then `docs/09-p1-design-package.md` — the P1 package, what changed and the open points.
 3. `docs/02-product-definition.md` and `docs/03-experience-and-screens.md` — what to build.
-4. `docs/04-design-and-brand.md` — how it must look. `docs/05-fictional-world-and-data.md` — the data.
+4. `docs/04-design-and-brand.md` — how it must look; `docs/10-image-asset-plan.md` — the images.
+   `docs/05-fictional-world-and-data.md` — the data.
 5. `docs/06-technical-plan-and-phases.md` — how to build and test it, and the definition of done.
 6. `docs/01-product-strategy.md` and `docs/08-research-and-competitors.md` — why. `docs/90-founder-master-brief.md` —
    the founder's original words. `docs/archive/` — superseded, reference only.
@@ -18,11 +19,16 @@ every other file must match it.
 
 ## 2. What Revivo Impact is (one paragraph)
 
-A sports funding & sponsorship platform. Its headline use: a foundation or CSR team runs an athlete scholarship or
-grant round from a shareable link, selects fairly, then follows each award (committed, released, spent and verified,
-sporting progress, review). Programme funding and monitoring (Play Every Day) is the second module. Athlete-published
-Needs and funder discovery with Offers are included but secondary. Everything feeds one object, the **Award**, and one
-ledger. Always write "Revivo Impact", never "Impact" alone.
+An **open, controlled, two-sided sports funding & sponsorship platform** (founder decision D6, 25 Nov 2026). Anyone
+seeking legitimate sporting support (athletes, guardians, coaches, teams, clubs, academies, federations, programme
+operators) and anyone providing it (foundations, CSR teams, sponsors, sports brands, government sports bodies,
+federations, verified individual sponsors) can register independently and discover each other in both directions.
+Central experience: **Discover → Apply or Connect → Fund → Track → Review.** Every route leads to one internal record,
+the **funding agreement**, with one ledger; the interface names it by type (Scholarship award, Development grant,
+Sponsorship agreement, Programme grant, Equipment support, Competition funding). The first sales motion is
+institutional (a foundation runs a scholarship round from a link), but the product scope is fully two-sided.
+**Sports only.** Always write "Revivo Impact", never "Impact" alone. It is a prototype on fictional data, not
+production software.
 
 ## 3. Guard-rails (never change without the founder's written approval)
 
@@ -37,14 +43,21 @@ ledger. Always write "Revivo Impact", never "Impact" alone.
 - **Four-eyes.** Nobody approves their own draft, recommendation, recovery plan, expense or report. Returning
   something needs a reason.
 - **Money states never blur.** A commitment is not a payment; reported spend is not verified spend; in-kind and
-  commercial amounts never enter development or programme cash totals. Invariants I1–I8 (`docs/02` §6) must hold.
+  commercial amounts never enter development or programme cash totals. Invariants I1–I13 (`docs/02` §6) must hold.
 - **Every figure on screen is calculated from records** and opens its sources ("See source").
-- **Minors (under 18):** registered and represented by a guardian; never searchable as profiles; funders reach them
-  only through a de-identified Need a guardian published or an application the guardian authorised; all offers,
-  questions and confirmations go to the guardian; a coach can never accept offers, change consent or publish Needs
-  for a minor.
-- **Purpose-based access.** Funders see only what the purpose allows (`docs/02` §5). Programme-only funders see
-  aggregates.
+- **Minors (under 18):** registered and represented by a guardian; never searchable or identifiable as profiles;
+  funders reach them only through an anonymised funding request a guardian published (after the identifiability
+  check, `docs/02` §7.3), an application the guardian authorised, or a nomination the guardian accepted; all offers,
+  questions and confirmations go to the guardian; individual sponsors never see minors' requests; a coach can never
+  accept offers, change consent or publish requests for a minor; block, report and consent withdrawal take effect at
+  once.
+- **Sports only.** Every profile, opportunity, request, agreement and programme names a sport and a sporting purpose
+  (`docs/02` §4.4). No general academic scholarships, non-sport charity or generic fundraising.
+- **Structured contact only.** No free messaging; support asks only to funders that accept them; limits against spam.
+- **Separation of duties.** Whoever approves an offer or commitment does not record its release; no double funding
+  (line-item requests, holds for pending applications).
+- **Purpose-based access.** Funders see only what the purpose allows (`docs/02` §8). Programme-only funders see
+  aggregates. Discovery shows only what the owner marked discoverable, and never claims to list every sponsor.
 - **Honesty line**, where impact is implied (chains, reports, About): "Delivery and spending records show what was
   delivered and spent; they do not on their own prove social impact." Not on every screen.
 - **Legal and finance notes are design considerations, never compliance claims.** No "compliant", "certified",
@@ -63,8 +76,11 @@ ledger. Always write "Revivo Impact", never "Impact" alone.
 - Never use real organisation names. "Horizon Sports Foundation" and "Brightwater Fund" are retired (`docs/05` §7).
 - Never position the product as India- or Kerala-specific. Currency is USD only until decision D4.
 - Never present simulated AI, payments, verification or security as operational.
-- Never add individual donors, individual sponsors, crowdfunding, free messaging, sponsorship inventory or activation
-  (deferred; see `docs/02` §12).
+- Never add public donations, individual donors, crowdfunding, free messaging, sponsorship inventory, valuation or
+  activation (deferred; `docs/02` §13). Verified individual sponsors exist only as `docs/02` §5.6 describes.
+- Never call every funding arrangement an "Award" in the interface; use the type names (`docs/02` §4.1).
+- Never rank athletes by popularity, followers, appearance or any AI "potential" score; discovery order is the
+  deterministic criteria-fit count.
 - Never use the company tagline "Pulse of Sport. Mind of the Game." as Impact's tagline, and never place Impact's
   tagline on the Revivo website homepage.
 
@@ -87,7 +103,7 @@ in ten. Full rules: `docs/04` §2–3.
 
 - Explain in plain language: what you did, what it means, what is next. No jargon without a one-line definition.
 - Show screenshots at phone (375px), tablet (768/1024px) and laptop (1440px) for anything visual.
-- Work on a dedicated branch (for example `p1-architecture`). Commit and push only when asked; never merge to `main`
+- Work on the branch `claude/festive-fermat-wzl8qa` (founder's instruction, 25 Nov 2026). Never merge to `main`
   without approval.
 - Ask before decisions that change the product, the brand or the money model; do not ask about minor implementation
   details.
@@ -106,5 +122,5 @@ in ten. Full rules: `docs/04` §2–3.
 
 ## 8. Definition of done
 
-`docs/06` §9 (phase exit criteria and the founder's 20 acceptance criteria mapped to tests) and the design checklist
+`docs/06` §9 (phase exit criteria and the 29 acceptance criteria mapped to tests) and the design checklist
 in `docs/04` §12. Nothing is "done" until the founder has seen it on phone, tablet and laptop.

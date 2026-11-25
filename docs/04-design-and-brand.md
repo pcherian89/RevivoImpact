@@ -6,10 +6,17 @@ founder's brief) pulls against this, this document wins, and the change is liste
 
 **References (read only; copy files into this repository with a source note, never edit the originals):**
 
-- Website: `/home/user/Revivo_Webpage` (current `main`, commit `382da4b`; the Pathway design brief was written against
-  `935f7f3`) and its `CLAUDE.md`.
-- Pathway: `/home/user/revivopathway/docs/03-design-brief.md` (tokens, motifs, photography, motion), `tools/tone/`
-  (`solve.py`, `measure.py`), and the built prototype `/home/user/Revivo_Webpage/public/pathway-demo.html`.
+- Website: repository `pcherian89/Revivo_Webpage` (checked in P1 at commit `7575089`, cloned read-only to
+  `/home/user/pcherian89/revivo_webpage`) and its `CLAUDE.md`.
+- Pathway: repository `pcherian89/RevivoPathway` (commit `fb40e56`, cloned read-only to `/home/user/revivopathway`):
+  `docs/03-design-brief.md` (tokens, motifs, photography, motion) and `tools/tone/`; the built prototype is the
+  website's `public/pathway-demo.html` (React 19.3.1, Tailwind CSS 4.3.4).
+
+**P1 note (25 Nov 2026).** The founder asked for immediate family resemblance *and* its own product character:
+"reuse the design language rather than blindly duplicating every design decision", and use a different layout where it
+makes Impact more intuitive. The founder also asked to avoid grey-heavy interfaces, excessively dark imagery, generic
+SaaS dashboards, unnecessary cards, unexplained charts, fake holographic interfaces, excessive gradients and decoration
+without purpose. These are folded into §1, §3, §7 and §9 below.
 
 ## 1. Principles
 
@@ -23,6 +30,12 @@ founder's brief) pulls against this, this document wins, and the change is liste
   never sits on a judgement about a person.
 - **Calm by default.** One focal point per screen; plain British English; generous type; the fictional-data banner on
   every page.
+- **Not grey-heavy.** Contrast comes from ink on canvas and clear hierarchy, not from layers of grey panels. Panels are
+  used for records and sheets only; lists are rows with dividers; no card grids or KPI tiles. Every chart has a
+  one-line explanation above it and a "Show as table" toggle.
+- **Warm on the athlete side, credible on the funder side** (§8): the athlete experience is mobile-first and
+  encouraging; the funder experience is professional and transparent; discovery is engaging without looking like an
+  e-commerce catalogue (no product-card grids, prices as hero, "buy" language or star ratings).
 
 ## 2. Copied 1:1 (no redesign allowed)
 
@@ -43,7 +56,7 @@ founder's brief) pulls against this, this document wins, and the change is liste
 | Loading | Pathway brief §3 | 1.5px DIM_LIME track with the running light (1.2s period) plus text ("Loading applications…") and `aria-busy`. Skeleton rows only for tables. |
 | Logo lockup | Website `src/components/brand/RevivoLogo.tsx`; Pathway brief §3 | "revivo │ IMPACT": the lockup, a 1px line divider, "IMPACT" in `.label` muted, at least 24px tall. "Powered by Revivo Impact" in the footer. |
 | Prototype shell | `public/pathway-demo.html` | Top bar "REVIVO IMPACT · PROTOTYPE"; banner "Demonstration on fictional data. Every person, organisation, amount and record is invented, and no real money moves."; "Choose how to explore"; Guided journey with "Show me" / "I'll do it" and "Load the story up to step N"; Explore by role; demonstration date; Daylight toggle; role pill ("Viewing as … · Change"); Reset. |
-| Start-screen layout | Pathway start screen | Same composition. Left: lockup, eyebrow "Sports Funding & Sponsorship Platform" (`.label`), small pulse, `text-hero` tagline, supporting line as lead, `im-01` shown whole. Right: "Choose how to explore" with **Guided journey** (recommended, lime outline) and **Explore the platform**. |
+| Start-screen layout | Pathway start screen (checked in the build, 25 Nov 2026) | Same composition. Left: lockup, eyebrow "Sports Funding & Sponsorship Platform" (`.label`), small pulse, `text-hero` tagline, supporting line as lead, `im-01` shown whole. Right: "Choose how to explore" with **Guided journey** (recommended, lime outline) and **Explore the platform**. |
 | Panels | Website `src/components/explorer/DomainPanel.tsx` | ≈46vw right panel; bottom sheet on phones; focus trap, Escape, focus return. Every record detail and P1–P3. |
 | Themes | Pathway brief §2 | **Dark is the default everywhere.** Daylight is one tap away and remembered per viewer. Print always uses Daylight. Cinematic screens stay dark. In Daylight the primary button keeps its lime fill with near-black text and a 1px `#4D6600` border. |
 | Photo grade and frames | Website `globals.css` `.photo`, `.hero-photo-frame`, `.hero-band`, `.area-backdrop-img`; Pathway brief §5; `tools/tone/solve.py` | Same grade and target (§9). Photos shown whole in their own frame, fading at the edges; never cropped with `object-cover`. None on working screens. |
@@ -80,8 +93,10 @@ same uses as in Pathway.
 | photo grade | `saturate(.86) contrast(1.05) brightness(.92)` | `saturate(.9) contrast(1.02) brightness(1)` | `.photo` |
 
 Brief values that the build replaced (do **not** use): amber `#F2B04B`, steel `#A9BCC8`, coral `#FF7A66`, Daylight
-subtle `#5C5C63`, amber text `#8A5A00`, coral `#A33A2A`, steel text `#3E5A6B`. In P1, confirm the table against the
-Pathway build once more and record any change here.
+subtle `#5C5C63`, amber text `#8A5A00`, coral `#A33A2A`, steel text `#3E5A6B`. **Confirmed in P1 (25 Nov 2026)** against
+the `[data-rp-theme]` blocks of the Pathway build: every value above matches; no change. Pathway also defines
+`--rp-signal-ink` (= signal) and `--rp-places` (= signal in Dark, passed in Daylight); Impact copies both as
+`--ri-signal-ink` and `--ri-places` but does not need `places`.
 
 ## 3. The four differences (and only four)
 
@@ -99,6 +114,13 @@ Each difference tells the viewer *which* Revivo system this is.
 **Not different:** no new colour, typeface, icon set, illustration style, gradient or card style. No "Impact green".
 No warmer canvas. No brighter photographs.
 
+**Where Impact's layout departs from Pathway (P1, for usability).** Same components and tokens, different
+arrangement where the task differs: (a) a **main navigation of up to five items** (bottom bar on phones), because
+Impact has repeat users on both sides, whereas Pathway's workspaces were reached mainly through the guide;
+(b) **Discover** is a two-direction list with tabs, a brief box and a sponsor directory, which Pathway did not have;
+(c) the **Public profile** (funder or athlete) is a document-like page with one primary action. Everything else (start
+screen, prototype bar, banner, guide panel, role pill, panels, chips, tables, buttons, consent rows) is Pathway's.
+
 ## 4. Ease-of-use rules
 
 The ten rules in `03` §1 apply to every screen (one question per screen; at most five navigation items; "what needs
@@ -113,12 +135,15 @@ apply" and "approve an award" unaided.
 - One straight signal track joining two endpoints: the **funder** on the left (or top, on phones) and the **recipient**
   on the right (or bottom). Endpoint labels use the organisation name and the recipient's name (a minor's reference
   until the guardian accepts).
-- Six nodes for the award's life:
-  - Athlete award: **Need → Award → Released → Spent → Progress → Review**.
+- Nodes for the agreement's life (`02` §11):
+  - Athlete support (scholarship award, development grant, competition funding, direct support): **Need → Support →
+    Released → Spent → Progress → Review**. Receipt shows on Released ("received 6 May"); verification on Spent.
   - Programme: **Commitment → Delivered → Spent → Evidence → Outcomes → Review**.
-  - Accessible names use the founder's full wording ("Funding need", "Approved award", "Funds released", "Expenses",
-    "Sporting progress", "Funding review"; "Funding commitment", "Activities delivered", "Expenditure", "Evidence",
-    "Outcomes", "Review").
+  - Sponsorship agreement (five nodes): **Agreement → Funding → Deliverables → Evidence → Review**.
+  - Accessible names use the full wording ("Funding need", "Approved support", "Funds released and received",
+    "Expenditure and verification", "Sporting progress", "Funding review"; "Funding commitment", "Activities
+    delivered", "Expenditure", "Evidence", "Outcomes", "Review"; "Sponsorship agreement", "Payments", "Agreed
+    deliverables", "Evidence", "Review").
 - Horizontal from 768px; vertical on phones.
 - Track DIM_LIME up to the current node, line-strong beyond it. Node grammar as §2.
 - A light (120px dash) runs from the funder endpoint and **stops at the current node**. It runs once on arrival and on
@@ -150,7 +175,7 @@ consent recorded.
 Money states never rely on colour alone. Each segment has a label and a tabular figure; outstanding and unspent amounts
 are also written in words. Lime never fills money.
 
-**Award bar** (total length = Committed), left to right:
+**Agreement funding bar** (total length = Committed), left to right:
 
 | Segment | Look | Label |
 |---|---|---|
@@ -159,11 +184,13 @@ are also written in words. Lime never fills money.
 | Released, not yet reported | Ink outline filled with surface-2 | "Unspent $320" |
 | Outstanding (committed, not released) | Control outline only, empty | "Still to come $2,250" |
 
-Brackets above the bar mark **Released** (the first three segments) and **Committed** (the whole bar).
+Brackets above the bar mark **Released** (the first three segments, with "received" and its date when confirmed) and
+**Committed** (the whole bar).
 
-**Fund bar** (length = Announced): Committed (solid ink) · Reserved (dashed control outline) · Available to award (no
+**Fund bar** (length = Announced): Committed (solid ink) · Held for offers (dashed outline) · Available to award (no
 fill, subtle text). **Need bar** (length = Requested): Received (ink with a tick) · Pledged, not yet received (ink
-outline) · pending offers (dashed) · Remaining (empty, with the amount in words). **In-kind** never appears in a cash
+outline) · pending offers (dashed) · Remaining (empty, with the amount in words). **Deliverables** (commercial) are a separate
+strip of up to three items with a status chip each, never a money bar. **In-kind** never appears in a cash
 bar: a separate line reads "60 kits · declared value $9,000 (not cash)". **Carried-in** amounts carry their own label
 and never count as verified.
 
@@ -172,17 +199,19 @@ and never count as verified.
 | Screen | Direction |
 |---|---|
 | Start (1) | Pathway's start screen 1:1 (§2), with the two doors. |
-| Homes (3) | Calm. At most three "needs you" items, then the relevant funding bar and Funding Line. Funder Overview: three plain answers ("Who applied", "Who is funded", "How it's being used") under an `im-11` header band. Athlete Home: `im-03` (`im-14` on phones). |
-| Discover (5) | Warm, but a list, not cards. Rows: funder, title, amount and awards, deadline, plain eligibility line with an icon. Filters are pills; "Why this is suggested" opens a panel. Funder version lists verified Needs; minors only as de-identified cards. |
-| Opportunity (6) | Document-like. Header band (the Fund's image, faded). Key facts in a four-column strip. Then "Who can apply" as a checklist evaluated against the profile, "What you'll need", "How decisions are made" (with `im-05`), "What you'll report". One primary. |
-| Apply (10) | Quiet stepper; autosave; missing items in amber with an icon; "Help me organise this" labelled "Simulated AI"; guardian authorisation step for a minor. |
-| Review and selection (12, 13) | Working screens, no photos. Two columns: evidence with field-level verification on the left; fixed decision vocabulary and a required reason on the right. Self-approval disabled with its reason. AI summary labelled "Simulated AI · check against sources". |
-| Portfolio and Funding (15) | Ledger: table of awards with right-aligned tabular figures; totals reconcile on screen; every figure "See source". |
-| Award and Programme (16, 18) | The signature: Funding Line, funding bar and dated evidence beneath. Programme: v1 session strips (20 ticks per site: delivered filled; verified filled with a dot; missed a gap with a reason glyph and a word; a timeline, not an ECG). Funders see aggregates only. |
-| Reports (20) | Print-first, prints in Daylight. A one-page statement: committed, released, spent and evidenced, and what is outstanding; "Prepared by … · accepted by …"; the full honesty line; optional `im-13` cover band. |
-| Consent (21) | Pathway's consent component 1:1: equal outlined Yes/No, neither pre-selected; the chosen one fills (Yes = lime, No = ink); "Change or withdraw" always visible. |
+| Homes (3) | Calm. At most three "needs you" items first (on phones before any image), then the relevant funding bar and Funding Line. Funder Overview: three plain answers ("Who applied", "Who is funded", "How it's being used") under an `im-06` hero band. Athlete Home: `im-03` hero band (on phones below "Needs you"). |
+| Discover (5) | Warm, but a list, not cards; an `im-05` hero band on the seeker's first tab only (funder side: no image). Seeker tabs: Funding opportunities · Sponsors & funders. Funder tabs: Athletes · Funding requests · Teams & initiatives · Shortlist. Rows: name and type with verification chip, title, funding-type chip, amount, deadline or date needed, one plain "why this appears" line with an icon, mini need bar where relevant. At most five filter pills; the funder's brief box sits above the tabs and turns into editable chips. Minors only as anonymised rows with a neutral glyph (never a photo or silhouette of a child). |
+| Public profile (8) | Document-like, one column on phones, two from 1024px (facts left; "What they support" or "What they need" right). The funder variant leads with sports, regions, types and "Accepts funding requests"; the athlete variant with sport, level and verified facts. One primary action. A small `im-` portrait-free band for organisations (sport environment, no people) where an image helps. |
+| Opportunity (6) | Document-like. Header band (the Fund's image, faded). Key facts in a four-column strip. Then "Who can apply" as a checklist evaluated against the profile, "What you'll need", "How decisions are made" (with `im-07`), "What you'll report". One primary. |
+| Apply (11) | Quiet stepper; autosave; missing items in amber with an icon; "Help me organise this" labelled "Simulated AI"; guardian authorisation step for a minor. |
+| Review and selection (13, 14) | Working screens, no photos. Two columns: evidence with field-level verification on the left; fixed decision vocabulary and a required reason on the right. Self-approval disabled with its reason. AI summary labelled "Simulated AI · check against sources". |
+| Funding (16) | Ledger: table of agreements, each row with a mini Funding Line and its next step, with right-aligned tabular figures; totals reconcile on screen; every figure "See source". |
+| Funding record and Programme (17, 19) | The signature: Funding Line, funding bar and dated evidence beneath. Programme: v1 session strips (20 ticks per site: delivered filled; verified filled with a dot; missed a gap with a reason glyph and a word; a timeline, not an ECG). Funders see aggregates only. |
+| Reports (21) | Print-first, prints in Daylight. A one-page statement: committed, released, spent and evidenced, and what is outstanding; "Prepared by … · accepted by …"; the full honesty line; optional `im-17` cover band. |
+| Consent & safety (22) | Pathway's consent component 1:1: equal outlined Yes/No, neither pre-selected; the chosen one fills (Yes = lime, No = ink); "Change or withdraw" always visible. |
 
-**Never:** purple or blue AI gradients, robots, brains, holograms, glassmorphism, blobs, particles, textures or grids;
+**Never:** generic SaaS dashboards, grey-heavy layered panels, unexplained charts, e-commerce product grids,
+purple or blue AI gradients, robots, brains, holograms, glassmorphism, blobs, particles, textures or grids;
 grey-on-grey panels, card grids or KPI-tile mosaics; gauges, dials, "match scores" as percentages, star ratings,
 leaderboards or rankings of athletes; red/green pass-fail or any colour judging a person; cheques, cash or coin icons;
 glowing data overlays; ECG or hospital-monitor visuals; wobbly lines; background or autoplay video; confetti;
@@ -195,14 +224,20 @@ pre-ticked consent or a smaller "No"; generic SaaS sidebars with many items; lim
 |---|---|---|
 | Feel | Warmer, open, encouraging | Ledger-like, calm, credible |
 | Photography | More (Homes, Opportunity headers, offer moments) | Headers only |
-| Copy | Second person: "You meet 5 of 6 criteria" | Neutral statements with sources and dates |
+| Copy | Second person: "4 of 6 met · 1 for the panel to check · 1 to add" | Neutral statements with sources and dates |
 | Heartbeat | Submitted, accepted, received | Report accepted, plan approved |
 | Device | Phone first | Laptop first, works at 1024px |
 | Theme | Dark default; Daylight one tap away | Dark default; Daylight one tap away; print in Daylight |
 
 ## 9. Imagery rules and grading
 
-- **Do not lift the grade.** The founder's brief asks for warm natural light and to avoid overly dark imagery. Brighter
+- **Founder's P1 instruction: avoid excessively dark imagery, keep the family style.** Read together, the rule is: keep
+  the family grade, but **every image must read clearly at a glance**: the subject is lit, faces and hands keep detail,
+  the setting is recognisable, and darkness is only at the frame's edges. Reject any image where the subject sits in
+  shadow (rejection checklist, `10`). If the founder still finds the set too dark after the first images, the
+  fallback is to raise the p75 target from 76 to about 84 for Impact's athlete-side images only (an open point,
+  `09` §7).
+- **Do not lift the grade globally.** The founder's brief asks for warm natural light and to avoid overly dark imagery. Brighter
   images would sit beside the website and Pathway as a visibly different series and break the family. Warmth comes
   instead from **golden-hour light** (as Pathway's newest photos already use, rather than the website's magenta dusk
   skies), **people and moments** (families, support, travel) and warm-coloured athlete kit.
@@ -220,53 +255,12 @@ pre-ticked consent or a smaller "No"; generic SaaS sidebars with many items; lim
   with several people or a parent present in an open setting. Mixed genders, ages, skin tones and body types; disabled
   athletes where natural; grassroots settings anywhere in the world; no landmarks.
 
-## 10. Image asset plan (initial; to confirm in P1)
+## 10. Image asset plan
 
-Fourteen images. The founder generates them in ChatGPT from the prompts below. Until they arrive, use dark placeholders
-showing the filename and "Illustrative", as Pathway did.
-
-**Master block (paste once into ChatGPT):**
-
-> You are making a consistent series of photographs for Revivo Impact, a trustworthy platform that connects athletes
-> and sports programmes with funding and helps funders see how support is used. Style: authentic documentary sports
-> photography in the same series style as the Revivo website and Revivo Pathway: golden hour, one warm low light
-> source (or warm evening light through windows indoors), deep shadows falling to near-black (#0A0A0B) at the edges of
-> the frame but never across faces, muted warm natural colour, fine grain, quietly hopeful and real. Settings anywhere
-> in the world, no landmarks. People: mixed genders, ages, skin tones and body types; include disabled athletes where
-> natural. Coaches wear plain dark sportswear with one thin lime-green trim line; funders and staff wear plain
-> smart-casual clothes; athletes wear plain unbranded sportswear in muted warm colours (navy, terracotta, ochre, white,
-> grey). Anyone under 18 is seen from behind, in profile or small in the frame, never in close-up, and always with
-> several people or a parent present in an open setting. Every person is entirely inside the frame (no cut-off heads,
-> hands or feet). No text, letters, numbers, bibs, logos, flags or signage; papers and screens face away or are
-> unreadable. No money, cheques, cash, coins, handshake poses, trophies or medals. No holograms, overlays, data
-> graphics, glowing lines, neon, lens flares, blue or purple light. Size 1672×941 (16:9) unless I say otherwise.
-> Reply "Ready".
-
-**Then one prompt per message:**
-
-| File | Screen and placement · ratio | Subject, composition, light, setting (prompt) |
-|---|---|---|
-| `im-01-landing.png` | Start (1), left column, shown whole · 16:9 | A community athletics track at golden hour. A young woman sprinter (about 20) and her coach walk side by side onto the track from the right, seen in three-quarter view, kit bag over her shoulder. Other athletes warm up small in the background. The left 40% is open, softly lit track and sky for text. Warm, optimistic. |
-| `im-02-landing-phone.png` | Start (1), phones · 9:16, 941×1672 | The same track and light, upright. The sprinter and coach walk away from camera in the lower third. The upper 45% is calm warm sky and stand roofline, for the headline. |
-| `im-03-athlete-home.png` | Athlete Home (3) header; Emerging Athletes Scholarship header (6) · 16:9 | A young adult male athlete sitting on concrete stadium steps lacing his running spikes in early-morning sun, seen in profile from the right half of the frame. A water bottle and a folded towel beside him. The left half is empty sunlit steps. Quiet determination. |
-| `im-04-guardian-offer.png` | Offer & agreement (14), seeker side, header band · 16:9 | A parent and a teenage athlete sit side by side at a kitchen table by a sunny window, seen from behind and slightly to the side, looking together at a printed letter (text unreadable) and a laptop turned away from camera. A sports bag and running shoes on the floor by the chair. Warm afternoon light, a lived-in family kitchen. |
-| `im-05-funder-panel.png` | Opportunity (6), "How decisions are made" band; funder Opportunities list header · 16:9 | Four adults of different ages and backgrounds around a long wooden table in a bright meeting room with tall windows overlooking a green sports field. They review paper application folders (unreadable) and one laptop faces away. Engaged, careful discussion; one person gestures to a folder. Soft daylight. |
-| `im-06-community-coach.png` | Programme (18) header band; Community Sports Programme Grant header (6) · 16:9 | A concrete community court beside a school in late-afternoon sun. A coach in dark kit with a thin lime trim holds a closed paper register while a mixed group of children play a passing game at mid-distance, small in the frame, seen from the side and behind. Trees cast long warm shadows. |
-| `im-07-equipment-handover.png` | Equipment Support Programme header (6) · 16:9 | Outside a small clubhouse at golden hour, a programme coordinator in smart-casual clothes passes a plain unbranded mesh bag of new footballs to a coach. Plain cardboard boxes of cones and bibs (blank) stand on a bench. Teenage players wait at mid-distance, seen from behind. Practical and modest, not a ceremony. |
-| `im-08-competition-travel.png` | Competition Travel Grant header (6) · 16:9 | Dawn at a quiet roadside. A small team of young adult athletes and two coaches load kit bags into the luggage hold of a plain white coach bus with no markings. Soft warm sunrise, long shadows, a sense of a journey beginning. All figures fully in frame. |
-| `im-09-para-athlete.png` | Publish a need (9) intro band; Discover "Funding needed" tab header · 16:9 | A wheelchair racer training on a red athletics track at golden hour, mid-push, seen in profile at mid-distance, with a coach holding a stopwatch at the trackside. Warm low sun, a few other athletes small in the background. Strong and dignified, not pitying. |
-| `im-10-womens-football.png` | Women's Sporting Development Fund header (6) · 16:9 | A women's football team training on a community grass pitch at golden hour: small-sided drill between cones, players of mixed ages and backgrounds at mid-distance, one coach watching. The sun is behind the trees, giving warm rim light. Energetic, joyful, unposed. |
-| `im-11-funder-visit.png` | Funder Overview (3) header band · 16:9 | Two adults in smart-casual clothes and a programme coordinator stand on a touchline at golden hour, seen from behind, watching a distant children's session with coaches on a community pitch. Wide, calm, lots of open warm sky. |
-| `im-12-empty-state.png` | Empty states · 16:9 | No people. A pair of running spikes, a folded towel and a water bottle on a wooden bench beside an empty sunlit track in late afternoon. Shallow depth of field, warm, inviting. |
-| `im-13-report-desk.png` | Reports (20) print cover band · 16:9 | A programme coordinator at a desk in a clubhouse office in late-afternoon daylight, reviewing printed pages (unreadable) beside a closed laptop. Through the window, a sports field with a distant session. Calm, orderly, credible. |
-| `im-14-athlete-phone.png` | Athlete Home (3), phones · 9:16, 941×1672 | Upright version of im-03: the athlete sits low in the frame on sunlit stadium steps lacing spikes, seen in profile. The upper half is warm empty steps and sky. |
-
-**Rejection checklist.** Reject and regenerate any image with lettering, logos, bibs or numbers; a cropped figure; a
-minor's face in close-up; money, a handshake or ceremony staging; a fake interface or light streaks; faces lost in
-shadow; or a brighter, flatter look that stands apart from the Pathway set.
-
-**Pipeline.** Tone each image with the same solver and target as Pathway; record the values in
-`src/content/images.ts`; compress to WebP for the single-file build.
+Moved to **`10-image-asset-plan.md`** (P1, 25 Nov 2026): the complete plan for the revised screen architecture, with
+filename, screen and placement, aspect ratio, subject, composition, lighting, sporting environment, purpose and a
+detailed ChatGPT prompt for every image, plus the master block, the rejection checklist and the toning pipeline. It
+replaces the initial 14-image list that was here.
 
 ## 11. Motion, accessibility and responsive
 
@@ -305,8 +299,9 @@ No horizontal page scroll at any width.
 - [ ] Funding bar: segments labelled with words and figures; in-kind and carried-in kept apart.
 - [ ] Heartbeat only on the moments in §5.4; announced; static under reduced motion.
 - [ ] Consent screens: equal Yes/No, nothing pre-selected, withdrawal always visible.
-- [ ] Images generated, safeguarding-checked, toned to p75 ≈ 76 and saturation ≈ 42%, shown whole, none on working
-  screens (placeholders until supplied).
+- [ ] Images generated from `10`, safeguarding-checked, readable at a glance, toned to p75 ≈ 76 and saturation ≈ 42%,
+  shown whole, none on working screens (placeholders until supplied).
+- [ ] Not grey-heavy: no card grids, KPI tiles or layered grey panels; every chart explained in one line.
 - [ ] 375 / 768 / 1024 / 1440 with no overflow; keyboard path through every journey; axe clean in Dark and Daylight.
 - [ ] Banner on every page; a side-by-side review with the Pathway prototype finds no family drift; three outside
   viewers never ask "is this real?".

@@ -1,46 +1,43 @@
 # Revivo Impact — start here
 
-**Status (24 Nov 2026): P0, the independent product and strategy review, is complete. Nothing has been built.
-The next session starts P1 by presenting `docs/07-decisions-for-founder.md` to the founder for approval.**
+**Status (25 Nov 2026): P1 is complete and waiting at the approval gate.** The founder answered all 18 decisions and
+set a new direction (an open, controlled, two-sided ecosystem); every document has been updated. The P1 package, the
+clickable shell and the open points are in **`09-p1-design-package.md`**. Do not start P2 until the founder approves.
 
 This file is for a new session with no prior context. Read it fully, then follow the read order in §4.
 
 ## 1. What Revivo Impact is, in one breath
 
-Revivo Impact is a **sports funding & sponsorship platform**. A foundation or company publishes a scholarship or grant,
-shares one link, receives applications from athletes (or their guardians and coaches), checks eligibility by rule,
-reviews evidence, and approves awards. It then follows every award: what was committed, what was released, what was
-spent and checked, and what sporting progress followed, until a person decides to continue, renew or close it. The same
-lifecycle covers funded community programmes, athlete-published funding Needs, direct Offers from funders, and funding
-that already existed before Revivo.
+Revivo Impact is an **open, controlled, two-sided sports funding & sponsorship platform**. If you need funding for
+sport, it helps you find it; if you want to fund sport, it helps you find credible opportunities and understand how
+your support is used. Athletes, guardians, coaches, clubs and other organisations join free, build one reusable
+sporting profile, discover funding and sponsors, apply or send structured requests. Foundations, companies, brands,
+government bodies, federations and verified individual sponsors join, discover athletes, teams and initiatives, publish
+scholarships, select fairly, make offers, and follow every funding relationship: committed, released, received, spent
+and verified, sporting progress, review. **Discover → Apply or Connect → Fund → Track → Review.** Sports only.
 
 It is Revivo Sportech's second prototype after **Revivo Pathway** (talent identification). The two are fully
 independent products that share one design family.
 
 - **Tagline** (on Impact's own surfaces only; founder decision D1): "Connecting sport with opportunity."
-- **Supporting line:** "Find funding. Support sporting talent. See how every award is used."
+- **Supporting line:** "Find funding. Support sporting talent. See how your support is used."
 - **Honesty line** (where impact is implied): "Delivery and spending records show what was delivered and spent; they do
   not on their own prove social impact."
 
-## 2. The founder's ten P0 questions, answered plainly
+## 2. The founder's ten P0 questions (answers updated after P1)
 
 | # | Question | Answer |
 |---|---|---|
-| 1 | **What is Revivo Impact?** | Software that runs sports funding from the first application to the last receipt. One record, the **Award**, sits at the centre: every route to funding creates an Award, and every Award is followed the same way (ledger → updates and evidence → review). |
-| 2 | **Who uses it?** | People seeking funding: adult athletes, guardians acting for under-18s, coaches (with limited powers a guardian grants), academies, clubs, federations, schools and programme operators. People providing funding: foundations, company CSR teams, federations' development departments, government sport bodies and, lightly, commercial sponsors. Inside funding organisations, reviewers, verifiers, approvers and finance staff are **permissions**, not separate apps. |
-| 3 | **Who pays for it?** | The funder. The first buyer is a foundation or company CSR team that runs an athlete scholarship or grant round. Athletes, guardians and coaches never pay. Academies and federations may later pay for advanced management. All prices are hypotheses to test (`01` §6). |
-| 4 | **How do athletes and funders find each other?** | Mainly through the funder's own link: the funder publishes an Opportunity and shares it; applicants arrive with no marketplace needed. Federations and clubs can also **nominate** athletes. Secondary, and initially within a funder's own network: an athlete (or a guardian) publishes a **Need**, and a funder finds it in Discover and sends an **Offer**. Minors are never searchable as people; funders see only a de-identified Need card. |
-| 5 | **How is funding awarded and tracked?** | Rules check eligibility; a reviewer verifies evidence field by field and scores a short rubric; a *different* person approves; the recipient accepts the agreement. Finance records each release (simulated, never real money); the recipient confirms receipt; quarterly **Updates** add expenses with receipts and sporting progress; a reviewer verifies spend; a person records the review decision (continue, continue with conditions, pause the next release, close, invite to renew). Every figure opens its source records. |
-| 6 | **How does it work without Revivo Pathway?** | Impact has its own registration, profiles, guardians and coaches, consent, verification records, audit and data. The signature journey starts with an athlete registering on Impact. Pathway appears only as an optional, simulated "import verified records" action on a profile, with consent, and can be removed. |
-| 7 | **How is it different from existing platforms?** | Generic grant tools (Submittable, Foundant, SmarterSelect, Good Grants) already run intake and review; sport-for-development tools (Upshot, Views) already monitor delivery. Revivo Impact's hypotheses: field-level verification by the people who know the athlete; nomination-native rounds; guardian-proxied minors; money states that reconcile; and funding that follows sporting progress to a renewal decision. These are hypotheses to validate, not claims (`01` §5). |
-| 8 | **What is the strongest commercial use case?** | A foundation or CSR team runs an athlete scholarship round end to end from a shareable link, then follows each award to released funds, verified spend and sporting progress. Programme funding and monitoring (Play Every Day at Greenpark) is the second module. |
-| 9 | **What is the main demonstration journey?** | Journey A, "Find and secure a scholarship": 13 steps, about 10 minutes. Tallwater Sports Foundation publishes the Emerging Athletes Scholarship; Amira Haddad (19, judo) registers on Impact, is matched, applies with help, is verified, selected, accepts, receives instalment 1, reports expenses and progress, and Tallwater reviews. Journeys B–E are short and show Needs and Offers, programme monitoring, existing funding, and guardians and coaches (`03` §5). |
-| 10 | **What is excluded to keep it simple?** | Individual donors, individual sponsors and crowdfunding; real payments, tax receipts and currency exchange; free messaging; e-signatures; multi-stage committee scoring and appeals; sponsorship inventory, valuation and activation (a possible future "Revivo Partner"); clawback workflows; translations, native apps, real logins; v1's voice-note AI. Full list: `02` §12. |
-
-**The founder's review request (ten checks) is answered in:** vision and website fit, capability changes and website
-presentation (`01` §9, decisions D2–D3); name and tagline (`01` §8, D1, D18); coherence (`01` §3); missed stakeholders
-(`01` §7); simplification (`01` §3, `02` §12); independence from Pathway (`02` §11); commercial credibility and
-differentiation (`01` §5–6); quality versus Pathway (`04`, `06` §9); presenting both products on the website (`01` §9).
+| 1 | **What is Revivo Impact?** | An open, controlled, two-sided platform that connects sport with funding and manages the relationship before, during and after funding. One internal record, the funding agreement, sits at the centre; the interface names it by type (Scholarship award, Sponsorship agreement, Programme grant…). |
+| 2 | **Who uses it?** | Seekers: adult athletes, guardians for under-18s, coaches, teams, clubs, academies, schools, federations, sports charities, programme operators. Funders: foundations, CSR teams, corporate sponsors, sports brands, government sports bodies, federations, institutional funders, verified individual sponsors. Organisations can be on both sides. Inside funders, reviewers, verifiers, approvers and finance staff are **permissions**. |
+| 3 | **Who pays?** | Institutions first (subscriptions; hypotheses only). Athletes, parents and coaches never pay for basic use. No commissions or payments assumed. |
+| 4 | **How do athletes and funders find each other?** | Both ways, across all participating organisations: seekers discover opportunities and sponsors (and send structured requests to funders that accept them); funders discover athletes, funding requests, teams and initiatives (and express interest or make offers). Funders also share links and accept nominations. Minors are never searchable; funders see only anonymised requests. |
+| 5 | **How is funding awarded and tracked?** | Rules check eligibility; a reviewer verifies evidence fact by fact; a different person approves; the recipient accepts. Finance records each release (simulated); the recipient confirms receipt; updates add expenses, sporting progress or deliverables; a reviewer verifies; a person records the review. Every figure opens its records. |
+| 6 | **How does it work without Revivo Pathway?** | Completely: own registration, profiles, verification, consent, discovery, agreements, reporting and admin. Pathway appears only as an optional, simulated import in Explore. |
+| 7 | **How is it different?** | Hypotheses: sport-specific reusable profiles verified fact by fact; two-way discovery with safeguarding built in; nomination-native rounds; money states that reconcile; support followed to verified spending and sporting progress (no sponsorship marketplace checked does this, `08` §2.0). |
+| 8 | **Strongest commercial use case?** | A foundation or company runs a sports scholarship round from a shareable link and tracks every award; its opportunity also appears in Discover. The prototype shows the whole two-sided ecosystem around it. |
+| 9 | **Main demonstration journey?** | Journey A (13 steps, about 10 minutes): Tallwater publishes; Amira (19, judo, no prior relationship) registers, has her federation confirm her result, discovers 5 opportunities from 5 organisations, applies with help, is scored by two reviewers and selected by a third person, accepts, receives instalment 1, reports spending and progress, and Tallwater reviews. Journeys B–E: two-way discovery and sponsorship, programme funding, existing funding, coach and guardian safeguarding (`03` §5). |
+| 10 | **What is excluded?** | Public donations and crowdfunding; real payments; free messaging; e-signatures; committee scoring and appeals; sponsorship inventory and valuation; non-sport funding; real logins; voice-note AI (`02` §13). |
 
 ## 3. Key facts to keep identical everywhere
 
@@ -48,9 +45,11 @@ differentiation (`01` §5–6); quality versus Pathway (`04`, `06` §9); present
 |---|---|
 | Main fictional funder | **Tallwater Sports Foundation** (replaces "Horizon Sports Foundation"; decision D5) |
 | Main opportunity | **Emerging Athletes Scholarship**: $250,000 announced, up to 50 awards, tiers $3,500 / $4,500 / $5,000, ages 15–21, 9 sports, deadline Fri 30 Apr 2027 |
-| Selection result | 143 applications → 46 offered ($214,500 = 27 × $5,000 + 13 × $4,500 + 6 × $3,500), 2 on the reserve list, 81 not selected, 14 not considered by rule |
+| Selection result | 143 applications → 46 offered ($214,500 = 27 × $5,000 + 13 × $4,500 + 6 × $3,500), 2 on the waiting list, 81 not selected, 14 not considered by rule |
 | Signature athlete | **Amira Haddad**, 19, judo: requested $4,800, awarded $4,500 |
-| Athlete Need | **Tiago Mendes**, 16, swimming (guardian Rosa Mendes): $2,400 competition travel; Oriel Freight Group pledges $1,500; $900 remaining |
+| Funders | 9 participating funders (`05` §2.1), Tallwater the principal one |
+| Athlete funding requests | **Nadia Kovač**, 23, wheelchair racing: $5,200 in two line items; Oriel $2,000 + Marcus Halvorsen $1,200 (6 May); $1,400 covered from her own money; $600 still needed at 30 Jun. **Tiago Esteves**, 16, swimming (guardian Rosa Esteves; anonymised): $2,400; Oriel $1,500; $900 held for his pending Ostral application |
+| Commercial sponsorship | Corvane Sportswear → **Jonah Reyes**, 22, sprinter: $6,000, 3 deliverables |
 | Programme | **Play Every Day** (Lanternfield Community Sport, funded by Tallwater): $60,000 for 12 months; 108 of 120 sessions delivered this quarter; Greenpark behind |
 | Demo clock | Mon 12 Apr 2027 · Thu 6 May 2027 · Wed 30 Jun 2027 |
 | Currency | USD only (decision D4) |
@@ -59,33 +58,25 @@ differentiation (`01` §5–6); quality versus Pathway (`04`, `06` §9); present
 
 1. `CLAUDE.md` (repository root) — rules and guard-rails.
 2. This file.
-3. `07-decisions-for-founder.md` — what needs approval.
+3. `07-decisions-for-founder.md` — the founder's answers; then `09-p1-design-package.md`.
 4. `02-product-definition.md` → `03-experience-and-screens.md` → `04-design-and-brand.md` →
    `05-fictional-world-and-data.md` → `06-technical-plan-and-phases.md`.
 5. `01-product-strategy.md` and `08-research-and-competitors.md` for the reasons.
 6. `90-founder-master-brief.md` — the founder's own words. Where it differs from `01`–`07`, those win; every
    difference is listed in `01` §11.
-7. Brand references (read only, never edit): `/home/user/Revivo_Webpage/CLAUDE.md` and its source files named in
-   `04` §2; `/home/user/revivopathway/docs/03-design-brief.md`; the built Pathway prototype
-   `/home/user/Revivo_Webpage/public/pathway-demo.html`.
+7. Brand references (read only, never edit; clone them read-only first): `pcherian89/Revivo_Webpage` (`CLAUDE.md`, the
+   source files named in `04` §2, and the built Pathway prototype `public/pathway-demo.html`);
+   `pcherian89/RevivoPathway` (`docs/03-design-brief.md`, `tools/tone/`).
 8. `archive/` — the superseded v1 programme-monitoring concept. Reference only.
 
-## 5. The first P1 steps
+## 5. Where the work stands (P1 complete)
 
-1. **Present the decisions.** Show the founder `07-decisions-for-founder.md` in plain language: each decision, the
-   recommended default and what changes if they choose otherwise. Ask for one reply: "approve all defaults" or a list
-   of changes. Record the answers in `07` (a "Founder's answer" line under each decision) and update every affected
-   document so they stay consistent.
-2. **Create the work branch** (for example `p1-architecture`) and keep `main` untouched.
-3. **Produce the P1 deliverables** (`06` §8): the object and ledger specification; the consent and access matrix;
-   the information architecture and wireframes of the 22 screens at 375px and 1440px; scripted journeys A–E; the
-   seed specification with reconciliation tables; name checks for the remaining fictional names; confirmation of the
-   image asset plan; and a clickable shell copied from Pathway's (start screen, banner, role pill, demo clock, Reset,
-   Daylight) that builds to one HTML file.
-4. **Show the founder** the wireframed Journey A on phone, tablet and laptop screenshots, and the reconciliation
-   tables.
-5. **Stop at the P1 approval gate.** Do not start P2 until the founder approves the model, screens, names and
-   decisions.
+1. Decisions answered and recorded in `07`; every document updated (summary of changes: `09` §3).
+2. The P1 package: `09` (index, expert review, open points), `02` (product definition), `03` (experience, screens,
+   journeys), `05` (dataset and reconciliation), `10` (image plan), `06` (phases and acceptance criteria).
+3. The clickable shell: `npm install && npm run dev` (or `npm run build` for one offline HTML file in `dist/`);
+   previews in `docs/p1-previews/`.
+4. **Next:** the founder approves the P1 package (or asks for changes). Then P2 starts (`06` §8).
 
 ## 6. Approval gates
 
@@ -95,7 +86,7 @@ differentiation (`01` §5–6); quality versus Pathway (`04`, `06` §9); present
 | P2 Discovery and applications | Progress review only (non-blocking): Journey A to step 9 | P3 continues |
 | **P3** Funding and progress | The financial model in use: all journeys end to end, invariants green | P4 starts |
 | P4 Intelligence, reporting, polish | Progress review only (non-blocking): visual sign-off | P5 continues |
-| **P5** QA and packaging | The finished prototype against the 20 acceptance criteria. **Nothing is published, linked from the website or shared publicly without this approval.** | Website work may be proposed in the website chat |
+| **P5** QA and packaging | The finished prototype against the 29 acceptance criteria (`06` §9). **Nothing is published, linked from the website or shared publicly without this approval.** | Website work may be proposed in the website chat |
 
 ## 7. What not to do in this repository
 

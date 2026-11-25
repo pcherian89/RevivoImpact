@@ -6,28 +6,41 @@ copy), reconciled by the lead product writer. These are analytical perspectives;
 Evidence and sources are in `08-research-and-competitors.md`. Labels: **[V]** verified in a primary or official
 source, **[J]** judgement.
 
+**Revised in P1 (25 Nov 2026) after the founder's decisions (`07`).** The founder kept the institutional commercial
+priority but made the product an **open, controlled, two-sided ecosystem** in scope: open registration and two-way
+discovery are mandatory and fully demonstrated, not limited to a funder's network. Sections 1, 2, 3, 4, 8, 9, 10 and
+11 are updated accordingly; earlier reasoning is kept where it still applies.
+
 ## 1. Positioning
 
-**Revivo Impact is a sports funding & sponsorship platform for the organisations that fund sport.** It lets a funder
-publish a scholarship, grant or programme call from a shareable link, select recipients by a fair and recorded
-process, and follow every award from commitment to release, spending, sporting progress and review. Athletes,
-guardians, coaches, clubs and programme operators use it free to find funding and apply from one reusable profile.
+**Revivo Impact is an open, controlled, two-sided sports funding and sponsorship platform.** Anyone seeking
+legitimate sporting support (athletes, guardians, coaches, teams, clubs, academies, schools, federations, sports
+charities, programme operators) can join free, build one reusable sporting profile and discover funding from many
+participating organisations. Anyone wishing to provide sporting support (foundations, CSR teams, corporate sponsors,
+sports brands, government sports bodies, federations, institutional funders and verified individual sponsors) can join,
+discover credible athletes, teams and initiatives, publish scholarships and funding calls, select fairly, and follow
+every funding relationship from commitment to release, spending, sporting progress and review.
+
+It solves three connected problems: seekers struggle to find appropriate funding; funders struggle to identify
+credible athletes and initiatives; funders struggle to understand how their money is used. **Discover → Apply or
+Connect → Fund → Track → Review.**
 
 - **Category descriptor** (eyebrow on Impact's own surfaces): "Sports Funding & Sponsorship Platform" (set in the
   `.label` style, which renders it in capitals), matching Pathway's "Talent Identification & Athlete Development
   Platform".
 - **One-line explanation** for buyers: "Revivo Impact runs sports scholarships, grants and programme funding, from
   application to evidence."
-- **Plain explanation** (from the founder, kept): "If you need funding for sport, Revivo helps you find it. If you
-  want to fund sport, Revivo helps you find credible opportunities and see how your support is used."
-  ("understand what your money achieves" is softened to "see how your support is used": records show use, not
-  achievement; see the honesty line below.)
+- **Plain explanation** (the founder's): "If you need funding for sport, Revivo helps you find it. If you want to fund
+  sport, Revivo helps you find credible opportunities and understand how your support is being used."
+- **Sports only.** Not a general scholarship, education, grant-management, charitable-fundraising or crowdfunding
+  platform (`02` §4.4).
 - **Honesty line**: "Delivery and spending records show what was delivered and spent; they do not on their own prove
   social impact."
 - **Fit with Revivo Sportech.** Revivo is "a global AI solutions-building company for the complete sports ecosystem"
-  (website). Funding is a system every part of that ecosystem depends on. Revivo Impact demonstrates four of the
-  website's sixteen capabilities across three of the four areas (§9), which shows a whole-ecosystem system rather than
-  a coaching tool. Like Pathway, it is shown as proof of what Revivo builds, never as a product catalogue.
+  (website). Funding is a system every part of that ecosystem depends on. On the website Revivo Impact has one home,
+  the capability "Funding, Grants & Programmes" in the area "Funding & Governance" (§9); its other uses (athlete
+  support, sponsorship, programmes) are described on its own page. Like Pathway, it is shown as proof of what Revivo
+  builds, never as a product catalogue.
 - **Global, not regional.** No India- or Kerala-specific positioning. USD in the prototype; other currencies only as
   separately authored datasets (decision D4).
 
@@ -38,54 +51,49 @@ guardians, coaches, clubs and programme operators use it free to find funding an
 | **Buyer 1 (headline)** | Foundations and company CSR teams running athlete scholarships or grants | Yes (hypothesis) | Launch a round from a link, select fairly with a defensible record, follow each award to verified spend and progress, report to a board or CSR committee |
 | **Buyer 2 (module two)** | The same funders, plus federation development departments and government sport bodies, funding programmes | Yes (hypothesis) | Follow programme delivery (sessions, attendance counts, missed sessions, recovery plans), spending and evidence; aggregates only |
 | Buyer 3 (later) | Academies and federations managing many athletes' funding, nominations and verification | Possibly, advanced plan | Nominate, verify results, manage athletes' applications and awards |
-| Light | Commercial sponsors (brand partnership teams) | Not the target buyer | Discover a Need, offer support, record an agreement with up to three simple deliverables |
-| **Users, free** | Adult athletes, guardians, coaches, clubs, schools, programme operators, federations as nominators and verifiers | Never | Find funding, apply once from a profile, know where they stand, report simply, control consent |
+| Buyer 4 (to validate) | Corporate sponsors and sports brands (partnership teams) | Possibly (hypothesis) | Discover adult athletes, teams and initiatives outside their network; structured offers; sponsorship agreements with up to three deliverables, kept apart from CSR money |
+| Light | Verified individual sponsors (former athletes, business owners) | No (hypothesis) | Support adults, teams and clubs through structured offers |
+| **Users, free** | Adult athletes, guardians, coaches, teams, clubs, schools, academies, programme operators, federations (also as nominators and verifiers) | Never for basic use | Join independently, discover funding and sponsors, apply once from a profile, publish requests, know where they stand, report simply, control consent |
 
 Inside a funding organisation, the founder's supporting roles (reviewer, verification officer, approver, finance
 officer, programme manager) are **permissions** on one account type: Review, Verify, Approve, Finance and Manage
 programme (`02` §5). A platform administrator has one Audit & admin screen.
 
-## 3. One product, not two businesses
+## 3. One open ecosystem, with an institutional commercial core
 
-**The challenge [J].** The founder's brief joins two different businesses:
+**The challenge [J], kept from P0.** Two business shapes meet here: institutional software (a funder runs rounds and
+tracks money and progress: one buyer, one budget, a link that brings its own applicants) and a two-sided marketplace
+(seekers and funders find each other: cold-start, liquidity, mixed buyers, safeguarding). Commercial sponsorship buys
+exposure, whereas CSR and foundation money must show a development purpose.
 
-- Routes A and D (a funder runs scholarships, grants or programmes, then tracks money and progress) form a coherent
-  **institutional software** business: one buyer, one budget, a link that brings its own applicants.
-- Routes B and C (athletes post needs; funders browse athletes) form a **two-sided marketplace**: different buyers
-  (marketing as well as CSR), different law, and a cold-start problem. It works only with many verified athletes *and*
-  active funders in the same sport and place. Revivo has neither side yet. Commercial sponsorship buys exposure and
-  deliverables, whereas CSR and foundation money must show a development or charitable purpose; mixing them in one
-  feed invites "CSR money with marketing strings".
+**The founder's decision (D6, 25 Nov 2026).** Commercial launch priority and product functionality are different
+decisions. The product is **one open, controlled ecosystem**; the first sales motion is institutional.
 
-**How the prototype handles it.** One product, built around the **Award** (`02` §2):
+1. **Open by design.** Independent registration on both sides; two-way discovery across all participating
+   organisations; opportunities can be public, restricted or invitation-only; athlete visibility is consent-based.
+2. **Controlled.** Structured contact only (no free messaging), requests only to funders that accept them, limits
+   against spam, verification of funders, minors never searchable (anonymised requests after an identifiability
+   check), block and report on every contact (`02` §3, §7).
+3. **One lifecycle.** Every route (application, nomination, request to a funder, expression of interest, offer,
+   existing agreement) leads to one funding agreement with one ledger, the same tracking and the same review, named by
+   its type in the interface (Scholarship award, Sponsorship agreement, Programme grant…).
+4. **Institutional core sells first.** A foundation or company can buy Revivo Impact and launch a sports funding
+   opportunity through a shareable link, which works before the wider network is large. Every such opportunity also
+   appears in Discover, so each institutional customer adds supply that attracts athletes, and each athlete profile
+   makes the platform more useful to the next funder.
+5. **Commercial sponsorship kept apart.** Separate funding type, separate totals, separate chain; light (payments plus
+   up to three deliverables); no inventory, valuation or activation analytics.
+6. **Deferred:** public donations, crowdfunding and real payments. Verified individual sponsors are included lightly.
 
-1. **Two entry points, one lifecycle.** The seeker starts (publishes a Need, or applies to an Opportunity); or the
-   funder starts (publishes an Opportunity, or finds a Need or eligible adult profile in Discover and sends an Offer).
-   Every route ends in an Award, and every Award runs the same lifecycle: ledger → updates and evidence → review or
-   renewal. "Add existing funding" creates an Award directly, which the recipient confirms.
-2. **Commercial weight follows the institutional business.** Route A (scholarship and grant rounds) is the headline
-   and the 10-minute signature journey. Programme funding and monitoring (Route D, Play Every Day) is module two.
-3. **Routes B and C are included but secondary.** The founder's journeys B–E and acceptance criteria 6–7 require
-   them, so the prototype shows them working. Commercially they are positioned **within a funder's own network or
-   invited community** first (current awardees, partner academies, invited co-funders), not as an open public
-   marketplace. They become a marketplace only if validation passes the marketplace gate (§10).
-4. **Commercial sponsorship stays light.** A sponsor can discover a Need, offer full or partial support and record an
-   agreement with up to three deliverables owed by the recipient. Commercial amounts are reported separately and never
-   counted in development, programme or impact totals. Sponsorship inventory, valuation and activation belong to a
-   possible future "Revivo Partner" (a strategic possibility, not a commitment).
-5. **Deferred:** individual donors, individual sponsors and crowdfunding (safeguarding, payment-regulation and tax
-   risk; not the paying customer).
-
-| Headline (build fully) | Secondary (build lean) | Deferred or "future" |
+| Build fully (prototype) | Build lean | Deferred or "future" |
 |---|---|---|
-| Route A: scholarship or grant round via shareable link, eligibility rules, nominations, review, award, agreement, release, expenses, progress, renewal | Route D: programme funding with Play Every Day monitoring (Journey C); existing agreements (Journey D) | An open public marketplace across all users |
-| Guardian-proxied applications and coach preparation (Journey E) | Route B within a funder's network: a Need part-funded by one or more funders (Journey B) | Sponsorship deliverables beyond three, exposure tracking, inventory, activation |
-| Money states and portfolio reconciliation | Route C: Discover plus Offer; in-kind equipment awards; one light commercial deal | Crowdfunding, donations, payments, tax receipts, ambassador programmes |
+| Open registration (all five paths); two-way discovery; reusable profiles with per-fact visibility and verification; scholarship and grant rounds via share link and Discover; nominations; selection; agreements; releases and receipts; expenses; progress; review and renewal | Programme monitoring (Play Every Day); existing agreements; in-kind equipment; one commercial sponsorship with deliverables; one individual sponsor | Public donations, crowdfunding, real payments, tax receipts; sponsorship inventory, valuation, activation; externally sourced sponsorship intelligence; ambassador programmes |
 
-**Simplification that keeps every function** (details in `02` and `03`): seven funding categories become six labels
-and four behaviours, with "existing agreement" as an origin; supporting roles become permissions; expenses and
-progress share one Update form; one Discover screen with tabs; approvals live in "Needs me" on each Home; renewal is a
-review outcome; one Commitment-to-Evidence Chain component for athletes and programmes; 22 screens from 9 templates.
+**Simplification that keeps every function** (details in `02` and `03`): seven funding types with interface names and
+four behaviours, with "existing agreement" as an origin; supporting roles become permissions; one Update form that
+takes expenses, progress or deliverables together or separately; one Discover screen with tabs for both directions;
+approvals live in "Needs me" on each Home; renewal is a review outcome; one Funding Line component with three chains;
+23 screens from 9 templates.
 
 ## 4. Strongest commercial use case
 
@@ -102,7 +110,8 @@ Why this one [J]:
 - **It is the signature demo.** Journey A tells it in about 10 minutes (`03` §5).
 
 Module two, programme funding and monitoring (the Play Every Day story), serves the same buyer and reuses the same
-ledger and chain.
+ledger and chain. **This is the first sales motion, not the product's boundary:** the prototype demonstrates the full
+two-sided ecosystem around it (founder, D6).
 
 ## 5. Differentiation hypotheses (to validate, not claims)
 
@@ -114,7 +123,7 @@ dashboards, payments and crowdfunding are **not** differentiators. Revivo must w
 |---|---|---|
 | H1 | **"Apply once; verified by the people who know you."** A reusable athlete profile with field-level verification (a result confirmed by a federation document, age by an ID document, training attendance attested by a coach), each showing who verified it and when. Never one blanket "verified athlete" badge. | Amira's profile shows each field's own chip; Daniel verifies her national U21 bronze against a federation results document and her age against her ID; the reviewer sees "Verified by D. Osei · Tallwater · 6 May" per field. Her profile prefills a second application. |
 | H2 | **Nomination-native.** Opportunities can be open, nomination-based or invitation-only, as real schemes work. | Ostral Swimming Federation has nominated three swimmers into the Emerging Athletes Scholarship; each nominee's guardian accepts the nomination and completes the application (seeded, visible in Explore). |
-| H3 | **Money you can reconcile.** Announced → reserved → committed → released → reported → verified, with outstanding and unspent amounts in words; partial funding; overfunding blocked; other funding declared; no double counting. | The budget meter in Selection; the funding bar on every award; Tiago's Need part-funded by Oriel with the cap blocking an over-offer; the "Other funding" declaration on every application; every figure opens its source records. |
+| H3 | **Money you can reconcile.** Announced → held for offers → committed → released → received → reported → verified, with outstanding and unspent amounts in words; partial funding; overfunding blocked; other funding declared; no double counting. | The budget meter in Selection; the funding bar on every award; Nadia's request part-funded by two funders, line by line, and Tiago's anonymised request with the cap blocking an over-offer and a hold for his pending application; the "Other funding" declaration on every application; every figure opens its source records. |
 | H4 | **Funding follows sporting progress.** Post-award Updates (competitions entered, results with documents, coach-attested training, receipts) linked to the award, leading to a human review and renewal. Never health monitoring. | Amira's quarterly Update and the athlete chain: Need → Award → Released → Spent → Progress → Review. |
 | H5 | **A defensible selection record (parity-plus).** Rules-based eligibility, a four-criterion rubric, conflict-of-interest declarations, four-eyes approval and an exportable selection record. Helps a foundation show an objective process or satisfy a CSR committee. Honest note: Submittable and Foundant already score and audit; Revivo's edge is sport-specific criteria and verifiers. | Selection & decisions screen; "Export selection record" (print in Daylight). |
 
@@ -124,6 +133,12 @@ dashboards, payments and crowdfunding are **not** differentiators. Revivo must w
 
 - Institutional annual subscription paid by the funder. Free for athletes, guardians and coaches (registration,
   nominations, applications, updates).
+- **Where free ends for funders (hypothesis, P1):** free: a verified funder profile, discovering, answering support
+  asks and a small number of direct offers a year; paid: running opportunities (rounds with selection), the portfolio
+  and reports, programme monitoring, several users with permissions, and the selection record. Sponsors and brands:
+  a partnerships plan (discovery, sponsorship agreements with deliverables) priced to test in interviews.
+- **Growth loop:** at submission, and again after an unsuccessful decision, an applicant can opt in to "let other
+  participating funders find my profile", so every institutional round also grows the discoverable pool.
 - **No dependence on commission.** Commission needs payment rails and liquidity, and would mix Revivo's interests into
   award decisions.
 - **Funder-sponsored seats:** the funder pays and its grantees (academies, programme operators) use the platform free,
@@ -199,7 +214,9 @@ not imply that Revivo holds or gives money. Always "Revivo Impact", never "Impac
   never mentions funding, "opportunity" is generic job-board language, and it promises a marketplace that will not
   have liquidity at launch. The alternative is short, sporty, honest, and works for both funder and athlete.
 - **Runner-up (brand panel), if accountability should lead:** "Funding sport, followed through."
-- **Supporting line (default): "Find funding. Support sporting talent. See how every award is used."** It replaces
+- **Supporting line (founder's decision, 25 Nov 2026): "Find funding. Support sporting talent. See how your support
+  is used."** It covers scholarships, sponsorship agreements, programme grants and in-kind support. (P0 default was
+  "…See how every award is used.") It replaces
   "Discover funding. Support sporting talent. Track the difference." because "Track the difference" implies measured,
   attributable impact, which records cannot show; "Discover funding" over-promises a marketplace. "Back sporting
   talent" was considered and rejected because "backing" can mean betting.
@@ -209,90 +226,29 @@ not imply that Revivo holds or gives money. Always "Revivo Impact", never "Impac
   of sport", v1's "Deliver sport. Demonstrate impact.", "Demonstrate impact" or "Proven impact". v1's "Deliver sport.
   Show the evidence." is superseded.
 
-## 9. Website presentation (later, website chat only, founder approval needed)
+## 9. Website presentation (later, website chat only)
 
-Nothing here changes the website now. Website changes happen later in the website chat, after the P5 gate and the
-founder's approval, with a matching update to the website's `CLAUDE.md`. Never modify the website from this
-repository.
+Nothing here changes the website. Website changes happen only in the website chat, after the P5 gate and the
+founder's approval. The website is being restructured from 16 to 12 capabilities; Impact does not depend on either
+structure.
 
-**Capability fit.**
-
-| Website capability (area) | What Revivo Impact demonstrates | Link |
-|---|---|---|
-| Funding & Impact Reporting (Management & Reporting) — proposed rename, decision D3 | The core: calls, awards, commitments, releases, spending, evidence, reports | Primary (gets the "Prototype" chip) |
-| Athlete Career & Welfare (Athletes & Performance) | Scholarship discovery, the reusable profile, applications | Related |
-| Sponsorship Management (Growth & Engagement) | Athlete Needs, sponsor Offers, agreed deliverables | Related |
-| Sports Programme Management (Management & Reporting) | Play Every Day: sessions, attendance counts, recovery plans | Related |
-| Registration & Administration; Governance & Compliance | Shared mechanics only | Not linked |
-
-**Decision D2: "Products" section or "Prototypes".** The founder prefers a "Products" section. The website's own rules
-say "Products are not a website category", forbid describing capabilities as finished products, and `check:copy`
-bans "our products"; a products section would also read as "buy these two apps", undercutting "we build what you
-need". **Default: one main-navigation item "Prototypes" → `/prototypes`**, replacing the current "Revivo Pathway"
-item (an owner decision recorded in the website's `CLAUDE.md` §5d, which D2 would revise), so the navigation stays at
-three links. If a product later reaches a paid pilot, the label can be revisited, which would need an explicit
-rewrite of the website's §1 rule.
-
-**Proposed `/prototypes` copy.** Title "Prototypes — Revivo". Eyebrow "PROTOTYPES · FICTIONAL DATA". h1 "See Revivo
-systems working." Lead: "Clickable prototypes built on fictional data. Each shows the kind of complete system Revivo
-designs around a client's workflows, people and rules." Two list entries (not cards), each a 16:9 photo shown whole,
-then copy, then a rule divider:
-
-| | Revivo Pathway | Revivo Impact |
-|---|---|---|
-| Chip | Prototype · fictional data | Prototype · fictional data |
-| Label | Talent identification & development | Funding, scholarships and sponsorship |
-| One line | Run consent-based talent programmes, from a school's class list to a training place. | Publish funding, choose recipients and see how every award is used, from application to report. |
-| Links | "About Revivo Pathway" → `/pathway` · "Try the prototype" → `/pathway/demo` | "About Revivo Impact" → `/impact` · "Try the prototype" → `/impact/demo` |
-| Capabilities | Talent Identification & Development · Sports Programme Management · Governance & Compliance | Funding & Grant Management (or the current name if D3 is declined) · Athlete Career & Welfare · Sponsorship Management · Sports Programme Management |
-
-Closing line: "Your organisation's system would be designed around your own workflows." then "Start a conversation".
-Capability chips link to `/home#explore`, opening that capability.
-
-**Elsewhere on the site (proposals).**
-
-- `products.ts`: add `revivo-impact`, listing `funding-impact-reporting` first (the explorer chips only the first id);
-  `showcase: false` until the founder approves; summary "A working prototype on fictional data: funding calls,
-  applications, awards, spending and progress, end to end."
-- Homepage proof line under the process: "See prototypes working." → `/prototypes`.
-- Footer group "Prototypes": "Revivo Pathway", "Revivo Impact", "All prototypes". No Gateway entry.
-- `/impact` page mirroring `/pathway`: eyebrow "Prototype · Sports funding & sponsorship"; five stages: "Publish: a
-  foundation sets the award, criteria and deadline." · "Apply: athletes, guardians or coaches apply from one
-  profile." · "Select: reviewers check evidence; a different person approves." · "Fund: commitments and releases are
-  recorded separately." · "Follow through: expenses and progress are linked to each award." Safeguards: no AI
-  decisions; a commitment is not a payment; minors are contacted only through guardians; no real money.
-- Always "prototype" and "fictional data"; never "launch", "available now" or "book a demo".
-- The website's `CLAUDE.md` §5d must be updated there to say `/prototypes` applies at two prototypes, not three.
-
-**Decision D3: redefine one capability** (with Impact's website appearance, after approval). Keep the 4 × 4 structure
-(`check:copy` enforces it). Rename "Funding & Impact Reporting" → **"Funding & Grant Management"**, keeping the id
-`funding-impact-reporting` so links and analytics do not break. Reason: the current text describes a team reporting
-*to* funders, whereas Impact is mainly a funder's system that recipients use free; the new name is what
-administrators search for, covers both sides and avoids an impact claim. Proposed copy (within the website's copy
-limits):
-
-- short (11 words): "Run funding calls, select recipients, and track awards, spending and results."
-- problem (25 words): "Funders struggle to find credible recipients, applicants struggle to find suitable funding, and
-  once money is awarded, spending and results are tracked in separate spreadsheets."
-- build (32 words): "A funding system to publish scholarships and grants, take applications with eligibility rules,
-  review and approve awards, and record agreements, funds released, expenses and progress against each award.
-  Reporting deadlines trigger reminders."
-- AI: "Suggest suitable funding opportunities for an applicant, explaining each match." · "Summarise applications
-  and flag missing documents for reviewers to check." · "Draft funder reports from recorded spending and progress,
-  linked to sources."
-- benefit (22 words): "Funders can see who applied, what was awarded and how it was used, and applicants know where
-  they stand at every step."
-
-No change to Athlete Career & Welfare or Sponsorship Management now. Later and optional, once athlete sponsorship is
-validated with real sponsors: widen Sponsorship Management's short line to "Find sponsors, agree commitments, deliver
-activations and report value."
+- **D2 (decided):** a "Prototypes" menu, with each prototype listed under its capability (the website already does
+  this for Revivo Pathway: capability name first, the prototype beneath, opening that capability's panel).
+- **D3 (decided):** Revivo Impact's single home is the capability **"Funding, Grants & Programmes"** in the area
+  **"Funding & Governance"** (id `funding-impact-reporting`), consistent with the website's "one product, one home"
+  rule. Other uses (athlete support, sponsorship, programmes) are described on Revivo Impact's own page.
+- Always "Revivo Impact", "prototype" and "fictional data"; never "launch", "available now" or "book a demo"; Impact's
+  tagline only on Impact's own surfaces, never on the Revivo homepage.
+- The P0 proposals for a `/prototypes` page and a capability rename are withdrawn.
 
 ## 10. Risks, validation plan and go/no-go
 
 **Top risks (ranked) [J].**
 
 1. Generic grant tools are "good enough" and cheaper.
-2. Scope creep into a marketplace dilutes the 10-minute story and implies liquidity Revivo does not have.
+2. **Cold start:** an open ecosystem with few participants looks empty (mitigated by the institutional-first sales
+   motion, seeding each launch with a partner organisation's funders and athletes, and honest "participating on
+   Revivo Impact" labelling).
 3. Minors' safeguarding and commercial contact.
 4. Payments, tax and jurisdiction (s.4945(g), CSR agency rules, charity public-benefit rules) where the buyer may need
    legal sign-off.
@@ -304,8 +260,8 @@ activations and report value."
 
 **Discovery: 12–14 interviews**, run alongside the build: 5 funders running athlete scholarships or grants
 (foundations, CSR teams, athlete-support charities); 3 federation or national Olympic committee-type bodies that
-nominate or distribute support; 2 programme operators or academies; 2 commercial sponsors or brand managers (to test
-Routes B and C honestly); 2 athletes or guardians.
+nominate or distribute support; 2 programme operators or academies; **4 commercial sponsors or brand managers** (two-way
+discovery is now in scope); **2 clubs** seeking funding; 2 athletes or guardians (16–18 interviews in total).
 
 **Ask:** How did you run your last round, with what tools, how many applicants and how many staff hours? How do you
 check achievements and age? Do you accept nominations? How do you record what was released versus spent, and does
@@ -320,13 +276,15 @@ test; at least 1 open to a paid pilot. **Added:** at least 3 funders run an appl
 more applicants a year on spreadsheets, forms or a generic tool; at least 2 name a sport-specific reason to choose
 Revivo over a generic tool; at least 3 accept a price inside the hypothesis band.
 
-**Marketplace gate:** Routes B and C are promoted beyond "within a funder's network" only if at least 2 of the
-sponsors interviewed say they would fund unsolicited verified requests **and** at least 1 commits to a pilot.
-Otherwise they stay secondary.
+**Commercial launch gate (revised, D6):** the product scope is two-sided regardless. Sponsor-side discovery is
+*marketed and priced* as a lead offer only if at least 2 of the sponsors interviewed say they would fund unsolicited
+verified requests **and** at least 1 commits to a pilot; otherwise the first launches lead with institutional rounds
+and keep discovery as an included feature.
 
 ## 11. Changes from the founder's master brief
 
-Each change keeps the brief's function unless stated. The founder can reverse any of them through `07`.
+Each change keeps the brief's function unless stated. The founder can reverse any of them through `07`. **Rows 1, 3,
+5, 6 and 17 are superseded by §11.1** (the founder's decisions of 25 Nov 2026).
 
 | # | Brief said | Changed to | Reason |
 |---|---|---|---|
@@ -354,3 +312,18 @@ Each change keeps the brief's function unless stated. The founder can reverse an
 | 22 | Demo dates unspecified (v1: 2026 dates) | Demo year 2027 with three clock moments; v1's Greenpark misses moved to Tue 4 and Thu 6 May 2027 | Consistent weekdays for Tue/Thu sessions (D17) |
 | 23 | "Guided and hands-on modes as in Pathway, improved" | Adds a journey bar, a "What changed" panel after each step and per-journey checkpoints, extending Pathway's "Load the story up to step N" | Makes connected state visible, the product's main argument (`03` §6) |
 | 24 | "Understand what your money achieves" | "See how your support is used" | Records show use and progress, not achievement or impact |
+
+### 11.1 Changes after the founder's decisions (25 Nov 2026)
+
+| # | P0 said | Now | Reason |
+|---|---|---|---|
+| 25 | Routes B and C secondary, within a funder's network | Open, controlled two-sided ecosystem; full two-way discovery demonstrated | Founder D6 |
+| 26 | Everything called an "Award" | One internal record (funding agreement); interface names by funding type | Founder D7 |
+| 27 | Individual sponsors deferred | Verified individual sponsors included lightly; donations and crowdfunding deferred | Founder D8 |
+| 28 | Minors reachable via a de-identified Need or an authorised application | Also via guardian-accepted nominations; anonymised card with a deterministic identifiability check; block and report | Founder D9 |
+| 29 | Supporting line "…See how every award is used." | "…See how your support is used." | Founder D1 |
+| 30 | Website `/prototypes` page; capability rename | Prototypes menu by capability; home "Funding, Grants & Programmes" | Founder D2, D3 |
+| 31 | Funder navigation Overview · Discover · Opportunities · Portfolio · Reports | Overview · Discover · Opportunities · Applications · Funding (Reports a tab and an Overview button) | Founder's navigation suggestion; Reports kept easy to find |
+| 32 | 22 screens | 23 (adds the Public profile for two-way discovery) | Founder D14 (target, not limit) |
+| 33 | Tallwater-centred world | Nine funders across foundation, company, brand, government, federation and individual types | Founder D5 |
+| 34 | (not explicit) | Sports-only boundary enforced by a deterministic check | Founder §2 |
