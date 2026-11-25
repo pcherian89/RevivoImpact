@@ -64,7 +64,7 @@ export function Start() {
             credible athletes, teams and initiatives, and understand how your support is being used. People make every
             decision.
           </p>
-          <ImageSlot file="im-01-landing.png" className="mt-8 hidden w-full max-w-[40rem] sm:block" caption="Sprinter, coach and supporter walk onto a community track" />
+          <ImageSlot file="im-01-landing.png" className="mt-8 hidden w-full max-w-[40rem] sm:block" caption="A coach and a team talk on a stadium track at sunset" />
 
         </section>
 

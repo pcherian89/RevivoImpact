@@ -5,6 +5,25 @@ update.** Style and grading rules: `04` §9. Until an image arrives, the prototy
 shape with the filename and "Illustrative"; every image slot is wired to its final filename, so dropping the files in
 needs no other change.
 
+## 0. Photographs placed so far (25 Nov 2026)
+
+The founder supplied three of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
+the website and Pathway in light and grade. **Founder direction on the look: these photos win over this plan where
+they differ** — everyone in black kit with thin lime trim (not only coaches), and warm sunset light (the judo hall at
+sunset rather than morning daylight). Later images should follow the same look; prompts below are not yet rewritten.
+
+| Slot | Founder's photo | Changes made | Tone (`src/content/images.ts`) |
+|---|---|---|---|
+| im-01-landing (Start, laptop and tablet) | Golden-hour team huddle: a coach talking with a team on a stadium track | 8 px trimmed at each edge (rounded corners from the export); a shoe logo removed | saturate(0.79) brightness(0.77) |
+| im-02-landing-phone (Start, phones) | Sunset stadium running team (upright; shown in its own shape, not cut to 9:16) | 8 px trimmed at each edge (rounded corners) | saturate(0.7) brightness(0.87) |
+| im-03-athlete-home (athlete and coach Home) | Sunset judo hall: three women judoka, pairs practising behind | none | saturate(0.89) brightness(0.87) |
+
+Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
+`tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
+Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. The other 13 slots
+still show "Photograph to come". The judo photo would also suit im-12 (High Performance Camp Support) if the founder
+wants it reused there.
+
 ## 1. What changed since the P1 plan
 
 - **16 images instead of 19.** Each image was reviewed for whether it helps a person understand the screen. Removed:

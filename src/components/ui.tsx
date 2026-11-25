@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { PHOTOS } from "../content/images";
 import {
   ArrowRight,
   CircleAlert,
@@ -211,6 +212,29 @@ export function ImageSlot({
   className?: string;
   caption?: string;
 }) {
+  const photo = PHOTOS[file];
+  if (photo) {
+    // The photograph, shown whole in its own shape (never cropped) with the family grade and its own tone (docs/04 §9).
+    // Decorative: the words beside it carry the meaning, as on the website and in Revivo Pathway.
+    return (
+      <figure
+        className={cn("photo-frame relative overflow-hidden", className)}
+        style={{ aspectRatio: `${photo.w}/${photo.h}` }}
+        aria-hidden="true"
+        data-image={file}
+      >
+        <img
+          src={photo.src}
+          alt=""
+          width={photo.w}
+          height={photo.h}
+          decoding="async"
+          className="photo absolute inset-0 h-full w-full object-contain"
+          style={{ "--tone": photo.tone } as CSSProperties}
+        />
+      </figure>
+    );
+  }
   return (
     <figure
       className={cn("photo-frame relative overflow-hidden rounded-[6px] bg-surface-2", className)}
