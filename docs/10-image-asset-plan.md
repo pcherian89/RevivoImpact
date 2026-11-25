@@ -7,7 +7,7 @@ needs no other change.
 
 ## 0. Photographs placed so far (25 Nov 2026)
 
-The founder supplied eight of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
+The founder supplied ten of his own photographs (made in ChatGPT) and asked that Revivo Impact use them and match
 the website and Pathway in light and grade. **Founder direction on the look: these photos win over this plan where
 they differ** — everyone in black kit with thin lime trim (not only coaches), and warm sunset light (the judo hall at
 sunset rather than morning daylight). Later images should follow the same look; prompts below are not yet rewritten.
@@ -21,7 +21,8 @@ sunset rather than morning daylight). Later images should follow the same look; 
 | im-06-funder-visit (funder Overview band; public profiles of foundations, companies and federations) | Sunset strategy training field: funders, staff and coaches on a balcony watching a football session | none | saturate(0.7) brightness(0.75) |
 | im-08-community-programme (organisation Home; Community Sports Programme Grant header) | Sunset youth football session: coaches in the foreground, children at mid-distance, parents along the fence | none | (grade only) |
 | im-09-para-athlete (Para Athlete Equipment Grant header) | Sunset wheelchair racing sprint: adult racers and two coaches with a stopwatch | 10 px trimmed at each edge (rounded corners); four shoe logos removed | (grade only) |
-| im-11-competition-travel (Competition Travel Grant and Athlete Travel Bursary headers) | Sunset poolside coaching huddle: adult swimmers and their coach (close faces, so never used for young athletes such as Tiago) | 8 px trimmed at each edge (rounded corners) | saturate(0.7) brightness(0.84) |
+| im-11-competition-travel (Athlete Travel Bursary header) | Sunrise swim team departure: swimmers and coaches loading kit bags into a coach | 4 px trimmed at each edge (rounded corner); two shoe marks removed | (grade only) |
+| im-20-swimming-coaching (new slot: Competition Travel Grant header, swimming) | Sunset poolside coaching huddle: adult swimmers and their coach (close faces, so never used for young athletes such as Tiago) | 8 px trimmed at each edge (rounded corners) | (grade only) |
 
 **Founder direction, 25 Nov 2026 (after seeing the first screenshots):** the solved tones made the photos too dim and
 too grey, and phones showed no header photos. Revivo Impact now shows the founder's photos with the shared grade only
@@ -39,8 +40,9 @@ guessing.
 
 Pipeline: masters in `assets/photography/source/`, WebP (quality 78) in `src/assets/photos/`, tone solved with
 `tools/tone/solve.py` (copied from Pathway) to p75 ≈ 76/255 and saturation ≈ 42%, the same targets as the website and
-Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. The other 8 slots
-still show "Photograph to come". The judo photo would also suit im-12 (High Performance Camp Support) if the founder
+Pathway. Frames fade at every edge (Pathway `.fade-band`); hero bands fade left, top and bottom. The other 7 slots
+still show "Photograph to come". The founder's women's football photo (for im-10) is on hold: it carries many Nike marks (bibs, shorts, socks,
+shoes), too many to remove cleanly; a version without logos was requested. The judo photo would also suit im-12 (High Performance Camp Support) if the founder
 wants it reused there.
 
 ## 1. What changed since the P1 plan

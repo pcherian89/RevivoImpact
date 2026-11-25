@@ -18,6 +18,7 @@ import im06 from "../assets/photos/im-06-funder-visit.webp";
 import im08 from "../assets/photos/im-08-community-programme.webp";
 import im09 from "../assets/photos/im-09-para-athlete.webp";
 import im11 from "../assets/photos/im-11-competition-travel.webp";
+import im20 from "../assets/photos/im-20-swimming-coaching.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
 
@@ -42,7 +43,11 @@ export const PHOTOS: Record<string, Photo> = {
   // Founder's photo "sunset wheelchair racing team sprint" (25 Nov 2026): adult para athletes and their coaches.
   // Trimmed 10px at each edge (rounded corners); four shoe logos removed.
   "im-09-para-athlete.png": { src: im09, w: 1650, h: 922, tone: "" /* solved: saturate(0.7) brightness(0.75) */, note: "Wheelchair racers sprint while their coaches time them" },
+  // Founder's photo "sunrise swim team departure" (25 Nov 2026): swimmers and coaches loading kit bags into a coach
+  // outside a pool building. Trimmed 4px at each edge (rounded corner); two shoe marks removed.
+  "im-11-competition-travel.png": { src: im11, w: 1664, h: 933, tone: "" /* solved: saturate(0.98) brightness(1.09) */, note: "A swim team loads kit bags into a coach at sunrise" },
   // Founder's photo "sunset poolside coaching huddle" (25 Nov 2026): adult swimmers only, so it suits the swimming
-  // travel grant; never used on screens about young athletes. Trimmed 8px at each edge (rounded corners).
-  "im-11-competition-travel.png": { src: im11, w: 1654, h: 925, tone: "" /* solved: saturate(0.7) brightness(0.84) */, note: "A coach talking with adult swimmers by the pool at sunset" },
+  // competition grant; never used on screens about young athletes. Trimmed 8px at each edge (rounded corners).
+  // Not in the P1 plan: added so both travel grants have their own photo.
+  "im-20-swimming-coaching.png": { src: im20, w: 1654, h: 925, tone: "" /* solved: saturate(0.7) brightness(0.84) */, note: "A coach talking with adult swimmers by the pool at sunset" },
 };
