@@ -18,6 +18,8 @@ import im06 from "../assets/photos/im-06-funder-visit.webp";
 import im08 from "../assets/photos/im-08-community-programme.webp";
 import im09 from "../assets/photos/im-09-para-athlete.webp";
 import im11 from "../assets/photos/im-11-competition-travel.webp";
+import im13 from "../assets/photos/im-13-equipment-handover.webp";
+import im21 from "../assets/photos/im-21-womens-basketball.webp";
 import im20 from "../assets/photos/im-20-swimming-coaching.webp";
 
 export type Photo = { src: string; w: number; h: number; tone: string; note: string };
@@ -50,4 +52,11 @@ export const PHOTOS: Record<string, Photo> = {
   // competition grant; never used on screens about young athletes. Trimmed 8px at each edge (rounded corners).
   // Not in the P1 plan: added so both travel grants have their own photo.
   "im-20-swimming-coaching.png": { src: im20, w: 1654, h: 925, tone: "" /* solved: saturate(0.7) brightness(0.84) */, note: "A coach talking with adult swimmers by the pool at sunset" },
+  // Founder's photo "golden hour team gear unpacking" (25 Nov 2026): coaches and staff unpacking new balls, cones and
+  // kit from boxes beside a clubhouse. Trimmed 10px at each edge (rounded corners).
+  "im-13-equipment-handover.png": { src: im13, w: 1652, h: 921, tone: "", note: "Coaches unpack new balls, cones and kit for a club" },
+  // Founder's photo "golden hour basketball training" (25 Nov 2026): a women's basketball session with two coaches.
+  // Not in the P1 plan: the founder wanted more sports, so it heads the Women's Sporting Development Fund instead of
+  // im-10 (football). Trimmed 10px at each edge (rounded corners); seven shoe and sock logos removed.
+  "im-21-womens-basketball.png": { src: im21, w: 1650, h: 922, tone: "", note: "Women's basketball training at sunset" },
 };
