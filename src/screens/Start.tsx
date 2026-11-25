@@ -3,7 +3,7 @@ import { useStore } from "../state/store";
 import { ImpactLockup } from "../brand/RevivoLogo";
 import { pulseSegment, SIGNAL } from "../brand/signal";
 import { ThemeButtons } from "../components/Shell";
-import { btn, Chip, ImageSlot, Label } from "../components/ui";
+import { btn, ImageSlot, Label } from "../components/ui";
 import type { Person } from "../domain/model";
 
 function Pulse() {
@@ -80,7 +80,7 @@ export function Start() {
             <h2 className="text-subtitle mt-4">Guided journeys</h2>
             <p className="mt-2 text-muted">
               Follow Amira, 19, a judo athlete who has never heard of Tallwater Sports Foundation. She joins, discovers five
-              opportunities from five organisations, applies, is selected, and reports how the money is used. Thirteen
+              opportunities from five organisations, applies, is selected, and reports how the money is used. Fourteen
               steps, about ten minutes.
             </p>
             <ul className="mt-4 space-y-2 text-small text-muted">
@@ -183,13 +183,10 @@ export function Start() {
         <details className="mt-4">
           <summary className="cursor-pointer font-medium text-muted">About this prototype</summary>
           <p className="mt-2 max-w-3xl">
-            A clickable prototype on fictional data (P1 shell). Sign-in, identity and organisation checks, payments,
+            A clickable prototype on fictional data. Sign-in, identity and organisation checks, payments,
             safeguarding checks, notifications and AI are simulated; no real money moves; discovery shows only fictional
             participating organisations; no connection to Revivo Pathway; English and US dollars only; nothing is sent
             anywhere.
-          </p>
-          <p className="mt-2">
-            <Chip kind="info">Built in P1: start, roles, 12 representative screens · the rest are labelled with their design</Chip>
           </p>
         </details>
       </section>

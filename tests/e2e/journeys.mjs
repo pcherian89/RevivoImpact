@@ -336,7 +336,7 @@ await click("Approve this funding");
 await go(`app/farid/agreement/${exUrl}`);
 await click("The figures are right");
 t = await text();
-await check("P3 Ostral confirms; carried-in money shown apart", t.includes("carried in") && !t.includes("Waiting for Ostral"));
+await check("P3 Ostral confirms; carried-in money shown apart", t.includes("before joining") && !t.includes("Waiting for Ostral"));
 await go("app/maya/report/ag-pe1");
 await check("P4 report figures appear before any writing, live from the records", (await text()).includes("Spending checked"));
 await click("Draft our words from the records");

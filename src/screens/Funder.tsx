@@ -31,7 +31,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   // P3: money and reports that need a person at this funder
   const mineAg = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid);
   for (const g of mineAg.filter((g) => g.status === "awaiting-approval" && g.preparedBy !== persona.id && persona.perms.includes("Approve"))) needs.push({ t: `Approve existing funding for ${recipientName(w, g.recipientKind, g.recipientId, persona)}`, d: `${fmt(g.amount)} · prepared by ${w.people[g.preparedBy ?? ""]?.name}; a second person must approve it`, a: "Review and approve", to: `agreement/${g.id}` });
-  for (const g of Object.values(w.agreements).filter((g) => g.status === "awaiting-recipient" && g.recipientId === persona.orgId)) needs.push({ t: `${w.funders[w.funds[g.fundId].funderId].name} added funding you already receive`, d: `${fmt(g.amount)} · check the figures carried in and confirm them`, a: "Check the figures", to: `agreement/${g.id}` });
+  for (const g of Object.values(w.agreements).filter((g) => g.status === "awaiting-recipient" && g.recipientId === persona.orgId)) needs.push({ t: `${w.funders[w.funds[g.fundId].funderId].name} added funding you already receive`, d: `${fmt(g.amount)} · check the figures from before Revivo Impact and confirm them`, a: "Check the figures", to: `agreement/${g.id}` });
   const checkable = Object.values(w.expenses).filter((e) => e.status === "reported" && e.receipt && mineAg.some((g) => g.id === e.agreementId) && e.by !== persona.id);
   if (checkable.length && (persona.perms.includes("Finance") || persona.perms.includes("Review"))) needs.push({ t: `${plural(checkable.length, "expense")} to check`, d: `${fmt(sum(checkable.map((e) => e.amount)))} with receipts, from ${[...new Set(checkable.map((e) => recipientName(w, w.agreements[e.agreementId].recipientKind, w.agreements[e.agreementId].recipientId, persona)))].join(", ")}`, a: "Check spending", to: `agreement/${checkable[0].agreementId}` });
   const toRead = Object.values(w.reports).filter((r) => r.status === "submitted" && mineAg.some((g) => g.id === r.agreementId));
@@ -40,6 +40,10 @@ export function FunderOverview({ persona }: { persona: Person }) {
   if (proofs.length) needs.push({ t: "Sponsorship proof to accept", d: proofs.map((d) => d.label).join(", "), a: "Open", to: `agreement/${proofs[0].agreementId}` });
   const asks = Object.values(w.asks).filter((a) => a.funderId === fid && a.status === "sent");
   if (asks.length) needs.push({ t: `${asks.length} support ${asks.length === 1 ? "ask" : "asks"} to answer`, d: "Answer with an offer, a question or “not now”.", a: "Answer asks", to: "apps" });
+  // Interest an athlete answered by sharing more: the next step is an offer.
+  for (const it of Object.values(w.interests).filter((x) => x.funderId === fid && x.status === "shared"))
+    if (!Object.values(w.offers).some((o) => o.recipientId === it.athleteId && w.funds[o.fundId].funderId === fid))
+      needs.push({ t: `${w.athletes[it.athleteId]?.name.split(" ")[0]} shared more with you`, d: "They answered your interest. Propose an agreement, or leave it.", a: "See what they shared", to: `athlete/${it.athleteId}` });
   const shortlisted = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "shortlisted");
   if (shortlisted.length && persona.perms.includes("Approve")) needs.push({ t: `${shortlisted.length} recommendations are ready for decision`, d: "See the budget and award levels before you decide.", a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
   const toReview = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "submitted" && a.scores.length < 2 && !a.scores.some((s) => s.by === persona.id) && !a.light);
@@ -105,6 +109,21 @@ export function FunderOverview({ persona }: { persona: Person }) {
             ))}
           </ul>
         )}
+        {(() => {
+          const sentOffers = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && ["held", "safeguarding"].includes(o.status) && !o.applicationId && !o.light);
+          const sentInterest = Object.values(w.interests).filter((x) => x.funderId === fid && x.status === "sent");
+          if (!sentOffers.length && !sentInterest.length) return null;
+          return (
+            <p className="mt-4 text-small text-subtle">
+              <span className="font-medium text-muted">Waiting for others: </span>
+              {[
+                sentOffers.length ? `${plural(sentOffers.length, "offer")} waiting to be accepted (${fmt(sum(sentOffers.map((o) => o.amount)))} set aside)` : "",
+                sentInterest.length ? `${sentInterest.length === 1 ? "interest" : `${sentInterest.length} expressions of interest`} sent to ${sentInterest.map((x) => w.athletes[x.athleteId]?.name.split(" ")[0]).join(", ")}, waiting for an answer` : "",
+              ].filter(Boolean).join(" · ")}
+              . <a className="underline underline-offset-4 hover:text-signal" href={`#/app/${persona.id}/apps`}>See offers and asks</a>
+            </p>
+          );
+        })()}
       </Section>
       {/* Phones: the photo comes after "Needs you", so the most important task stays at the top. */}
       <PhonePhoto file={overviewPhoto} className="mt-8" />
@@ -132,7 +151,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-4">
             <p className="text-small text-subtle">Committed means approved and accepted.</p>
-            <a href={`#/app/${persona.id}/portfolio`} className={btn("secondary", "min-h-10")}>
+            <a href={`#/app/${persona.id}/portfolio?reports`} className={btn("secondary", "min-h-11")}>
               <FileText className="size-4" aria-hidden="true" /> Reports
             </a>
           </div>
@@ -243,7 +262,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
   const toggle = (id: string) => act.run("toggleShortlist", { targetId: id });
   return (
     <div className="pb-8">
-      <PageHead eyebrow={`Discover · ${f.name}`} title="Who could we support?" lead="Athletes who chose to be discoverable, funding requests, and teams and initiatives participating on Revivo Impact, from any organisation or none." />
+      <PageHead eyebrow={`Discover · ${f.name}`} title={f.type === "Individual sponsor" ? "Who could I support?" : "Who could we support?"} lead="Athletes who chose to be discoverable, funding requests, and teams and initiatives participating on Revivo Impact, from any organisation or none." />
       <div className="rounded-[10px] border border-line-strong p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label htmlFor="brief" className="label text-subtle">
@@ -266,9 +285,9 @@ export function FunderDiscover({ persona }: { persona: Person }) {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-small text-subtle">Filters from your brief (edit freely):</span>
           {chips.map((c) => (
-            <span key={c} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-line-strong pr-1 pl-3 text-small">
-              {c}
-              <button type="button" aria-label={`Remove filter ${c}`} onClick={() => setChips(chips.filter((x) => x !== c))} className="inline-flex size-8 items-center justify-center rounded-full hover:bg-surface-2">
+            <span key={c} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line-strong pr-1 pl-3 text-small">
+              {c === "Any region" ? "Any region (no limit)" : c}
+              <button type="button" aria-label={`Remove filter ${c}`} onClick={() => setChips(chips.filter((x) => x !== c))} className="inline-flex size-10 items-center justify-center rounded-full hover:bg-surface-2">
                 <X className="size-3" aria-hidden="true" />
               </button>
             </span>
@@ -276,7 +295,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
           <label className="sr-only" htmlFor="add-chip">
             Add a filter
           </label>
-          <select id="add-chip" className="h-9 rounded-full border border-line-strong bg-canvas px-3 text-small" value="" onChange={(e) => e.target.value && setChips([...chips, e.target.value])}>
+          <select id="add-chip" className="h-11 rounded-full border border-line-strong bg-canvas px-3 text-small" value="" onChange={(e) => e.target.value && setChips([...chips, e.target.value])}>
             <option value="">Add a filter…</option>
             {VOCAB.filter((v) => !chips.includes(v)).map((v) => (
               <option key={v}>{v}</option>
@@ -310,7 +329,7 @@ export function FunderDiscover({ persona }: { persona: Person }) {
               </a>
               <span className="text-small">
                 <span className="block">{a.level}</span>
-                <span className="block text-subtle">{a.facts.filter((x) => x.state === "verified" || x.state === "confirmed").length} verified or confirmed · {a.facts.filter((x) => x.state === "self").length} self-reported</span>
+                <span className="block text-subtle">{a.facts.filter((x) => x.visibility === "discoverable" && (x.state === "verified" || x.state === "confirmed")).length} verified or confirmed · {a.facts.filter((x) => x.visibility === "discoverable" && x.state !== "verified" && x.state !== "confirmed").length} self-reported</span>
               </span>
               <span className="text-small">
                 {a.openToCommercial && <Chip kind="info">Open to commercial partners</Chip>}
@@ -412,7 +431,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
   const ask = r ? Object.values(w.asks).find((x) => x.requestId === r.id && x.funderId === fid && x.status === "sent") : undefined;
   const [lineId, setLineId] = useState(ask?.lineId ?? r?.lines[0].id ?? "l1");
   const line = t?.lines.find((l) => l.id === lineId);
-  const [amount, setAmount] = useState(String(ask ? ask.amount : r?.minor ? 2600 : Math.min(line?.remaining ?? 0, 2500)));
+  const [amount, setAmount] = useState(String(ask ? ask.amount : Math.min(line?.remaining ?? 0, funds[0]?.delegatedLimit ?? Infinity)));
   const [fundId, setFundId] = useState(funds[0]?.id ?? "");
   // A suggested reason the funder reads and edits (it becomes part of the record), never an empty field.
   // The reason is the funder's own words; a suggestion is one tap away, never pre-filled into the record.
@@ -528,10 +547,10 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
           {fund?.delegatedLimit && toDollars(amount) > fund.delegatedLimit && <p className="mt-2 text-small text-amber">Above your {fmt(fund.delegatedLimit)} limit: a colleague with Approve must agree before it is sent.</p>}
           {fund && fund.policy !== "Simple" && <p className="mt-2 text-small text-subtle">This fund needs a second person with Approve to agree before any offer is sent.</p>}
         </Field>
-        <Field label="Reason, linked to the fund's published criteria" htmlFor="of-reason" hint="Required: it becomes part of the selection record.">
+        <Field label={w.funders[fid].type === "Individual sponsor" ? "Why are you supporting them?" : "Why this offer? (link it to the fund's published criteria)"} htmlFor="of-reason" hint={w.funders[fid].type === "Individual sponsor" ? "Required: it is kept with the offer." : "Required: it is kept in the record of who was chosen and why."}>
           <textarea id="of-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={r.minor ? "Competition travel to a verified national qualification." : "Equipment for a verified adult athlete competing nationally."} className="w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" />
           {!reason && (
-            <button type="button" className="mt-1 inline-flex min-h-9 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => setReason(suggested)}>
+            <button type="button" className="mt-1 inline-flex min-h-11 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => setReason(suggested)}>
               Use a suggested reason, then edit it
             </button>
           )}
@@ -540,7 +559,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
           Send offer
         </Button>
         <Message error={act.error} />
-        <p className="mt-3 text-small text-subtle">These checks are rules, not AI: the cap, the fund&rsquo;s money, your approval limit and, for young athletes, safeguarding.</p>
+        <p className="mt-3 text-small text-subtle">These checks are rules, not AI: never more than is still needed, the money left in the fund{w.funders[fid].type === "Individual sponsor" ? "" : ", your approval limit"} and, for young athletes, safeguarding.</p>
       </Panel>
     </div>
   );
@@ -667,8 +686,8 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
                   {w.funds[o.fundId].type} · {o.amountLabel} · {o.status === "awaiting" ? `drafted by ${w.people[o.draftedBy!]?.name}` : `closes ${fmtDate(o.closes)}`} · {policyText(w.funds[o.fundId].policy).toLowerCase()}
                 </p>
                 {o.status === "awaiting" ? (
-                  <details className="mt-2 text-small" open={persona.perms.includes("Approve") && o.draftedBy !== persona.id}>
-                    <summary className="inline-flex min-h-9 cursor-pointer items-center underline underline-offset-4">What will be published</summary>
+                  <details className="mt-2 text-small" open={persona.perms.includes("Approve") || o.draftedBy === persona.id}>
+                    <summary className="inline-flex min-h-11 cursor-pointer items-center underline underline-offset-4">What will be published</summary>
                     <dl className="mt-2 grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1">
                       <dt className="text-subtle">Purpose</dt>
                       <dd>{o.purpose}</dd>
@@ -694,7 +713,8 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Chip kind={o.status === "awaiting" ? "awaiting" : oppStatusAt(w, o) === "open" ? "current" : "self"}>{o.status === "awaiting" ? "Awaiting approval" : oppStatusAt(w, o).replace(/^./, (c) => c.toUpperCase())}</Chip>
-                {o.status === "awaiting" && persona.perms.includes("Approve") && <ActionButton actor={persona.id} type="publishOpportunity" args={{ oppId: o.id }} success="Published. It now appears in Discover.">Publish</ActionButton>}
+                {o.status === "awaiting" && o.draftedBy === persona.id && <span className="text-small text-subtle">Waiting for a colleague to publish it</span>}
+                {o.status === "awaiting" && persona.perms.includes("Approve") && o.draftedBy !== persona.id && <ActionButton actor={persona.id} type="publishOpportunity" args={{ oppId: o.id }} success="Published. It now appears in Discover.">Publish</ActionButton>}
                 {o.status !== "awaiting" && <a className={btn("secondary", "min-h-10")} href={`#/app/${persona.id}/apps?opp=${o.id}`}>Applications</a>}
               </div>
             </Row>
@@ -733,7 +753,7 @@ export function FunderOpportunities({ persona }: { persona: Person }) {
               </select>
             </Field>
             {w.funds[fundId] && <p className="mt-3 text-small text-subtle">From this fund: {w.funds[fundId].type.toLowerCase()}, up to {fmt(w.funds[fundId].max)} each, {policyText(w.funds[fundId].policy).toLowerCase()}. The type and maximum come from the fund.</p>}
-            <Button className="mt-6" onClick={() => act.run("createOpportunity", { fundId, title, sport, purpose, amountLabel: `Up to ${fmt(w.funds[fundId].max)}`, closes }, "Drafted. A colleague who can approve publishes it.")}>
+            <Button className="mt-6" onClick={() => act.run("createOpportunity", { fundId, title, sport, purpose, amountLabel: `Up to ${fmt(w.funds[fundId].max)}`, closes }, "Drafted. A colleague who can approve publishes it.") && (setTitle(""), setSport(""), setPurpose(""))}>
               Submit for approval
             </Button>
             <Message error={act.error} done={act.done} />
@@ -765,7 +785,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
   const isIndividual = w.funders[fid].type === "Individual sponsor";
   return (
     <div className="pb-8">
-      <PageHead eyebrow={isIndividual ? "Asks & offers" : "Applications"} title={isIndividual ? "Who has asked, and what have I offered?" : "Who has applied or asked?"} />
+      <PageHead eyebrow={isIndividual ? "Asks & offers" : "Applications & offers"} title={isIndividual ? "Who has asked, and what have I offered?" : "Who has applied or asked, and what have we offered?"} />
       {!isIndividual && opps.length > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-3">
@@ -825,6 +845,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
             ))}
           </ul>
           <p className="mt-2 text-small text-subtle">Athletes under 18 appear by first name only once their guardian has accepted, otherwise without names. {apps.some((a) => a.light) ? `In this demonstration, ${apps.filter((a) => !a.light).length} applications can be opened; the others show their scores and status only.` : ""}</p>
+          {shown.length > 0 && (
           <div className="relative mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[44rem] text-table">
               <thead>
@@ -853,13 +874,14 @@ export function FunderApplications({ persona }: { persona: Person }) {
                 ))}
               </tbody>
             </table>
-            {shown.length > limit && (
-              <button type="button" className={btn("secondary", "mt-3")} onClick={() => setLimit(shown.length)}>
-                Show all {shown.length}
-              </button>
-            )}
-            {apps.length === 0 && <p className="mt-3 text-muted">No applications yet. They appear here as soon as people apply.</p>}
           </div>
+          )}
+          {shown.length > limit && (
+            <button type="button" className={btn("secondary", "mt-3")} onClick={() => setLimit(shown.length)}>
+              Show all {shown.length}
+            </button>
+          )}
+          {apps.length === 0 ? <p className="mt-3 text-muted">No applications yet. They appear here as soon as people apply.</p> : shown.length === 0 && <p className="mt-3 text-muted">None with this status.</p>}
         </>
       )}
       <Section title={`Direct requests received · ${asks.filter((a) => a.status === "sent").length} open`}>
@@ -915,6 +937,31 @@ export function FunderApplications({ persona }: { persona: Person }) {
           </ul>
         )}
       </Section>
+      {(() => {
+        const ints = Object.values(w.interests).filter((x) => x.funderId === fid);
+        if (!ints.length) return null;
+        return (
+          <Section title="Interest sent">
+            <ul>
+              {ints.map((x) => (
+                <Row key={x.id}>
+                  <p>
+                    <span className="font-medium">{w.athletes[x.athleteId]?.name}</span> · &ldquo;{x.reason}&rdquo;
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Chip kind={x.status === "shared" ? "verified" : x.status === "sent" ? "awaiting" : "self"}>{x.status === "shared" ? "Shared more with you" : x.status === "sent" ? "Waiting for an answer" : "No thanks"}</Chip>
+                    {x.status === "shared" && (
+                      <a className={btn("secondary")} href={`#/app/${persona.id}/athlete/${x.athleteId}`}>
+                        See what they shared <ArrowRight className="size-4" aria-hidden="true" />
+                      </a>
+                    )}
+                  </div>
+                </Row>
+              ))}
+            </ul>
+          </Section>
+        );
+      })()}
     </div>
   );
 }
@@ -951,7 +998,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
             <ul className="mt-2 space-y-1 text-small text-muted">
               <li>· Sport and level: {ath?.sport}, {ath?.level.toLowerCase()} (profile).</li>
               <li>· Results: {ath?.facts.filter((f) => f.kind === "result").map((f) => `${f.value} (${stateLabel(f)})`).join("; ") || "none on profile"}.</li>
-              <li>· Budget: {fmt(a.requested)} requested; award levels {fund.tiers?.map((t) => fmt(t.amount)).join(" / ")}.</li>
+              <li>· Budget: {fmt(a.requested)} requested{fund.tiers?.length ? `; award levels ${fund.tiers.map((t) => fmt(t.amount)).join(" / ")}` : `; up to ${fmt(fund.max)} each`}.</li>
               <li>· Statement: {a.aiDrafted ? "drafted with Simulated AI help, edited by the applicant" : "written by the applicant"}.</li>
               {undeclared.length > 0 && <li className="text-amber">· Rule found: current support on the profile ({undeclared.map((s) => `${s.label}, ${fmt(s.amount)}`).join("; ")}) is not declared under &ldquo;Other funding&rdquo;.</li>}
             </ul>

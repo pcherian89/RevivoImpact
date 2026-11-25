@@ -17,7 +17,7 @@ export function PrototypeBar() {
   return (
     <div data-ri-print-hide className="sticky top-0 z-40 border-b border-line bg-canvas">
       <div className="flex min-h-12 items-center justify-between gap-2 px-3 sm:px-4">
-        <a href="#/start" className="label shrink-0 text-signal">
+        <a href="#/start" className="label inline-flex min-h-11 shrink-0 items-center text-signal">
           <span className="ri-guide-hide hidden sm:inline">Revivo Impact · </span>Prototype
         </a>
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -25,11 +25,15 @@ export function PrototypeBar() {
           <span className="hidden sm:contents">
           <button type="button" onClick={() => setGuide({ open: !guide.open })} className={btn("secondary", pill)} aria-expanded={guide.open} aria-label="Guided journeys">
             <Footprints className="size-4" aria-hidden="true" />
+            <span className="hidden whitespace-nowrap sm:inline lg:hidden">Guide</span>
             <span className="ri-guide-hide hidden whitespace-nowrap lg:inline">{guide.open ? `Journey ${guide.journey} · step ${guide.step + 1}` : "Guided journeys"}</span>
+            <span className="ri-guide-show hidden whitespace-nowrap">{`${guide.journey} · step ${guide.step + 1}`}</span>
           </button>
           <button type="button" onClick={() => go("roles")} aria-label="Explore by role" className={btn("secondary", pill)}>
             <LayoutGrid className="size-4" aria-hidden="true" />
+            <span className="hidden whitespace-nowrap sm:inline lg:hidden">Roles</span>
             <span className="ri-guide-hide hidden whitespace-nowrap lg:inline">Explore by role</span>
+            <span className="ri-guide-show hidden whitespace-nowrap">Roles</span>
           </button>
           </span>
           <div className="relative">
@@ -115,7 +119,7 @@ const ManagingCtx = createContext<string | undefined>(undefined);
 /** The athlete a guardian or coach is currently managing ("Managing: Tiago ▾"). */
 export const useManaging = () => useContext(ManagingCtx);
 
-const SHORT: Record<string, string> = { "Consent & safety": "Safety", "Funding & Updates": "Funding", "Audit & admin": "Admin" };
+const SHORT: Record<string, string> = { "Consent & safety": "Safety", "Funding & Updates": "Funding", "Audit & admin": "Admin", "My Athletes": "Athletes" };
 const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Consent & safety": ShieldCheck, "Audit & admin": ShieldCheck, Programme: CalendarCheck };
 
 export function AppFrame({ persona, active, children }: { persona: Person; active: string; children: ReactNode }) {
@@ -135,17 +139,24 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
         <header className="border-b border-line bg-canvas">
           <div className="container-site flex min-h-16 flex-wrap items-center justify-between gap-x-2 gap-y-2 py-2 sm:gap-x-3 xl:flex-nowrap">
             <div className="flex min-w-0 shrink-0 items-center gap-4">
-              <a href="#/start" aria-label="Revivo Impact start screen">
+              <a href="#/start" aria-label="Revivo Impact start screen" className="inline-flex min-h-11 items-center">
                 <ImpactLockup />
               </a>
               <span className="hidden truncate font-display text-lg font-bold 2xl:inline">{workspace}</span>
             </div>
             <nav aria-label="Main" className="hidden md:order-last md:block md:w-full xl:order-none xl:w-auto">
-              <ul className="flex items-center gap-1">
+              <ul className="flex flex-wrap items-center gap-1">
                 {nav.map((n) => (
                   <li key={n.label}>
-                    <a href={`#/app/${persona.id}/${n.screen}`} aria-current={on(n.screen) ? "page" : undefined} className={cn("inline-flex min-h-11 items-center rounded-full px-3.5 font-display text-base font-bold tracking-[0.03em]", on(n.screen) ? "bg-surface-2 text-ink" : "text-subtle hover:text-ink")}>
-                      {n.label}
+                    <a href={`#/app/${persona.id}/${n.screen}`} aria-current={on(n.screen) ? "page" : undefined} className={cn("inline-flex min-h-11 items-center rounded-full px-3.5 font-display text-base font-bold tracking-[0.03em] whitespace-nowrap", on(n.screen) ? "bg-surface-2 text-ink" : "text-subtle hover:text-ink")}>
+                      {SHORT[n.label] ? (
+                        <>
+                          <span className="ri-guide-hide">{n.label}</span>
+                          <span className="ri-guide-show hidden">{SHORT[n.label]}</span>
+                        </>
+                      ) : (
+                        n.label
+                      )}
                     </a>
                   </li>
                 ))}
@@ -249,7 +260,7 @@ function WhatChanged() {
 /* ------------------------------------------------------------ guide panel */
 
 export function GuidePanel() {
-  const { guide, setGuide, go, showStep, loadStep, stepDone, moment } = useStore();
+  const { guide, setGuide, go, showStep, loadStep, stepDone, moment, reset } = useStore();
   const [err, setErr] = useState<string | null>(null);
   // Below 1024px the guide is a sheet at the bottom. Opening a screen shrinks it to one line, so the screen is never
   // covered; "Show the step" brings it back. From 1024px it is a column beside the page, which narrows instead.
@@ -290,8 +301,9 @@ export function GuidePanel() {
   // Earlier steps of the same date that have not happened yet: load the story so this step makes sense.
   const prevPending = journey.steps.slice(0, guide.step).some((x) => x.when === s.when && x.cmds.length > 0 && !x.phase && !stepDone(x));
   // A step whose screen is a public page (Join) opens it directly; every other step opens as its person.
-  const open = () => {
-    go(s.to.startsWith("/") ? s.to.slice(1) : `app/${s.as}/${s.to}`);
+  // A public page (Join) that has just been done shows the person's new Home instead of an empty form.
+  const open = (after = false) => {
+    go(s.to.startsWith("/") ? (after || done ? `app/${s.as}/home` : s.to.slice(1)) : `app/${s.as}/${s.to}`);
     if (window.innerWidth < 1024) setMini(true);
   };
   const next = () => {
@@ -306,10 +318,10 @@ export function GuidePanel() {
             <span className="label block text-signal">
               {journey.id} · step {guide.step + 1}/{journey.steps.length}
             </span>
-            <span className="block truncate font-medium">{s.title}</span>
+            <span className="line-clamp-2 block font-medium">{s.title}</span>
           </p>
-          <button type="button" className={btn("secondary", "shrink-0")} onClick={() => setMini(false)} aria-label="Show the step">
-            <ChevronUp className="size-4" aria-hidden="true" /> Step
+          <button type="button" className={btn("secondary", "shrink-0")} onClick={() => setMini(false)} aria-label="Show the step's details">
+            <ChevronUp className="size-4" aria-hidden="true" /> Details
           </button>
           {guide.step < journey.steps.length - 1 && (
             <button type="button" className={btn("primary", "shrink-0")} onClick={next}>
@@ -376,9 +388,12 @@ export function GuidePanel() {
         {done && <WhatChanged />}
         <div className="mt-4 flex flex-wrap gap-2">
           {!done && (!sameDate || prevPending) ? (
-            <button type="button" className={btn("primary")} onClick={() => (loadStep(journey.id, guide.step), open(), setErr(null))}>
-              Load the story to this step
-            </button>
+            <span className="block w-full">
+              <button type="button" className={btn("primary")} onClick={() => (loadStep(journey.id, guide.step), open(), setErr(null))}>
+                {sameDate ? "Fill in the earlier steps and continue" : `Move to ${atDate.short} and continue`}
+              </button>
+              <span className="mt-2 block text-small text-subtle">Earlier steps are filled in for you.</span>
+            </span>
           ) : s.cmds.length && !done && !s.phase ? (
             <>
               <button
@@ -387,26 +402,26 @@ export function GuidePanel() {
                 onClick={() => {
                   const e = showStep(journey.id, guide.step);
                   setErr(e);
-                  if (!e) open();
+                  if (!e) open(true);
                 }}
               >
                 <Wand2 className="size-4" aria-hidden="true" /> Show me
               </button>
-              <button type="button" className={btn("secondary")} onClick={open}>
+              <button type="button" className={btn("secondary")} onClick={() => open()}>
                 <Hand className="size-4" aria-hidden="true" /> I&rsquo;ll do it
               </button>
             </>
           ) : (
             <>
               {/* A "look" step has nothing to do, so "Show me" simply opens the screen as that person. */}
-              <button type="button" className={btn(!s.cmds.length && !done ? "primary" : "secondary")} onClick={open}>
+              <button type="button" className={btn(!s.cmds.length && !done ? "primary" : "secondary")} onClick={() => open()} data-look="">
                 {s.cmds.length ? (
                   <>
-                    <CircleDot className="size-4" aria-hidden="true" /> Open this screen
+                    <CircleDot className="size-4" aria-hidden="true" /> See the screen
                   </>
                 ) : (
                   <>
-                    <Wand2 className="size-4" aria-hidden="true" /> Show me the screen
+                    <Wand2 className="size-4" aria-hidden="true" /> Show me
                   </>
                 )}
               </button>
@@ -419,7 +434,7 @@ export function GuidePanel() {
           )}
         </div>
         {err && <p role="alert" className="mt-3 text-small text-amber">{err}</p>}
-        <p className="mt-3 text-small text-subtle">&ldquo;Show me&rdquo; acts through the same rules as a click. &ldquo;I&rsquo;ll do it&rdquo; opens the screen; the step is marked done when the record exists.</p>
+        {guide.step === 0 && <p className="mt-3 text-small text-subtle">&ldquo;Show me&rdquo;: we do this step for you, using the same rules as a click. &ldquo;I&rsquo;ll do it&rdquo;: you click through it yourself.</p>}
       </div>
       {/* On phones the step comes first, so the sheet shows what to do without scrolling. */}
       {guide.step === 0 && <p className="mt-4 text-small text-muted md:hidden">{journey.intro}</p>}
@@ -432,11 +447,20 @@ export function GuidePanel() {
               <li key={x}>{x}</li>
             ))}
           </ul>
+          <div className="mt-4 flex flex-wrap gap-2">
           {journey.id !== "E" && (
-            <button type="button" className={btn("secondary", "mt-4")} onClick={() => setGuide({ journey: JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id, step: 0 })}>
+            <button type="button" className={btn("primary")} onClick={() => setGuide({ journey: JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id, step: 0 })}>
               Next: journey {JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id}
             </button>
           )}
+            <button type="button" className={btn(journey.id === "E" ? "primary" : "secondary")} onClick={() => (reset(), setGuide({ open: true, journey: "A", step: 0 }))}>
+              Start again
+            </button>
+            <button type="button" className={btn("quiet")} onClick={() => (setGuide({ open: false }), go("start"))}>
+              Back to the start page
+            </button>
+          </div>
+          <p className="mt-2 text-small text-subtle">&ldquo;Start again&rdquo; clears everything done in this demonstration.</p>
         </div>
       )}
 

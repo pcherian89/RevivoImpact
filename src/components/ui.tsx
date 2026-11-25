@@ -180,7 +180,16 @@ export function Panel({
     if (!open) return;
     opener.current = document.activeElement;
     ref.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Keyboard focus stays inside the panel while it is open (Tab and Shift+Tab wrap round).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return onClose();
+      if (e.key !== "Tab" || !ref.current) return;
+      const f = Array.from(ref.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select,textarea,summary,[tabindex]:not([tabindex="-1"])')).filter((x) => x.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1], at = document.activeElement;
+      if (e.shiftKey && (at === first || at === ref.current)) (e.preventDefault(), last.focus());
+      else if (!e.shiftKey && (at === last || !ref.current.contains(at))) (e.preventDefault(), first.focus());
+    };
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -360,7 +369,12 @@ export function Tabs<T extends string>({
             )}
           >
             {t.label}
-            {t.count != null && <span className="ml-1.5 font-sans text-small font-medium text-subtle">{t.count}</span>}
+            {t.count != null && (
+              <span className="ml-1.5 font-sans text-small font-medium text-subtle">
+                <span className="sr-only">, </span>
+                {t.count}
+              </span>
+            )}
           </button>
         );
       })}
@@ -372,7 +386,7 @@ export function FilterPill({ children, on }: { children: ReactNode; on?: boolean
   return (
     <span
       className={cn(
-        "inline-flex min-h-9 items-center rounded-full border px-3.5 text-small whitespace-nowrap",
+        "inline-flex min-h-11 items-center rounded-full border px-3.5 text-small whitespace-nowrap",
         on ? "border-ink/70 bg-surface-2 text-ink" : "border-line-strong text-muted",
       )}
     >

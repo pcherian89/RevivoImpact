@@ -1012,7 +1012,7 @@ export const commands = {
     c.w.offers[a.offerId] = { id: a.offerId, fundId: a.fundId, by: c.actor, recipientKind: a.recipientKind, recipientId: a.recipientId, requestId: a.requestId, lineId: a.lineId ?? (r ? r.lines[0].id : undefined), amount: a.amount, reason: a.reason, status, at: c.at, deliverables: a.deliverables };
     if (status !== "second-approval") markAskOffered(c.w, c.w.offers[a.offerId]);
     const why = fund.policy !== "Simple" ? `this fund's ${fund.policy} policy` : "above your approval limit";
-    audit(c, status === "second-approval" ? `Offer of ${fmt(a.amount)} sent for second approval (${why})` : status === "safeguarding" ? `Offer of ${fmt(a.amount)} sent to platform safeguarding review` : `Offered ${fmt(a.amount)}`, offerRecord(c.w, c.w.offers[a.offerId]));
+    audit(c, status === "second-approval" ? `Offer of ${fmt(a.amount)} sent for second approval (${why})` : status === "safeguarding" ? `Offer of ${fmt(a.amount)} sent to platform safeguarding review` : `Offered ${fmt(a.amount)}. Reason: “${a.reason.trim()}”`, offerRecord(c.w, c.w.offers[a.offerId]));
   },
 
   approveOffer(c: Ctx, a: { offerId: string }) {
@@ -1163,6 +1163,68 @@ export const commands = {
     audit(c, `Blocked a funder (existing agreements continue${lapsed.length ? `; ${lapsed.length} open offer${lapsed.length > 1 ? "s" : ""} lapsed` : ""}; administrator told)`, c.w.funders[a.funderId].name);
   },
 
+  /* ===================== P5: undo and correct (first-time users must be able to recover from a mistake) */
+
+  unblockFunder(c: Ctx, a: { athleteId: string; funderId: string }) {
+    const ath = c.w.athletes[a.athleteId] ?? fail("That athlete does not exist.");
+    need(ath.minor ? ath.guardianId === c.actor : ath.id === c.actor, "Only the athlete (or guardian) unblocks a funder.");
+    need(c.w.blocks.some((b) => b.athleteId === a.athleteId && b.funderId === a.funderId), "This funder is not blocked.");
+    c.w.blocks = c.w.blocks.filter((b) => !(b.athleteId === a.athleteId && b.funderId === a.funderId));
+    // Offers that lapsed stay lapsed: the funder can make a new one.
+    audit(c, "Unblocked a funder (lapsed offers stay lapsed)", c.w.funders[a.funderId]?.name ?? "A funder");
+  },
+
+  removeCoach(c: Ctx, a: { athleteId: string; coachId: string }) {
+    const ath = c.w.athletes[a.athleteId] ?? fail("That athlete does not exist.");
+    need(ath.minor ? ath.guardianId === c.actor : c.actor === a.athleteId, "Only the guardian (or adult athlete) removes a coach's access.");
+    need(c.w.authorisations.some((z) => z.athleteId === a.athleteId && z.coachId === a.coachId), "This coach has no access to remove.");
+    c.w.authorisations = c.w.authorisations.filter((z) => !(z.athleteId === a.athleteId && z.coachId === a.coachId));
+    audit(c, "Removed a coach's access (takes effect at once)", ath.name);
+  },
+
+  cancelAsk(c: Ctx, a: { askId: string }) {
+    const ask = c.w.asks[a.askId] ?? fail("That ask does not exist.");
+    const r = c.w.requests[ask.requestId];
+    need(c.actor === ask.by || (r.ownerKind === "athlete" && c.w.athletes[r.ownerId]?.guardianId === c.actor), "Only the person who asked can cancel it.");
+    need(ask.status === "sent", "This ask has already been answered, so it can't be cancelled.");
+    delete c.w.asks[a.askId];
+    audit(c, `Cancelled an ask to ${c.w.funders[ask.funderId]?.name ?? "a funder"}`, r.title);
+  },
+
+  closeRequest(c: Ctx, a: { requestId: string }) {
+    const r = c.w.requests[a.requestId] ?? fail("That request does not exist.");
+    const ath = r.ownerKind === "athlete" ? c.w.athletes[r.ownerId] : null;
+    need(c.actor === r.publishedBy || ath?.guardianId === c.actor, "Only the owner (or guardian) withdraws a request.");
+    need(r.status === "open", "This request is already closed.");
+    const live = Object.values(c.w.offers).some((o) => o.requestId === r.id && ["held", "safeguarding", "second-approval", "accepted"].includes(o.status));
+    need(!live, "Someone has offered or agreed funding on this request. Decline open offers first; agreed funding continues.");
+    r.status = "closed";
+    r.discoverable = false;
+    for (const x of Object.values(c.w.asks)) if (x.requestId === r.id && x.status === "sent") delete c.w.asks[x.id];
+    audit(c, "Withdrew a funding request (open asks cancelled)", r.title);
+  },
+
+  removeExpense(c: Ctx, a: { expenseId: string }) {
+    const e = c.w.expenses[a.expenseId] ?? fail("That expense does not exist.");
+    need(e.by === c.actor, "Only the person who added this spending can remove it.");
+    need(e.status === "reported", "This spending has already been checked, so it can't be removed. Ask the funder if it is wrong.");
+    delete c.w.expenses[a.expenseId];
+    audit(c, `Removed spending added by mistake (${fmt(e.amount)})`, c.w.funds[c.w.agreements[e.agreementId].fundId].name);
+  },
+
+  correctSession(c: Ctx, a: { sessionId: string; attendance: number; reason: string }) {
+    const x = c.w.sessions[a.sessionId] ?? fail("That session does not exist.");
+    need(x.by === c.actor, "Only the coach who recorded this session can correct it.");
+    need(!x.checked, "This session has already been checked. Ask the site coordinator to correct it.");
+    need(x.status === "delivered", "Only the number who came can be corrected here.");
+    const site = c.w.programmes[x.programmeId].sites.find((s) => s.id === x.siteId)!;
+    need(Number.isInteger(a.attendance) && a.attendance > 0 && a.attendance <= site.participants, `Enter how many came (1 to ${site.participants}).`);
+    need(a.reason?.trim().length >= 3, "Say briefly why you are correcting it.");
+    const was = x.attendance;
+    x.attendance = a.attendance;
+    audit(c, `Corrected attendance from ${was} to ${a.attendance}: ${a.reason.trim()}`, `${site.name} · ${x.date}`);
+  },
+
   /* ================================================ P3: track and review */
 
   addExpense(c: Ctx, a: { expenseId: string; agreementId: string; what: string; amount: number; paidOn: string; receipt: boolean; category?: string }) {
@@ -1196,7 +1258,7 @@ export const commands = {
     const fid = c.w.funds[g.fundId].funderId;
     need(memberOf(c.w, c.actor, fid, "Finance") || memberOf(c.w, c.actor, fid, "Verify"), "Only someone at the funder with Finance or Verify checks spending.");
     need(e.by !== c.actor, "You added this expense. Someone else must check it.");
-    need(e.status === "reported" || e.status === "query", e.status === "checked" ? "This expense is already checked." : "Money carried in from before is shown as reported, never checked.");
+    need(e.status === "reported" || e.status === "query", e.status === "checked" ? "This expense is already checked." : "Money spent before joining Revivo Impact is shown as reported, never checked.");
     need(e.receipt, "There is no receipt yet. Ask for it instead of checking.");
     e.status = "checked";
     e.checkedBy = c.actor;
@@ -1416,7 +1478,7 @@ export const commands = {
     need(a.agree || a.reason?.trim(), "Say which figure is wrong and why.");
     g.status = a.agree ? "active" : "disputed";
     g.disputeReason = a.reason?.trim();
-    audit(c, a.agree ? "Confirmed the agreement and the figures carried in" : `Disputed the figures carried in: ${a.reason}`, c.w.funds[g.fundId].name);
+    audit(c, a.agree ? "Confirmed the agreement and the figures from before joining" : `Disputed the figures from before joining: ${a.reason}`, c.w.funds[g.fundId].name);
   },
 
   saveOpportunity(c: Ctx, a: { oppId: string }) {

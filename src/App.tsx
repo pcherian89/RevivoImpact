@@ -5,9 +5,9 @@ import { Roles, Start } from "./screens/Start";
 import { Apply, FunderProfile, Join, MyFunding, MyProfile, OpportunityPage, Publish, SeekerApplications, SeekerDiscover, SeekerHome } from "./screens/Seeker";
 import { AthleteForFunder, FunderApplications, FunderDiscover, FunderOpportunities, FunderOverview, Portfolio, RequestPage, ReviewPage, SelectionPage } from "./screens/Funder";
 import { Admin, Safety } from "./screens/Other";
-import { Planned } from "./screens/Planned";
 import { AgreementPage, FunderReportPage, ProgrammePage, ReportPage, TodayPage, UpdatePage } from "./screens/Track";
 import { HOME_SCREEN } from "./data/structure";
+import { btn } from "./components/ui";
 import type { Person } from "./domain/model";
 
 export default function App() {
@@ -110,10 +110,17 @@ function renderScreen(sc: string, param: string | undefined, p: Person) {
       return <ReportPage persona={p} id={param ?? ""} />;
     case "freport":
       return <FunderReportPage persona={p} />;
-    default: {
-      const n = Number(sc.replace(/^s/, ""));
-      return <Planned n={Number.isFinite(n) && n > 0 ? n : 3} persona={p} />;
-    }
+    default:
+      // An address that is not a screen: say so plainly and offer the way home (no build notes).
+      return (
+        <div className="max-w-2xl py-12">
+          <h1 className="text-title">This page isn&rsquo;t here.</h1>
+          <p className="mt-3 text-muted">The link may be old. Everything {p.name.split(" ")[0]} can do starts from the menu above.</p>
+          <a className={btn("primary", "mt-6")} href={`#/app/${p.id}/${HOME_SCREEN[p.role]}`}>
+            Go to {p.name.split(" ")[0]}&rsquo;s first screen
+          </a>
+        </div>
+      );
   }
 }
 

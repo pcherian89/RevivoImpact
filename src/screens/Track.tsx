@@ -141,8 +141,8 @@ export function AgreementStages({
         { short: "Agreed", full: "Sponsorship agreed", stat: fmt(g.amount) },
         { short: "Paid", full: "Paid", stat: t.paid ? fmt(t.paid) : "Not yet" },
         {
-          short: "Deliverables",
-          full: "Deliverables done",
+          short: "Agreed tasks",
+          full: me ? "What you agreed to do" : "What they agreed to do",
           stat: dels.length
             ? `${dels.reduce((a, d) => a + d.done, 0)} of ${dels.reduce((a, d) => a + d.target, 0)}`
             : "—",
@@ -371,12 +371,13 @@ export function AgreementPage({
             audience={me ? "recipient" : "funder"}
             who={me && g.recipientKind === "athlete" && persona.id !== g.recipientId ? w.athletes[g.recipientId]?.name.split(" ")[0] : undefined}
             sources={src}
+            commercial={commercial}
           />
         </div>
         {t.carriedPaid > 0 && (
           <p className="mt-3 text-small text-subtle">
             {fmt(t.carriedPaid)} was paid before this agreement joined Revivo
-            Impact (carried in). It is shown apart and never counted as checked.
+            Impact. It is shown apart and never counted as checked.
           </p>
         )}
         {isFinance &&
@@ -440,7 +441,7 @@ export function AgreementPage({
                         : ""}
                     </p>
                     {e.receipt && e.status !== "carried-in" && (
-                      <button type="button" className="mt-1 inline-flex min-h-9 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => (setDoc(docForExpense(w, e, persona)), setDocExpense(e.id))}>
+                      <button type="button" className="mt-1 inline-flex min-h-11 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => (setDoc(docForExpense(w, e, persona)), setDocExpense(e.id))}>
                         View the receipt
                       </button>
                     )}
@@ -462,7 +463,7 @@ export function AgreementPage({
                         : e.status === "query"
                           ? "Receipt needed"
                           : e.status === "carried-in"
-                            ? "Carried in"
+                            ? "Spent before joining"
                             : "Waiting to be checked"}
                     </Chip>
                     {side === "funder" &&
@@ -515,6 +516,11 @@ export function AgreementPage({
                           Add the receipt
                         </ActionButton>
                       )}
+                    {e.by === persona.id && e.status === "reported" && (
+                      <ActionButton actor={persona.id} type="removeExpense" args={{ expenseId: e.id }} variant="secondary" success="Removed.">
+                        Remove (added by mistake)
+                      </ActionButton>
+                    )}
                   </div>
                 </Row>
               ))}
@@ -606,7 +612,7 @@ export function AgreementPage({
                         : ""}
                     </p>
                     {(p.proof || p.attestedBy) && (
-                      <button type="button" className="mt-1 inline-flex min-h-9 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => setDoc(docForProgress(w, p, persona))}>
+                      <button type="button" className="mt-1 inline-flex min-h-11 items-center text-small underline underline-offset-4 hover:text-signal" onClick={() => setDoc(docForProgress(w, p, persona))}>
                         View the {p.attestedBy && !p.proof ? "coach's confirmation" : "proof"}
                       </button>
                     )}
@@ -1099,7 +1105,7 @@ function Deliverables({
                   {d.pending ? ` · ${d.pending} waiting for the sponsor` : ""}
                 </p>
                 {(d.evidence ?? []).map((ev, i) => (
-                  <button key={i} type="button" className="mt-1 block min-h-9 text-left text-small underline underline-offset-4 hover:text-signal" onClick={() => setDoc(docForEvidence(w, d, i, persona))}>
+                  <button key={i} type="button" className="mt-1 block min-h-11 text-left text-small underline underline-offset-4 hover:text-signal" onClick={() => setDoc(docForEvidence(w, d, i, persona))}>
                     View proof {i + 1}: {ev.text}
                   </button>
                 ))}
@@ -2035,6 +2041,37 @@ const nextSlot = (w: World, programmeId: string, siteId: string) => {
   );
 };
 
+function CorrectSession({ persona, sessionId, max }: { persona: Person; sessionId: string; max: number }) {
+  const [open, setOpen] = useState(false);
+  const [n, setN] = useState("");
+  const [reason, setReason] = useState("");
+  const act = useAction(persona.id);
+  if (!open)
+    return (
+      <div>
+        <button type="button" className="mt-2 inline-flex min-h-11 items-center text-small text-ink underline underline-offset-4 hover:text-signal" onClick={() => setOpen(true)}>
+          Change the number who came
+        </button>
+        <Message error={null} done={act.done} />
+      </div>
+    );
+  return (
+    <div className="mt-3 space-y-3 text-ink">
+      <label className="block text-small text-subtle" htmlFor={`fix-n-${sessionId}`}>How many came (1 to {max})</label>
+      <input id={`fix-n-${sessionId}`} inputMode="numeric" className={inputCls + " max-w-[10rem]"} value={n} onChange={(e) => setN(e.target.value)} />
+      <label className="block text-small text-subtle" htmlFor={`fix-r-${sessionId}`}>Why are you changing it? (kept in the record)</label>
+      <input id={`fix-r-${sessionId}`} className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Typed 41 instead of 14" />
+      <span className="flex flex-wrap gap-3">
+        <button type="button" className={btn("primary")} onClick={() => act.run("correctSession", { sessionId, attendance: /^\d+$/.test(n.trim()) ? Number(n.trim()) : NaN, reason }, "Corrected. The change and your reason are in the record.") && setOpen(false)}>
+          Save the correction
+        </button>
+        <button type="button" className={btn("quiet")} onClick={() => setOpen(false)}>Cancel</button>
+      </span>
+      <Message error={act.error} done={null} />
+    </div>
+  );
+}
+
 function SessionRecorder({
   persona,
   programmeId,
@@ -2060,7 +2097,7 @@ function SessionRecorder({
   return (
     <Section title={site.name}>
       {slot === undefined ? (
-        <p className="py-4 text-muted">
+        <div className="py-4 text-muted">
           <CircleCheck
             className="mr-1 inline size-4 text-ok"
             aria-hidden="true"
@@ -2070,7 +2107,10 @@ function SessionRecorder({
             ? `${last.attendance} came`
             : `couldn't run (${last?.reason})`}
           .
-        </p>
+          {last && last.by === persona.id && last.status === "delivered" && !last.checked && (
+            <CorrectSession persona={persona} sessionId={last.id} max={site.participants} />
+          )}
+        </div>
       ) : (
         <div className="py-4">
           <p className="font-display text-xl font-bold">
@@ -2568,6 +2608,11 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
   const REF = /\b(best|rank|ranking|top|worst|deserv\w*|should (we|i) (give|fund|stop|cut|increase|pay|renew|continue|drop)|more money|decide|approve|reject|most talented|potential|which child|identify|who is|surname|address|school)\b/i;
   if (REF.test(q)) return { q, lead: "That decision is yours, so I won't make it: I can't rank people, judge potential, decide funding or identify young participants. I can show the records that help you decide; try one of the questions above.", rows: [], from: "", refusal: true };
   const fid = persona.funderId!;
+  // A question that names another funder gets a plain refusal, never this funder's own figures in its place.
+  const lq = q.toLowerCase();
+  const other = Object.values(w.funders).find((f) => f.id !== fid && [f.name, f.name.split(" ")[0]].some((n) => n.length > 3 && !/^(coastal|women)/i.test(n) && new RegExp(`\\b${n.toLowerCase()}\\b`).test(lq)));
+  const otherPerson = Object.values(w.people).find((p) => p.funderId && p.funderId !== fid && p.persona && new RegExp(`\\b${p.name.split(" ")[0].toLowerCase()}\\b`).test(lq));
+  if (other || otherPerson) return { q, lead: `I only see ${w.funders[fid].name}'s own records, so I can't answer about ${other?.name ?? otherPerson!.name}. Ask about your own funding instead.`, rows: [], from: "", refusal: true };
   const all = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR_OF(w, g.fundId) !== "inkind");
   // Money totals cover development and programme cash only; commercial sponsorship is reported apart (invariant I6).
   const mine = all.filter((g) => BEHAVIOUR_OF(w, g.fundId) !== "commercial");
@@ -2620,7 +2665,7 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
     const nm = rows.filter((r) => !r.g.light);
     const light = rows.filter((r) => r.g.light);
     const note = (x: NonNullable<ReturnType<typeof nextInstalment>>) => (x.status === "on-hold" ? `On hold until ${x.condition}` : x.status === "due" || x.status === "part-paid" ? "Due now: ready to pay" : x.condition && !x.conditionMet ? `Once ${x.condition}` : "No condition outstanding");
-    return { q, lead: rows.length ? `${fmt(toPay)} is still to pay across ${rows.length} agreements${comm ? ` (${fmt(comm)} of it commercial sponsorship)` : ""}. ${nowDue.length ? `${nowDue.length} ${nowDue.length === 1 ? "payment is" : "payments are"} due now (${fmt(nowDue.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0))}).` : "Nothing is due today."} The list shows each agreement's next payment.` : "Nothing is left to pay.", rows: [...nm.slice(0, 8).map((r) => ({ label: `${r.x!.status === "due" || r.x!.status === "part-paid" ? "Due now" : r.x!.dueLabel}: ${who(r.g)}`, value: fmt(r.x!.amount - r.x!.paid), note: note(r.x!), href: link(r.g) })), ...(light.length ? [{ label: `${light.length} other agreements, grouped`, value: fmt(light.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0)), note: `Next payments; ${light.filter((r) => r.x!.status === "due").length} due now. Record them from Funding.` }] : [])], from: "Payment schedules" };
+    return { q, lead: rows.length ? `${fmt(toPay)} is still to pay across ${rows.length} agreements${comm ? ` (${fmt(comm)} of it commercial sponsorship)` : ""}. ${nowDue.length ? `${nowDue.length} ${nowDue.length === 1 ? "payment is" : "payments are"} due now (${fmt(nowDue.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0))}).` : "Nothing is due today."} The list shows each agreement's next payment.` : "Nothing is left to pay.", rows: [...nm.slice(0, 8).map((r) => ({ label: `${r.x!.status === "due" || r.x!.status === "part-paid" ? "Due now" : r.x!.dueLabel}: ${who(r.g)}`, value: fmt(r.x!.amount - r.x!.paid), note: note(r.x!), href: link(r.g) })), ...(light.length ? [{ label: `${light.length} other agreements, grouped`, value: fmt(light.reduce((a, r) => a + r.x!.amount - r.x!.paid, 0)), note: `Next payments; ${light.filter((r) => r.x!.status === "due" || r.x!.status === "part-paid").length} due now. Record them from Funding.` }] : [])], from: "Payment schedules" };
   }
   if (/programme|behind|schedule|session|site/.test(ql)) {
     const progs = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));

@@ -2,8 +2,8 @@ import { CircleCheck, Lock, ShieldCheck } from "lucide-react";
 import { useStore } from "../state/store";
 import type { Person } from "../domain/model";
 import { fmt } from "../domain/engine";
-import { Chip, PageHead, seg, Tabs } from "../components/ui";
-import { ActionButton, Empty, Message, Row, Section, useAction } from "./common";
+import { btn, Chip, PageHead, seg, Tabs } from "../components/ui";
+import { ActionButton, Empty, inputCls, Message, Row, Section, useAction } from "./common";
 import { useManaging } from "../components/Shell";
 import { useState } from "react";
 
@@ -16,6 +16,7 @@ export function Safety({ persona }: { persona: Person }) {
   const ath = athId ? w.athletes[athId] : undefined;
   const act = useAction(persona.id);
   const [last, setLast] = useState<string>("");
+  const [confirmBlock, setConfirmBlock] = useState<string | null>(null);
   if (!ath) return <Empty>Choose an athlete first.</Empty>;
   const consent = (p: "photos" | "progress") => w.consents.find((c) => c.athleteId === ath.id && c.purpose === p)?.value;
   const reps = w.authorisations.filter((a) => a.athleteId === ath.id);
@@ -31,8 +32,8 @@ export function Safety({ persona }: { persona: Person }) {
           {persona.role === "athlete" ? "See exactly what funders see about me" : `See exactly what funders see about ${ath.name.split(" ")[0]}`}
         </a>
       </p>
-      {!canChange && <p className="flex gap-2 text-muted"><Lock className="mt-1 size-4" aria-hidden="true" /> As a coach you cannot change consent, accept offers or publish requests.</p>}
-      <Section title="What you have agreed to">
+      {!canChange && <p className="flex gap-2 text-muted"><Lock className="mt-1 size-4" aria-hidden="true" /> As a coach you can see these choices, but only {ath.name.split(" ")[0]}&rsquo;s guardian can change them, accept offers or publish requests.</p>}
+      <Section title={canChange ? "Your choices" : `${ath.name.split(" ")[0]}'s choices`}>
         <ul>
           {(
             [
@@ -92,13 +93,20 @@ export function Safety({ persona }: { persona: Person }) {
               <span>
                 {w.people[z.coachId]?.name} · coach
               </span>
-              <span className="text-small text-subtle">May: prepare applications, submit updates. Never: submit for a minor, accept offers, publish requests, change consent.</span>
+              <span className="flex flex-col items-start gap-2 text-small text-subtle sm:items-end">
+                May: prepare applications, submit updates. Never: submit for a minor, accept offers, publish requests, change consent.
+                {canChange && (
+                  <ActionButton actor={persona.id} type="removeCoach" args={{ athleteId: ath.id, coachId: z.coachId }} variant="secondary" success="Access removed. This takes effect now.">
+                    Remove access
+                  </ActionButton>
+                )}
+              </span>
             </Row>
           ))}
           {reps.length === 0 && <Empty li>No coach authorised.</Empty>}
         </ul>
         {canChange && !reps.some((z) => z.coachId === "jonas") && ath.club === "Saltmere Sports Academy" && ath.sport === "Swimming" && (
-          <ActionButton className="mt-4" actor={persona.id} type="authoriseCoach" args={{ athleteId: ath.id, coachId: "jonas" }} success="Jonas Becker authorised with limited powers.">
+          <ActionButton className="mt-4" actor={persona.id} type="authoriseCoach" args={{ athleteId: ath.id, coachId: "jonas" }} variant="secondary" success="Jonas Becker authorised with limited powers.">
             Authorise Jonas Becker (prepare and updates only)
           </ActionButton>
         )}
@@ -109,11 +117,30 @@ export function Safety({ persona }: { persona: Person }) {
             <Row key={fid}>
               <span>{w.funders[fid].name}</span>
               {blocked.includes(fid) ? (
-                <Chip kind="self">Blocked: no new contact; existing agreements continue</Chip>
+                <span className="flex flex-wrap items-center gap-2">
+                  <Chip kind="self">Blocked: no new contact; existing agreements continue</Chip>
+                  {canChange && (
+                    <ActionButton actor={persona.id} type="unblockFunder" args={{ athleteId: ath.id, funderId: fid }} variant="secondary" success="Unblocked. They can contact you again; lapsed offers stay lapsed.">
+                      Unblock
+                    </ActionButton>
+                  )}
+                </span>
+              ) : canChange && confirmBlock === fid ? (
+                <span className="flex flex-col items-start gap-2 sm:items-end">
+                  <span className="text-small text-muted">Block {w.funders[fid].name}? Their open offers lapse. Agreed funding continues.</span>
+                  <span className="flex gap-2">
+                    <ActionButton actor={persona.id} type="blockFunder" args={{ athleteId: ath.id, funderId: fid }} variant="secondary" success="Blocked. You can unblock at any time.">
+                      Yes, block
+                    </ActionButton>
+                    <button type="button" className="min-h-11 px-3 text-small text-muted underline" onClick={() => setConfirmBlock(null)}>
+                      Cancel
+                    </button>
+                  </span>
+                </span>
               ) : canChange ? (
-                <ActionButton actor={persona.id} type="blockFunder" args={{ athleteId: ath.id, funderId: fid }} variant="secondary" success="Blocked.">
+                <button type="button" className={btn("secondary")} onClick={() => setConfirmBlock(fid)}>
                   Block
-                </ActionButton>
+                </button>
               ) : null}
             </Row>
           ))}
@@ -135,6 +162,7 @@ export function Safety({ persona }: { persona: Person }) {
 export function Admin({ persona }: { persona: Person }) {
   const { world: w } = useStore();
   const [tab, setTab] = useState<"safeguarding" | "verification" | "audit">("safeguarding");
+  const [find, setFind] = useState("");
   const reviews = Object.values(w.offers).filter((o) => o.status === "safeguarding");
   const unverified = Object.values(w.funders).filter((f) => !f.verified);
   const cards = Object.values(w.requests).filter((r) => r.minor);
@@ -213,6 +241,8 @@ export function Admin({ persona }: { persona: Person }) {
       )}
       {tab === "audit" && (
         <div className="relative mt-4 overflow-x-auto">
+          <label htmlFor="audit-find" className="text-small text-subtle">Find a person, action or record</label>
+          <input id="audit-find" className={inputCls + " mt-1 mb-4 max-w-md"} value={find} onChange={(e) => setFind(e.target.value)} placeholder="For example: Kenji, offered, Greenpark" />
           <table className="w-full min-w-[44rem] text-table">
             <thead>
               <tr className="label-data border-b border-line text-left text-subtle">
@@ -224,7 +254,7 @@ export function Admin({ persona }: { persona: Person }) {
               </tr>
             </thead>
             <tbody>
-              {[...w.audit].reverse().slice(0, 80).map((r) => (
+              {[...w.audit].reverse().filter((r) => !find.trim() || `${w.people[r.actor]?.name ?? r.actor} ${r.action} ${r.record}`.toLowerCase().includes(find.trim().toLowerCase())).slice(0, 80).map((r) => (
                 <tr key={r.n} className="border-b border-line align-top">
                   <td className="py-2 pr-4 text-subtle">{r.n}</td>
                   <td className="py-2 pr-4">{r.at === "apr12" ? "12 Apr" : r.at === "may06" ? "6 May" : "30 Jun"}</td>
@@ -238,7 +268,7 @@ export function Admin({ persona }: { persona: Person }) {
               ))}
             </tbody>
           </table>
-          <p className="mt-2 flex gap-2 text-small text-subtle"><CircleCheck className="size-4" aria-hidden="true" /> Every action in the prototype writes one row. Most recent first.</p>
+          <p className="mt-2 flex gap-2 text-small text-subtle"><CircleCheck className="size-4" aria-hidden="true" /> Every action in the prototype writes one row, with the reason wherever one was given. Most recent 80 shown first; use Find for older rows.</p>
         </div>
       )}
     </div>

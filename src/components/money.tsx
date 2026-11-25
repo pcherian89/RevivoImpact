@@ -145,14 +145,18 @@ export function MiniLine({ total, current, label }: { total: number; current: nu
  * open its records.
  */
 export type MoneyParts = { committed: number; paid: number; received: number; spent: number; checked: number; carriedSpent?: number; carriedPaid?: number };
-export function FundingBar({ m, audience, sources, who }: { m: MoneyParts; audience: "funder" | "recipient"; who?: string; sources?: Partial<Record<"checked" | "waiting" | "carried" | "notYetSpent" | "stillToPay" | "paid", Source>> }) {
+export function FundingBar({ m, audience, sources, who, commercial }: { m: MoneyParts; audience: "funder" | "recipient"; who?: string; commercial?: boolean; sources?: Partial<Record<"checked" | "waiting" | "carried" | "notYetSpent" | "stillToPay" | "paid", Source>> }) {
   // "you" only for the athlete or organisation itself; a guardian or coach reads "Paid to Tiago".
   const me = audience === "recipient" && !who;
   const recipient = audience === "recipient";
   const carried = m.carriedSpent ?? 0;
-  const seg = [
+  // A sponsorship fee is not accounted for by spending, so a commercial bar shows only paid and still to come.
+  const seg = commercial ? [
+    { key: "paid" as const, v: m.paid, label: "Paid", cls: "bg-ink" },
+    { key: "stillToPay" as const, v: m.committed - m.paid, label: recipient ? "Still to come" : "Still to pay", cls: "border border-dashed border-control" },
+  ] : [
     { key: "checked" as const, v: m.checked, label: recipient ? "Spent, checked by the funder" : "Spent and checked", cls: "bg-ink" },
-    { key: "carried" as const, v: carried, label: "Spent before joining (carried in)", cls: "border border-ink bg-ink/40" },
+    { key: "carried" as const, v: carried, label: "Spent before joining Revivo Impact", cls: "border border-ink bg-ink/40" },
     { key: "waiting" as const, v: m.spent - m.checked - carried, label: "Spent, waiting to be checked", cls: "hatch border border-steel" },
     { key: "notYetSpent" as const, v: Math.max(0, m.paid - m.spent), label: "Paid, not yet spent", cls: "border border-ink bg-surface-2" },
     { key: "stillToPay" as const, v: m.committed - m.paid, label: recipient ? "Still to come" : "Still to pay", cls: "border border-dashed border-control" },

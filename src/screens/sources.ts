@@ -24,7 +24,7 @@ export function agreementSources(w: World, id: string, viewer: Person) {
     ),
     checked: src("Spent and checked", ex.filter((e) => e.status === "checked").map(row)),
     waiting: src("Spent, waiting to be checked", ex.filter((e) => e.status === "reported" || e.status === "query").map(row)),
-    carried: src("Spent before joining (carried in)", ex.filter((e) => e.status === "carried-in").map(row), "Carried-in figures are shown as reported. They are never counted as checked."),
+    carried: src("Spent before joining Revivo Impact", ex.filter((e) => e.status === "carried-in").map(row), "Figures from before joining are shown as reported. They are never counted as checked."),
     notYetSpent: src("Paid, not yet spent", [{ label: "Paid", value: fmt(t.paid) }, { label: "Minus spending recorded", value: `− ${fmt(t.spent)}` }], `${fmt(t.notYetSpent)} is paid but not yet accounted for.`),
     stillToPay: src("Still to pay", [{ label: "Committed", value: fmt(t.committed) }, { label: "Minus paid so far", value: `− ${fmt(t.paid)}` }], g.nextUpdate),
   };
