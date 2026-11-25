@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowRight, ChevronRight, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
-import { agreementTotals, counts, fit, fmt, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
+import { agreementTotals, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SeeSource, SimulatedAI, Tabs } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
@@ -42,6 +42,8 @@ export function FunderOverview({ persona }: { persona: Person }) {
   if (shortlisted.length && persona.perms.includes("Approve")) needs.push({ t: `${shortlisted.length} recommendations are ready for decision`, d: "See the budget and award levels before you decide.", a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
   const toReview = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "submitted" && a.scores.length < 2 && !a.scores.some((s) => s.by === persona.id) && !a.light);
   if (toReview.length && persona.perms.includes("Review")) needs.push({ t: `${toReview.length} application${toReview.length > 1 ? "s" : ""} to review`, d: toReview.map((a) => athleteLabel(w, a.applicantId, persona)).join(", "), a: "Review", to: `review/${toReview[0].id}` });
+  const dueNow = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && !g.light && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind" && agreementTotals(w, g.id).paid > 0 && scheduleOf(w, g.id).some((x) => x.status === "due" || x.status === "part-paid"));
+  if (dueNow.length && persona.perms.includes("Finance")) needs.push({ t: `${plural(dueNow.length, "payment")} due now`, d: dueNow.map((g) => recipientName(w, g.recipientKind, g.recipientId, persona)).join(", "), a: "Record a payment", to: `agreement/${dueNow[0].id}` });
   const toRelease = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light && released(w, g.id) === 0 && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
   if (toRelease.length && persona.perms.includes("Finance")) needs.push({ t: toRelease.length > 1 ? `${toRelease.length} first payments to record` : `First payment to record for ${recipientName(w, toRelease[0].recipientKind, toRelease[0].recipientId, persona)}`, d: "Your finance team pays; you record it here (simulated: no money moves).", a: "Record a payment", to: `agreement/${toRelease[0].id}` });
   const main = funds.find((x) => x.id === "eas") ?? funds[0];
@@ -1098,6 +1100,7 @@ export function Portfolio({ persona }: { persona: Person }) {
       </div>
       {tab === "agreements" && (
         <>
+          <UpcomingPayments persona={persona} cash={cash} />
           <Section title="Who we support" aside={<button type="button" className={btn("secondary", "min-h-10")} onClick={() => setAdding(true)}>Add existing funding</button>}>
             <ul>
               {own.map((g) => {
@@ -1212,6 +1215,47 @@ export function Portfolio({ persona }: { persona: Person }) {
       <AddExisting persona={persona} open={adding} onClose={() => setAdding(false)} />
       <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
     </div>
+  );
+}
+
+/** "Which payments are coming up?": the next unpaid part of every agreement, by date; earlier rounds grouped. */
+function UpcomingPayments({ persona, cash }: { persona: Person; cash: World["agreements"][string][] }) {
+  const { world: w } = useStore();
+  type Row = { key: string; dueISO: string; when: string; who: string; amount: number; note: string; href?: string; due: boolean };
+  const rows = new Map<string, Row>();
+  for (const g of cash) {
+    for (const x of scheduleOf(w, g.id).filter((i) => i.status !== "paid")) {
+      const left = x.amount - x.paid;
+      const due = x.status === "due" || x.status === "part-paid";
+      const note = x.status === "on-hold" ? "On hold after a review" : x.condition && !x.conditionMet ? `Once ${x.condition}` : x.condition ? `Condition met: ${x.condition}` : due ? "Ready to pay" : "No condition";
+      if (g.light) {
+        const key = `${g.fundId}|${x.dueLabel}|${due}`;
+        const r = rows.get(key);
+        if (r) {
+          r.amount += left;
+          r.who = r.who.replace(/^\d+/, (n) => String(Number(n) + 1));
+        } else rows.set(key, { key, dueISO: x.dueISO, when: due ? "Due now" : x.dueLabel, who: `1 earlier ${w.funds[g.fundId].type.toLowerCase()} · ${w.funds[g.fundId].name}`, amount: left, note, due });
+      } else rows.set(`${g.id}|${x.n}`, { key: `${g.id}|${x.n}`, dueISO: x.dueISO, when: due ? "Due now" : x.dueLabel, who: `${recipientName(w, g.recipientKind, g.recipientId, persona)} · ${w.funds[g.fundId].type.toLowerCase()}`, amount: left, note, href: `#/app/${persona.id}/agreement/${g.id}`, due });
+    }
+  }
+  const list = [...rows.values()].map((r) => ({ ...r, who: r.who.replace(/^(\d+) earlier ([a-z ]+?) ·/, (_, n, t) => (n === "1" ? `1 earlier ${t} ·` : `${n} earlier ${t}s ·`)) })).sort((a, b) => Number(b.due) - Number(a.due) || a.dueISO.localeCompare(b.dueISO));
+  if (!list.length) return null;
+  return (
+    <Section title="Which payments are coming up?">
+      <ul>
+        {list.slice(0, 8).map((r) => (
+          <li key={r.key} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-line py-3 sm:grid-cols-[11rem_1fr_8rem]">
+            <span className={cn("font-medium", r.due && "text-signal")}>{r.when}</span>
+            <span className="col-start-1 row-start-2 sm:col-start-2 sm:row-start-1">
+              {r.href ? <a className="hover:text-signal" href={r.href}>{r.who}</a> : r.who}
+              <span className="block text-small text-subtle">{r.note}</span>
+            </span>
+            <span className="row-span-2 text-right font-medium tabular-nums sm:row-span-1">{fmt(r.amount)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-small text-subtle">Planned payments from each agreement&rsquo;s schedule. Only a recorded payment counts as paid (simulated).</p>
+    </Section>
   );
 }
 

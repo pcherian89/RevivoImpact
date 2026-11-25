@@ -24,6 +24,8 @@ import {
 import {
   agreementTotals,
   progressPaused,
+  scheduleOf,
+  nextInstalment,
   BEHAVIOUR_OF,
   claimsCheck,
   fmt,
@@ -348,6 +350,8 @@ export function AgreementPage({
             </ActionButton>
           )}
       </Section>
+
+      <PaymentSchedule g={g} me={me} />
 
       {!commercial && (
         <Section
@@ -744,14 +748,53 @@ function ExistingFundingBanner({
   );
 }
 
+/** "When will the money come?" Both sides see the same schedule; scheduled is never shown as paid. */
+function PaymentSchedule({ g, me }: { g: Agreement; me: boolean }) {
+  const { world: w } = useStore();
+  const sc = scheduleOf(w, g.id);
+  const t = agreementTotals(w, g.id);
+  if (sc.length < 2 && sc[0]?.status === "paid") return null;
+  const nx = sc.find((x) => x.status !== "paid");
+  const word: Record<string, string> = { paid: "Paid", "part-paid": "Part paid", due: "Due now", waiting: "Due, waiting on a condition", expected: "Expected", "on-hold": "On hold after the review" };
+  return (
+    <Section title="When will the money come?">
+      <p className="mt-4">
+        <span className="font-medium">{fmt(g.amount)}</span> {me ? "agreed" : "committed"} · <span className="font-medium">{fmt(t.paid)}</span> paid · <span className="font-medium">{fmt(t.stillToPay)}</span> still to pay
+        {nx ? (
+          <>
+            {" "}· next: <span className="font-medium">{fmt(nx.amount - nx.paid)}</span> {nx.status === "due" ? "due now" : `expected ${nx.dueLabel}`}
+            {nx.condition && !nx.conditionMet ? `, once ${nx.condition}` : ""}
+          </>
+        ) : null}
+      </p>
+      <ol className="mt-3">
+        {sc.map((x) => (
+          <li key={x.n} className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-line py-3 sm:grid-cols-[14rem_7rem_1fr_auto]">
+            <span className="font-medium">{x.dueLabel}</span>
+            <span className="text-right tabular-nums sm:text-left">{fmt(x.amount)}</span>
+            <span className="col-span-2 text-small text-subtle sm:col-span-1">{x.condition ? `Condition: ${x.condition}${x.conditionMet ? " (met)" : ""}` : "No condition"}</span>
+            <span className="col-span-2 text-small sm:col-span-1 sm:text-right">
+              {word[x.status]}
+              {x.status === "paid" ? (x.received >= x.amount ? " · arrival confirmed" : " · not yet confirmed") : ""}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 text-small text-subtle">A schedule shows what is planned. Only a recorded payment counts as paid (simulated: no money moves).</p>
+    </Section>
+  );
+}
+
 function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
   const { world: w } = useStore();
   const t = agreementTotals(w, g.id);
   const halves = ["Scholarship award", "Sponsorship agreement"].includes(
     w.funds[g.fundId].type,
   );
+  // The amount starts at what the schedule says is next (never the whole balance).
+  const nx = nextInstalment(w, g.id);
   const [amount, setAmount] = useState(
-    String(halves && t.paid === 0 ? g.amount / 2 : t.stillToPay),
+    String(nx ? nx.amount - nx.paid : halves && t.paid === 0 ? g.amount / 2 : t.stillToPay),
   );
   const act = useAction(persona.id);
   const n =

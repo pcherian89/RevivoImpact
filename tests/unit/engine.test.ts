@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { baseWorld } from "../../src/domain/model";
-import { agreementTotals, apply, claimsCheck, counts, fundTotals, platformTotals, programmeTotals, requestTotals, RuleError, type Event } from "../../src/domain/engine";
+import { agreementTotals, apply, claimsCheck, counts, scheduleOf, fundTotals, platformTotals, programmeTotals, requestTotals, RuleError, type Event } from "../../src/domain/engine";
 import { checkpoint, JOURNEYS, stepEvents } from "../../src/domain/story";
 
 const replay = (evs: Event[]) => {
@@ -379,5 +379,39 @@ describe("P3 verifier regressions", () => {
     expect(at(w, "amira", "addExpense", { expenseId: "d2", agreementId: "ag-amira", what: "Physio", amount: 85, paidOn: "Mon 28 Jun", receipt: true })).toMatch(/already recorded/);
     expect(at(w, "daniel", "register", { kind: "athlete", personId: "daniel", name: "Daniel Osei", age: 30, sport: "Judo", region: "Coastal Region", gender: "man" })).toMatch(/already exists/);
     expect(at(w, "sam", "recordSession", { sessionId: "s1", programmeId: "play-every-day", siteId: "riverside", slot: 19, status: "delivered", attendance: 10 })).toMatch(/sites you coach|already been recorded/);
+  });
+});
+
+/* P4: payment schedules derived from the records (never typed in). */
+describe("payment schedules", () => {
+  const full = () => {
+    const w = replay(checkpoint("jun30"));
+    for (const j of JOURNEYS) for (const s of j.steps.filter((x) => x.when === "jun30")) for (const e of stepEvents(s)) apply(w, e);
+    return w;
+  };
+  it("Amira: half paid and confirmed; the second half waits on Wed 1 Sep for the judogi receipt", () => {
+    const sc = scheduleOf(full(), "ag-amira");
+    expect(sc.map((x) => [x.amount, x.status])).toEqual([[2250, "paid"], [2250, "expected"]]);
+    expect(sc[1].dueLabel).toBe("Wed 1 Sep");
+    expect(sc[1].condition).toMatch(/judogi receipt/);
+    expect(sc.reduce((a, x) => a + x.amount, 0)).toBe(4500);
+  });
+  it("Play Every Day: five tranches of 12,000; quarter 2 due Thu 1 Jul once the report is accepted", () => {
+    const sc = scheduleOf(full(), "ag-pe1");
+    expect(sc.map((x) => x.amount)).toEqual([12000, 12000, 12000, 12000, 12000]);
+    expect(sc[0].status).toBe("paid");
+    expect(sc[1]).toMatchObject({ dueLabel: "Thu 1 Jul (quarter 2)", conditionMet: true, status: "expected" });
+  });
+  it("existing funding: carried-in money is the first, already-paid part; the rest follows the next update", () => {
+    const sc = scheduleOf(full(), "ag-ostral");
+    expect(sc.map((x) => [x.amount, x.status])).toEqual([[12000, "paid"], [12000, "expected"]]);
+  });
+  it("every schedule adds up to the committed amount; paid never exceeds the schedule", () => {
+    const w = full();
+    for (const g of Object.values(w.agreements).filter(counts)) {
+      const sc = scheduleOf(w, g.id);
+      expect(sc.reduce((a, x) => a + x.amount, 0)).toBe(g.amount);
+      expect(sc.reduce((a, x) => a + x.paid, 0)).toBe(Math.min(g.amount, agreementTotals(w, g.id).paid));
+    }
   });
 });

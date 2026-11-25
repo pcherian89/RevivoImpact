@@ -72,6 +72,66 @@ export function agreementTotals(w: World, agreementId: string) {
   return { committed: g.amount, paid, carriedPaid, received: rec, toConfirm: Math.max(0, paid - carriedPaid - rec), spent, checked, carriedSpent, waiting: spent - checked - carriedSpent, query, notYetSpent: Math.max(0, paid - spent), stillToPay: g.amount - paid };
 }
 
+/**
+ * Payment schedule (founder, P4): when each part of an agreement is expected and on what condition. It is derived from
+ * the agreement's type and records, never typed in, so it always agrees with the ledger. Scheduled is not paid; paid is
+ * not received.
+ */
+export type Instalment = { n: number; amount: number; dueISO: string; dueLabel: string; condition?: string; conditionMet?: boolean; status: "paid" | "part-paid" | "due" | "waiting" | "expected" | "on-hold"; paid: number; received: number };
+const MOMENT_ISO: Record<Moment, string> = { apr12: "2027-04-12", may06: "2027-05-06", jun30: "2027-06-30" };
+const ACCEPT_LABEL: Record<Moment, string> = { apr12: "Before 12 Apr", may06: "Thu 6 May", jun30: "Wed 30 Jun" };
+export function scheduleOf(w: World, agreementId: string): Instalment[] {
+  const g = w.agreements[agreementId];
+  const type = w.funds[g.fundId].type;
+  const t = agreementTotals(w, agreementId);
+  const review = Object.values(w.reviews).filter((r) => r.agreementId === g.id).pop();
+  const accepted = { dueISO: MOMENT_ISO[g.acceptedAt], dueLabel: `${ACCEPT_LABEL[g.acceptedAt]} (on acceptance)` };
+  type Plan = { amount: number; dueISO: string; dueLabel: string; condition?: string; met?: boolean };
+  let plan: Plan[];
+  if (g.origin === "Existing agreement") {
+    plan = [
+      { amount: t.carriedPaid, dueISO: "2027-06-30", dueLabel: "Paid before joining Revivo Impact" },
+      { amount: g.amount - t.carriedPaid, dueISO: "2027-09-30", dueLabel: "Thu 30 Sep", condition: "the next update is received", met: false },
+    ].filter((x) => x.amount > 0);
+  } else if (type === "Scholarship award") {
+    const half = g.amount / 2;
+    const allChecked = t.spent > 0 && t.waiting === 0;
+    plan = [
+      { amount: half, ...accepted },
+      { amount: g.amount - half, dueISO: "2027-09-01", dueLabel: "Wed 1 Sep", condition: review?.conditions && review.decision === "Continue with conditions" ? review.conditions.split(";")[0].replace(/^Instalment 2 on Wed 1 Sep once /i, "").replace(/\.$/, "") : "the quarterly update is in and its spending checked", met: review?.decision === "Continue with conditions" ? false : allChecked },
+    ];
+  } else if (type === "Sponsorship agreement") {
+    const half = g.amount / 2;
+    const dels = Object.values(w.deliverables).filter((d) => d.agreementId === g.id);
+    plan = [
+      { amount: half, ...accepted },
+      { amount: g.amount - half, dueISO: "2027-12-01", dueLabel: "Wed 1 Dec", condition: "the first two deliverables are done", met: dels.length >= 2 && dels.slice(0, 2).every((d) => d.status === "complete") },
+    ];
+  } else if (type === "Programme grant") {
+    const q = g.amount / 5;
+    const accepted2 = Object.values(w.reports).some((r) => r.agreementId === g.id && r.status === "accepted");
+    plan = [
+      { amount: q, dueISO: "2027-04-12", dueLabel: "Mon 12 Apr (quarter 1)" },
+      { amount: q, dueISO: "2027-07-01", dueLabel: "Thu 1 Jul (quarter 2)", condition: "the quarter 1 report is accepted", met: accepted2 },
+      { amount: q, dueISO: "2027-10-01", dueLabel: "Fri 1 Oct (quarter 3)", condition: "the quarter 2 report is accepted", met: false },
+      { amount: q, dueISO: "2028-01-04", dueLabel: "Tue 4 Jan (quarter 4)", condition: "the quarter 3 report is accepted", met: false },
+      { amount: g.amount - 4 * q, dueISO: "2028-04-03", dueLabel: "After the year-end report", condition: "the year-end report is accepted", met: false },
+    ];
+  } else plan = [{ amount: g.amount, ...accepted }];
+  const today = MOMENT_ISO[w.moment];
+  const onHold = review && (review.decision === "Pause" || review.decision === "Close");
+  let before = 0;
+  return plan.map((p, i) => {
+    const paid = Math.max(0, Math.min(p.amount, t.paid - before));
+    const received = Math.max(0, Math.min(p.amount, t.received + t.carriedPaid - before));
+    before += p.amount;
+    const status: Instalment["status"] = paid >= p.amount ? "paid" : paid > 0 ? "part-paid" : onHold ? "on-hold" : p.dueISO > today ? "expected" : p.condition && !p.met ? "waiting" : "due";
+    return { n: i + 1, amount: p.amount, dueISO: p.dueISO, dueLabel: p.dueLabel, condition: p.condition, conditionMet: p.met, status, paid, received };
+  });
+}
+/** The next instalment not yet fully paid (or undefined when everything is paid). */
+export const nextInstalment = (w: World, agreementId: string) => scheduleOf(w, agreementId).find((x) => x.status !== "paid");
+
 /** Programme status per site (docs/05 §6): ≥95% on track, 85–94% needs attention, <85% behind; alert after two missed in a row. */
 export const LAST_SLOT: Record<Moment, number> = { apr12: 1, may06: 9, jun30: 19 };
 export function siteStatus(w: World, programmeId: string, siteId: string) {

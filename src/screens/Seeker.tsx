@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
 import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
-import { agreementsFor, agreementTotals, eligibility, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
+import { agreementsFor, agreementTotals, nextInstalment, eligibility, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt,  requestTotals, stateLabel } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, SimulatedAI, Tabs } from "../components/ui";
 import { FundingBar, NeedBar } from "../components/money";
 import { ActionButton, AppStatus, Empty, Field, inputCls, Message, Row, Section, useAction } from "./common";
@@ -931,6 +931,16 @@ export function MyFunding({ persona }: { persona: Person }) {
             <div className="mt-6">
               <FundingBar m={t} audience="recipient" who={persona.role === "guardian" || persona.role === "coach" ? ath?.name.split(" ")[0] : undefined} sources={agreementSources(w, g.id, persona)} />
             </div>
+            {(() => {
+              const nx = nextInstalment(w, g.id);
+              return nx && t.paid > 0 ? (
+                <p className="mt-4 text-small">
+                  <span className="text-subtle">Next payment: </span>
+                  <span className="font-medium">{fmt(nx.amount - nx.paid)}</span> {nx.status === "due" || nx.status === "part-paid" ? "due now" : `expected ${nx.dueLabel}`}
+                  {nx.condition && !nx.conditionMet ? `, once ${nx.condition}` : ""}.
+                </p>
+              ) : null;
+            })()}
             <div className="mt-5 flex flex-wrap items-start gap-3">
               {owe && (
                 <ActionButton actor={persona.id} type="confirmReceipt" args={{ agreementId: g.id, entryId: `rc-${g.id}-${Date.now()}` }} success="Thank you. Arrival confirmed.">
