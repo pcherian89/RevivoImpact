@@ -305,14 +305,14 @@ h1[tabindex="-1"]:focus {
     transform: none;
   }
 }
-main > div[class] > :first-child {
+main > div > :first-child {
   animation: ri-enter 220ms ease-out both;
 }
-[data-ri-motion="reduced"] main > div[class] > :first-child {
+[data-ri-motion="reduced"] main > div > :first-child {
   animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  main > div[class] > :first-child {
+  main > div > :first-child {
     animation: none;
   }
 }
