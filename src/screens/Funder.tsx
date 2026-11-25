@@ -25,7 +25,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const waiting = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "second-approval");
   const forMe = waiting.filter((o) => o.by !== persona.id);
   if (forMe.length && persona.perms.includes("Approve")) needs.push({ t: `${forMe.length} offer${forMe.length > 1 ? "s" : ""} waiting for your second approval`, d: "A colleague made them; this fund needs two people.", a: "Give second approval", to: "apps" });
-  else if (waiting.length && persona.perms.includes("Approve")) needs.push({ t: `${waiting.length} of your offers ${waiting.length > 1 ? "are" : "is"} waiting for a second approver`, d: "Nothing reaches the recipient until a colleague with Approve agrees. You can withdraw it.", a: "See offers", to: "apps" });
+  else if (waiting.length && persona.perms.includes("Approve")) needs.push({ t: `${waiting.length} of your offers ${waiting.length > 1 ? "are" : "is"} waiting for a second approver`, d: "Nothing is sent until a colleague with Approve agrees. You can withdraw it.", a: "See offers", to: "apps" });
   // P3: money and reports that need a person at this funder
   const mineAg = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid);
   for (const g of mineAg.filter((g) => g.status === "awaiting-approval" && g.preparedBy !== persona.id && persona.perms.includes("Approve"))) needs.push({ t: `Approve existing funding for ${recipientName(w, g.recipientKind, g.recipientId, persona)}`, d: `${fmt(g.amount)} · prepared by ${w.people[g.preparedBy ?? ""]?.name}; a second person must approve it`, a: "Review and approve", to: `agreement/${g.id}` });
@@ -106,9 +106,9 @@ export function FunderOverview({ persona }: { persona: Person }) {
         </Section>
       )}
       <section className="mt-10 grid gap-8 border-t border-line pt-8 md:grid-cols-3">
-        <Answer q={isFoundation ? "Who applied" : "Who you support"} a={isFoundation ? plural(Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length, "application") : plural(pt.count, "agreement")} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
-        <Answer q="Committed · all funds" a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} />
-        <Answer q="Released · all funds" a={fmt(pt.released)} d="Recorded payments (simulated); recipients confirm receipt" />
+        <Answer q={isFoundation ? "Who has applied?" : "Who are we supporting?"} a={isFoundation ? plural(Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length, "application") : plural(pt.count, "agreement")} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
+        <Answer q="How much have we committed?" a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} />
+        <Answer q="How much have we paid?" a={fmt(pt.released)} d="Payments recorded (simulated); the people we fund confirm they arrived" />
       </section>
       <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
     </div>
@@ -413,7 +413,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
         <aside className="rounded-[10px] border border-line-strong p-5 max-lg:order-first">
           <UsersRound className="size-6 text-signal" aria-hidden="true" />
           <h2 className="text-subtitle mt-3">Offer support</h2>
-          <p className="mt-2 text-small text-muted">{r.minor ? "This offer goes to the athlete's guardian. You cannot contact the athlete directly; you see the first name only if the guardian accepts." : "The recipient can accept or decline. Contact details come only through an accepted agreement."}</p>
+          <p className="mt-2 text-small text-muted">{r.minor ? "This offer goes to the athlete's guardian. You cannot contact the athlete directly; you see the first name only if the guardian accepts." : "They can accept or decline. Contact details are shared only once they accept."}</p>
           {mine.map((o) => (
             <p key={o.id} role="status" className="mt-4 flex gap-2 text-signal">
               <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {fmt(o.amount)} offered · {o.status === "held" ? "waiting for acceptance" : o.status === "accepted" ? "accepted" : o.status === "safeguarding" ? "in platform safeguarding review" : o.status === "second-approval" ? "waiting for a second approver at your organisation" : o.status === "withdrawn" ? "withdrawn" : "declined"}
@@ -695,7 +695,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
               </button>
             ))}
           </div>
-          <p className="mt-4 text-small text-subtle">{apps.filter((a) => a.nominatedBy).length} by nomination · eligibility checked by rule · {w.funds[w.opps[oppId]?.fundId]?.policy === "Institutional" ? "two reviewers" : "one reviewer"} per application under this fund&rsquo;s policy</p>
+          <p className="mt-4 text-small text-subtle">{apps.filter((a) => a.nominatedBy).length} nominated · who qualifies is checked against the published rules · {w.funds[w.opps[oppId]?.fundId]?.policy === "Institutional" ? "two reviewers" : "one reviewer"} per application under this fund&rsquo;s rules</p>
           {(() => {
             const fundId = w.opps[oppId]?.fundId;
             const lightOffers = Object.values(w.offers).filter((o) => o.fundId === fundId && o.light && !o.applicationId);
@@ -842,7 +842,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
             <ul className="mt-2 space-y-1 text-small text-muted">
               <li>· Sport and level: {ath?.sport}, {ath?.level.toLowerCase()} (profile).</li>
               <li>· Results: {ath?.facts.filter((f) => f.kind === "result").map((f) => `${f.value} (${stateLabel(f)})`).join("; ") || "none on profile"}.</li>
-              <li>· Budget: {fmt(a.requested)} requested; tiers {fund.tiers?.map((t) => fmt(t.amount)).join(" / ")}.</li>
+              <li>· Budget: {fmt(a.requested)} requested; award levels {fund.tiers?.map((t) => fmt(t.amount)).join(" / ")}.</li>
               <li>· Statement: {a.aiDrafted ? "drafted with Simulated AI help, edited by the applicant" : "written by the applicant"}.</li>
               {undeclared.length > 0 && <li className="text-amber">· Rule found: current support on the profile ({undeclared.map((s) => `${s.label}, ${fmt(s.amount)}`).join("; ")}) is not declared under &ldquo;Other funding&rdquo;.</li>}
             </ul>
@@ -888,7 +888,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
           )}
           {canReview && ["submitted", "info"].includes(a.status) && tiers.length > 0 && (
             <div className="mt-6 border-t border-line pt-4">
-              <p className="font-medium">Recommend a tier</p>
+              <p className="font-medium">Recommend an award level</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {tiers.map((t) => (
                   <ActionButton key={t.amount} actor={persona.id} type="shortlist" args={{ appId: id, tier: t.amount }} variant={t.amount === 4500 ? "primary" : "secondary"} success="Shortlisted.">
@@ -896,7 +896,7 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
                   </ActionButton>
                 ))}
               </div>
-              <p className="mt-2 text-small text-subtle">{tiers.map((t) => `${fmt(t.amount)}: ${t.criterion.toLowerCase()}`).join(" · ")}{tiers.length < (fund.tiers?.length ?? 0) ? ` · Higher tiers are above the ${fmt(a.requested)} requested.` : ""}</p>
+              <p className="mt-2 text-small text-subtle">{tiers.map((t) => `${fmt(t.amount)}: ${t.criterion.toLowerCase()}`).join(" · ")}{tiers.length < (fund.tiers?.length ?? 0) ? ` · Higher levels are above the ${fmt(a.requested)} requested.` : ""}</p>
             </div>
           )}
           {a.status === "shortlisted" && <p className="mt-4 flex gap-2 text-signal"><CircleCheck className="size-5" aria-hidden="true" /> Shortlisted at {fmt(a.recommendedTier!)}. A different person with Approve decides.</p>}
@@ -1033,7 +1033,7 @@ export function Portfolio({ persona }: { persona: Person }) {
   ];
   return (
     <div className="pb-8">
-      <PageHead eyebrow={`Funding · ${w.funders[fid].name}`} title="Who are we supporting, and how is the money used?" lead="Development, programme, commercial and in-kind support are counted apart. Every figure comes from the records." />
+      <PageHead eyebrow={`Funding · ${w.funders[fid].name}`} title="Who are we supporting, and how is the money used?" lead="Athlete funding, programme funding, sponsorship and donated equipment are counted apart. Every figure comes from the records." />
       <section className="grid gap-6 border-b border-line pb-6 sm:grid-cols-3">
         {answers.map((x) => (
           <div key={x.q}>
@@ -1114,7 +1114,7 @@ export function Portfolio({ persona }: { persona: Person }) {
                         {recipientName(w, g.recipientKind, g.recipientId, persona)} · {w.funds[g.fundId].type} · {fmt(g.amount)}
                       </a>
                       <p className="mt-1 text-small text-subtle">
-                        {g.status === "awaiting-approval" ? "Waiting for a second approver" : g.status === "awaiting-recipient" ? "Waiting for the recipient to confirm" : `${fmt(t.paid)} paid · ${fmt(t.spent)} spent · ${fmt(t.checked)} checked`}
+                        {g.status === "awaiting-approval" ? "Waiting for a second approver" : g.status === "awaiting-recipient" ? "Waiting for them to confirm the figures" : `${fmt(t.paid)} paid · ${fmt(t.spent)} spent · ${fmt(t.checked)} checked`}
                         {g.origin === "Existing agreement" ? " · existing funding" : ""}
                       </p>
                     </div>
@@ -1204,7 +1204,7 @@ function AddExisting({ persona, open, onClose }: { persona: Person; open: boolea
   const act = useAction(persona.id);
   return (
     <Panel open={open} onClose={onClose} eyebrow="Add existing funding" title="Funding that started before Revivo Impact">
-      <p className="text-small text-muted">No new application is needed. A second person with Approve confirms it, then the recipient checks the figures.</p>
+      <p className="text-small text-muted">No new application is needed. A second person with Approve confirms it, then the organisation checks the figures.</p>
       <Field label="Who receives it?" htmlFor="ex-org">
         <select id="ex-org" className={inputCls} value={org} onChange={(e) => setOrg(e.target.value)}>
           {Object.values(w.orgs).filter((o) => !o.light).map((o) => (

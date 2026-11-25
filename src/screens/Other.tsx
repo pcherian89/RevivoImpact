@@ -142,8 +142,8 @@ export function Admin({ persona }: { persona: Person }) {
                       </p>
                       <p className="text-small text-subtle">Enhanced safeguarding check on file (simulated) · contact only through the guardian · reason: &ldquo;{o.reason}&rdquo;</p>
                     </div>
-                    <ActionButton actor={persona.id} type="clearSafeguarding" args={{ offerId: o.id }} success="Released to the guardian.">
-                      Release to the guardian
+                    <ActionButton actor={persona.id} type="clearSafeguarding" args={{ offerId: o.id }} success="Safeguarding check passed. Sent to the guardian.">
+                      Check passed: send to the guardian
                     </ActionButton>
                   </Row>
                 ))}

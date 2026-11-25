@@ -550,13 +550,13 @@ export const commands = {
     need(memberOf(c.w, c.actor, funderOfApp(c.w, app), "Review"), "Only a reviewer at the funder this application was sent to can shortlist it.");
     need(["submitted", "info", "shortlisted"].includes(app.status) && c.w.opps[app.oppId].status !== "decided", "Decisions on this application have already been sent.");
     const fund = c.w.funds[c.w.opps[app.oppId].fundId];
-    need(a.tier <= app.requested, `The tier cannot be more than the ${fmt(app.requested)} requested.`);
-    need(fund.tiers ? fund.tiers.some((t) => t.amount === a.tier) : a.tier <= fund.max, `Choose one of the published tiers: ${fund.tiers?.map((t) => fmt(t.amount)).join(", ")}.`);
+    need(a.tier <= app.requested, `The award level cannot be more than the ${fmt(app.requested)} requested.`);
+    need(fund.tiers ? fund.tiers.some((t) => t.amount === a.tier) : a.tier <= fund.max, `Choose one of the published award levels: ${fund.tiers?.map((t) => fmt(t.amount)).join(", ")}.`);
     const need2 = fund.policy === "Institutional" ? 2 : 1;
     need(app.scores.length >= need2, `This fund needs ${need2} reviewers' scores before shortlisting.`);
     app.status = "shortlisted";
     app.recommendedTier = a.tier;
-    audit(c, `Shortlisted with recommended tier ${fmt(a.tier)}`, c.w.athletes[app.applicantId]?.name ?? a.appId);
+    audit(c, `Shortlisted at the ${fmt(a.tier)} award level`, c.w.athletes[app.applicantId]?.name ?? a.appId);
   },
 
   sendDecisions(c: Ctx, a: { oppId: string }) {
@@ -798,7 +798,7 @@ export const commands = {
     const o = c.w.offers[a.offerId] ?? fail("That offer does not exist.");
     need(o.status === "safeguarding", "This offer is not waiting for a safeguarding review.");
     o.status = "held";
-    audit(c, "Safeguarding review passed; offer released to the guardian", offerRecord(c.w, o));
+    audit(c, "Safeguarding check passed; offer sent to the guardian", offerRecord(c.w, o));
   },
 
   acceptOffer(c: Ctx, a: { offerId: string; agreementId: string }) {
@@ -845,23 +845,23 @@ export const commands = {
     const ag = c.w.agreements[a.agreementId];
     const fund = c.w.funds[ag.fundId];
     const p = c.w.people[c.actor];
-    need(p?.funderId === fund.funderId && p.perms.includes("Finance"), "Only someone with Finance at this funder records releases.");
-    if (fund.policy === "Institutional") need(c.w.offers[ag.offerId ?? ""]?.by !== c.actor, "Under this fund's Institutional policy, the person who approved the offer cannot record its release.");
-    positive(a.amount, "A release");
+    need(p?.funderId === fund.funderId && p.perms.includes("Finance"), "Only someone with Finance at this funder records payments.");
+    if (fund.policy === "Institutional") need(c.w.offers[ag.offerId ?? ""]?.by !== c.actor, "Under this fund's rules, the person who approved the offer cannot also record its payment. Ask your finance colleague.");
+    positive(a.amount, "A payment");
     need(!c.w.ledger.some((l) => l.id === a.entryId), "That record already exists. Nothing was changed.");
-    need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === a.ref), `Release ${a.ref} is already recorded.`);
-    need(released(c.w, ag.id) + a.amount <= ag.amount, "Released cannot exceed what was committed (I2).");
+    need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === a.ref), `Payment ${a.ref} is already recorded.`);
+    need(released(c.w, ag.id) + a.amount <= ag.amount, "You can't pay more than was committed.");
     c.w.ledger.push({ id: a.entryId, agreementId: ag.id, kind: "release", amount: a.amount, by: c.actor, at: c.at, ref: a.ref });
-    audit(c, `Recorded release ${fmt(a.amount)} (simulated)${fund.policy === "Simple" && c.w.offers[ag.offerId ?? ""]?.by === c.actor ? " · single-person approval" : ""}`, fund.name);
+    audit(c, `Recorded a payment of ${fmt(a.amount)} (simulated)${fund.policy === "Simple" && c.w.offers[ag.offerId ?? ""]?.by === c.actor ? " · single-person approval" : ""}`, fund.name);
   },
 
   confirmReceipt(c: Ctx, a: { agreementId: string; entryId: string }) {
     const ag = c.w.agreements[a.agreementId];
     const ath = ag.recipientKind === "athlete" ? c.w.athletes[ag.recipientId] : null;
-    need(ath ? (ath.minor ? ath.guardianId === c.actor : ath.id === c.actor) : c.w.people[c.actor]?.orgId === ag.recipientId, "Only the recipient (or guardian) confirms receipt.");
+    need(ath ? (ath.minor ? ath.guardianId === c.actor : ath.id === c.actor) : c.w.people[c.actor]?.orgId === ag.recipientId, "Only the person who received the money (or their guardian) confirms it arrived.");
     need(!c.w.ledger.some((l) => l.id === a.entryId), "That record already exists. Nothing was changed.");
     const unconfirmed = released(c.w, ag.id) - received(c.w, ag.id);
-    need(unconfirmed > 0, "There is no recorded payment to confirm (I9).");
+    need(unconfirmed > 0, "There is no payment to confirm yet.");
     c.w.ledger.push({ id: a.entryId, agreementId: ag.id, kind: "receipt", amount: unconfirmed, by: c.actor, at: c.at, ref: "receipt" });
     audit(c, `Confirmed receipt of ${fmt(unconfirmed)}`, c.w.funds[ag.fundId].name);
   },
@@ -1142,7 +1142,7 @@ export const commands = {
   /* ---- seeded world activity between demo moments (actor "system") ---- */
   arrivals(c: Ctx, a: { to: Moment }) {
     seedArrivals(c.w, a.to);
-    audit(c, a.to === "may06" ? "Applications, scores and decisions that happened between 12 Apr and 6 May" : "Acceptances, payments and decisions that happened between 6 May and 30 Jun", "Seeded world");
+    audit(c, a.to === "may06" ? "Applications, scores and decisions that happened between 12 Apr and 6 May" : "Acceptances, payments and decisions that happened between 6 May and 30 Jun", "Other activity in the fictional world");
   },
 } satisfies Record<string, (c: Ctx, a: never) => void>;
 

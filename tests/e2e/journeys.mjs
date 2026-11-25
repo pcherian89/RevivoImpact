@@ -190,8 +190,8 @@ await page.getByLabel("Amount (USD)").fill("750");
 await click("Send offer");
 await check("Individual → minor goes to safeguarding review", (await text()).includes("in platform safeguarding review"));
 await go("app/alex/admin");
-await click("Release to the guardian");
-await check("Platform releases it to the guardian", await audited("Safeguarding review passed"));
+await click("Check passed: send to the guardian");
+await check("Platform releases it to the guardian", await audited("Safeguarding check passed"));
 
 // ---- End-to-end review fixes (docs/11 §4)
 await go("app/kenji/fdiscover");

@@ -257,12 +257,12 @@ export function NeedBar({
       <p className="mt-1.5 text-small text-subtle">
         {pledged === 0 && otherSources === 0 && held === 0 ? (
           <>
-            <span className="font-medium text-ink">{fmt(requested)}</span> still needed · nothing pledged yet
+            <span className="font-medium text-ink">{fmt(requested)}</span> still needed · nothing promised yet
           </>
         ) : (
           <>
-            <span className="font-medium text-ink">{fmt(pledged)}</span> pledged of {fmt(requested)}
-            {held > 0 && <> · {fmt(held)} held for offers and applications in progress</>} ·{" "}
+            <span className="font-medium text-ink">{fmt(pledged)}</span> promised of {fmt(requested)}
+            {held > 0 && <> · {fmt(held)} waiting on an offer or application</>} ·{" "}
             <span className="font-medium text-ink">{fmt(Math.max(0, remaining))}</span> still needed
           </>
         )}

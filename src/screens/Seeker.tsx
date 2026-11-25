@@ -307,14 +307,14 @@ export function SeekerDiscover({ persona }: { persona: Person }) {
           </ul>
         </>
       )}
-      <p className="mt-6 text-small text-subtle">Eligibility is checked against each funder&rsquo;s published rules. Meeting them doesn&rsquo;t guarantee an award; a review panel decides.</p>
+      <p className="mt-6 text-small text-subtle">Whether you qualify is checked against each funder&rsquo;s published rules. Qualifying doesn&rsquo;t guarantee an award: people decide.</p>
       <Panel open={why} onClose={() => setWhy(false)} title="Why these appear" eyebrow="Matching · Simulated AI">
         <SimulatedAI />
         <p className="mt-4 text-muted">
           {ath ? `Suggested because the sport (${ath.sport.toLowerCase()}), region (${ath.region}) and level on the profile match these funders' published criteria.` : "Suggested from your organisation's sport and region."}
         </p>
         <ul className="mt-4 space-y-2 text-small">
-          <li>· Eligibility comes from each funder&rsquo;s rules, not from AI.</li>
+          <li>· Whether you qualify comes from each funder&rsquo;s rules, not from AI.</li>
           <li>· Order: eligible first, then the deadline. Never popularity or any score of a person.</li>
         </ul>
         <p className="mt-6 text-small text-subtle">AI-assisted, simulated in this prototype. Check against sources.</p>
@@ -419,7 +419,7 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
       <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
         {[
           ["Funding", fund.tiers ? `Three levels: ${fund.tiers.map((t) => fmt(t.amount)).join(" · ")}` : o.amountLabel],
-          ["Awards", `${o.awardsLabel} · ${fmt(fund.announced)} announced`],
+          ["Awards", `${o.awardsLabel} · ${fmt(fund.announced)} in total`],
           [st === "upcoming" ? "Opens" : "Closes", fmtDate(st === "upcoming" ? o.opens : o.closes)],
           ["Sports", o.sportsLabel],
         ].map(([k, v]) => (
@@ -472,7 +472,7 @@ export function OpportunityPage({ persona, id }: { persona: Person; id: string }
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-small text-subtle">Eligibility is checked against the funder&rsquo;s published rules. Meeting them doesn&rsquo;t guarantee an award; a review panel decides.</p>
+          <p className="mt-3 text-small text-subtle">Whether you qualify is checked against the funder&rsquo;s published rules. Qualifying doesn&rsquo;t guarantee an award: people decide.</p>
         </section>
         <aside className="space-y-8">
           <section>
@@ -703,7 +703,7 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
           <p className="mt-1 text-small text-subtle">{ath.facts.filter((f) => f.state === "verified" || f.state === "confirmed").length} facts verified or confirmed · {ath.facts.filter((f) => f.state === "self" || f.state === "awaiting").length} self-reported or awaiting</p>
         </li>
         <li>
-          <Label>2 · Eligibility</Label>
+          <Label>2 · Do I qualify?</Label>
           <p className="mt-2 font-medium">{e.summary}</p>
         </li>
         <li>
@@ -732,7 +732,7 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
         </li>
         <li>
           <Label>4 · Budget and other funding</Label>
-          <Field label="Amount requested (USD)" hint={linkedReq ? `Linked to the funding request "${linkedReq.title}": ${fmt(remaining)} still needed; this amount is held while the funder decides` : "The panel awards one of the published tiers"} htmlFor="req">
+          <Field label="Amount requested (USD)" hint={linkedReq ? `Linked to the funding request "${linkedReq.title}": ${fmt(remaining)} still needed; this amount is held while the funder decides` : "The panel awards one of the published levels"} htmlFor="req">
             <input id="req" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={requested} onChange={(e) => setRequested(Number(e.target.value.replace(/\D/g, "")))} />
           </Field>
           <Field label="Other funding for the same costs" hint="Required. Declare current support so nothing is funded twice." htmlFor="other">
@@ -811,7 +811,7 @@ export function SeekerApplications({ persona }: { persona: Person }) {
                   </div>
                   {o.status === "held" && canAnswer ? (
                     <div className="flex flex-wrap items-start gap-3">
-                      <ActionButton actor={persona.id} type="acceptOffer" args={{ offerId: o.id, agreementId: `ag-${o.id}` }} success="Accepted. Committed.">
+                      <ActionButton actor={persona.id} type="acceptOffer" args={{ offerId: o.id, agreementId: `ag-${o.id}` }} success="Accepted. The money is now agreed.">
                         Accept {fund.type.toLowerCase()}
                       </ActionButton>
                       <ActionButton actor={persona.id} type="declineOffer" args={{ offerId: o.id }} variant="secondary" success="Declined. No reason is needed and nothing else changes.">
@@ -961,7 +961,7 @@ export function MyFunding({ persona }: { persona: Person }) {
                   <ul className="mt-3 space-y-1 text-small text-muted">
                     {t.lines.map((l) => (
                       <li key={l.id}>
-                        {l.label}: {fmt(l.amount)} · {fmt(l.pledged)} pledged{l.heldApp ? ` · ${fmt(l.heldApp)} held for an application` : ""} · {fmt(l.remaining)} still needed
+                        {l.label}: {fmt(l.amount)} · {fmt(l.pledged)} promised{l.heldApp ? ` · ${fmt(l.heldApp)} waiting on an application` : ""} · {fmt(l.remaining)} still needed
                       </li>
                     ))}
                   </ul>
@@ -1069,7 +1069,7 @@ export function MyProfile({ persona }: { persona: Person }) {
       {!ath.minor && own && (
         <div className="mt-6 rounded-[10px] border border-line-strong p-5">
           <p className="font-medium">Can verified funders find {persona.role === "athlete" ? "you" : ath.name} in Discover?</p>
-          <p className="text-small text-subtle">Only facts marked &ldquo;Discoverable&rdquo; are shown, never contact details. You can change this at any time.</p>
+          <p className="text-small text-subtle">Only facts set to &ldquo;Funders in Discover&rdquo; are shown, never contact details. You can change this at any time.</p>
           <div className="mt-3 flex gap-3">
             {[true, false].map((v) => (
               <button key={String(v)} type="button" aria-pressed={ath.discoverable === v} onClick={() => act.run("setDiscoverable", { athleteId: ath.id, value: v })} className={cn("min-h-11 min-w-24 rounded-full border px-5 font-display font-bold", ath.discoverable === v ? (v ? "border-lime bg-lime text-on-lime" : "border-ink bg-ink text-canvas") : "border-control text-ink")}>
@@ -1096,9 +1096,9 @@ export function MyProfile({ persona }: { persona: Person }) {
                   <label className="text-small">
                     <span className="sr-only">Who can see {f.label}</span>
                     <select className={cn(inputCls, "h-11")} value={f.visibility} onChange={(e) => act.run("setVisibility", { athleteId: ath.id, factId: f.id, visibility: e.target.value })}>
-                      {!ath.minor && <option value="discoverable">Discoverable</option>}
-                      <option value="application">Shared on application</option>
-                      <option value="private">Private</option>
+                      {!ath.minor && <option value="discoverable">Funders in Discover</option>}
+                      <option value="application">Only funders I apply to</option>
+                      <option value="private">Only me</option>
                     </select>
                   </label>
                 ) : (
