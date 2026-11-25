@@ -15,7 +15,7 @@ never moves money.
 | Company | Revivo Sportech — "Pulse of Sport. Mind of the Game." (company tagline, never used as Impact's) |
 | Product tagline | "Connecting sport with opportunity." (founder decision D1) |
 | Supporting line | "Find funding. Support sporting talent. See how your support is used." |
-| Status | **P1 complete, awaiting the founder's approval (`docs/09-p1-design-package.md`).** Run the shell: `npm install`, then `npm run dev`; `npm run build` makes one offline HTML file in `dist/`. |
+| Status | **P2 built (`docs/11-p2-report.md`).** Run it: `npm install`, then `npm run dev`; `npm run build` makes one offline HTML file in `dist/`. Checks: `npm run check` (types, unit tests, copy lint, build, journeys, guided steps, every role at three widths, accessibility). |
 | Prototype form | One self-contained offline HTML file, like the Revivo Pathway prototype. Fictional data, simulated AI, no backend. |
 | Relationship to Revivo Pathway | Fully independent. An optional, simulated "import from Revivo Pathway" exists on the profile only. |
 
@@ -35,6 +35,7 @@ Delivery and spending records show what was delivered and spent; they do not on 
 | `docs/06-technical-plan-and-phases.md` | Architecture, repository layout, state and seed, offline build, testing, phases P1–P5, acceptance criteria mapped to tests. |
 | `docs/07-decisions-for-founder.md` | The 18 decisions with the founder's answers (25 Nov 2026) and further direction. |
 | `docs/09-p1-design-package.md` | The P1 package: index of the 20 deliverables, what changed and why, expert review, the shell, open points. |
+| `docs/11-p2-report.md` | What P2 built, how it was tested, the review findings and what remains. |
 | `docs/10-image-asset-plan.md` | Every image: filename, screen, ratio, subject, composition, light, setting, purpose and ChatGPT prompt. |
 | `docs/08-research-and-competitors.md` | Competitor and programme research, legal notes, sources, verified facts vs judgement. |
 | `docs/90-founder-master-brief.md` | The founder's original brief, verbatim. Where the docs above differ, they take precedence and say why. |

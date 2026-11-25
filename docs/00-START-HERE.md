@@ -1,8 +1,10 @@
 # Revivo Impact — start here
 
-**Status (25 Nov 2026): P1 is complete and waiting at the approval gate.** The founder answered all 18 decisions and
-set a new direction (an open, controlled, two-sided ecosystem); every document has been updated. The P1 package, the
-clickable shell and the open points are in **`09-p1-design-package.md`**. Do not start P2 until the founder approves.
+**Status (25 Nov 2026): P1 approved; P2 built and under review.** The founder approved P1's architecture with
+refinements (`07` §"P1 approval and refinements"). P2 turned the shell into a working two-sided prototype on one
+event-sourced rules engine: registration, profiles, discovery in both directions, applications, support asks, offers,
+selection, acceptance, payments and receipts, guardian safety and platform safeguarding. What P2 covers and how it was
+tested: **`11-p2-report.md`**. P3 (spending updates, programme monitoring, reports, existing funding) comes next.
 
 This file is for a new session with no prior context. Read it fully, then follow the read order in §4.
 
@@ -69,7 +71,7 @@ independent products that share one design family.
    `pcherian89/RevivoPathway` (`docs/03-design-brief.md`, `tools/tone/`).
 8. `archive/` — the superseded v1 programme-monitoring concept. Reference only.
 
-## 5. Where the work stands (P1 complete)
+## 5. Where the work stands (P1 approved; P2 built)
 
 1. Decisions answered and recorded in `07`; every document updated (summary of changes: `09` §3).
 2. The P1 package: `09` (index, expert review, open points), `02` (product definition), `03` (experience, screens,
