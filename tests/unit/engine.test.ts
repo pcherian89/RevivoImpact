@@ -507,3 +507,58 @@ describe("P4 money and safeguarding verifier regressions", async () => {
     expect(tryCmd(w, { at: "jun30", actor: "jonas", type: "sendProgress", args: { progressId: "z1", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "training", text: `Trained hard with ${words[0]} this week`, proof: false } })).toMatch(/first name only/);
   });
 });
+
+describe("recording a payment: date and reference (P5)", () => {
+  const beforeR1 = () => {
+    const evs = checkpoint("jun30");
+    const i = evs.findIndex((e) => e.type === "recordRelease" && e.args.entryId === "le-amira-r1");
+    return replay(evs.slice(0, i));
+  };
+  const pay = (w: ReturnType<typeof baseWorld>, args: Record<string, unknown>) => tryCmd(w, { at: "may06", actor: "priya", type: "recordRelease", args: { agreementId: "ag-amira", amount: 2250, entryId: "p1", ...args } });
+  it("refuses a date after today and before the agreement was accepted", () => {
+    expect(pay(beforeR1(), { paidOn: "2027-05-07" })).toMatch(/can't be after today/);
+    expect(pay(beforeR1(), { paidOn: "2027-04-01" })).toMatch(/before the agreement was accepted/);
+    expect(pay(beforeR1(), { paidOn: "6 May" })).toMatch(/day, month and year/);
+  });
+  it("keeps the finance team's own reference and date, or generates a reference", () => {
+    const w = beforeR1();
+    expect(pay(w, { paidOn: "2027-05-06", ref: " BANK-77 " })).toBeNull();
+    const l = w.ledger.find((x) => x.id === "p1")!;
+    expect(l).toMatchObject({ ref: "BANK-77", paidOn: "2027-05-06", amount: 2250 });
+    const w2 = beforeR1();
+    expect(pay(w2, {})).toBeNull();
+    expect(w2.ledger.find((x) => x.id === "p1")).toMatchObject({ ref: "PAY-AG-AMIRA-1", paidOn: "2027-05-06" });
+  });
+  it("still refuses a duplicate reference and more than is due", () => {
+    const w = beforeR1();
+    expect(pay(w, { ref: "BANK-77" })).toBeNull();
+    expect(pay(w, { ref: "BANK-77", entryId: "p2", amount: 1 })).toMatch(/already recorded|due/);
+    expect(pay(beforeR1(), { amount: 4500 })).toMatch(/Only \$2,250 is due now/);
+  });
+});
+
+describe("claims check (P5): wrong figures, misleading statements, changed records", () => {
+  const w = replay(checkpoint("jun30"));
+  const t = agreementTotals(w, "ag-pe1");
+  const $ = (n: number) => "$" + n.toLocaleString("en-GB");
+  it("flags a real figure used for the wrong thing", () => {
+    expect(t.committed).not.toBe(t.spent);
+    expect(claimsCheck(`We have spent ${$(t.committed)} so far.`, w, "ag-pe1")[0]).toMatch(/spent \(the records show/);
+    expect(claimsCheck(`We have spent ${$(t.spent)} so far.`, w, "ag-pe1")).toEqual([]);
+    expect(claimsCheck(`Tallwater has paid ${$(t.committed)}.`, w, "ag-pe1")[0]).toMatch(/paid \(the records show/);
+    expect(claimsCheck(`The grant of ${$(t.committed)} has ${$(t.notYetSpent)} not yet spent: ${$(t.notYetSpent)}.`, w, "ag-pe1")).toEqual([]);
+  });
+  it("flags figures that are simply wrong, and misleading impact claims", () => {
+    expect(claimsCheck("We spent $61,250 on coaching and kit.", w, "ag-pe1")[0]).toMatch(/does not match/);
+    expect(claimsCheck("The programme transformed lives and is proven to work.", w, "ag-pe1").length).toBeGreaterThan(0);
+    expect(claimsCheck("All 120 sessions ran as planned.", w, "ag-pe1")[0]).toMatch(/records show 108 of 120/);
+  });
+  it("re-checks sent words when the records change", () => {
+    const sentence = `We have spent ${$(t.spent)} so far.`;
+    expect(claimsCheck(sentence, w, "ag-pe1")).toEqual([]);
+    const w2 = replay(checkpoint("jun30"));
+    const e = Object.values(w2.expenses).find((x) => x.agreementId === "ag-pe1")!;
+    e.amount += 100; // a correction to the records after the report was sent
+    expect(claimsCheck(sentence, w2, "ag-pe1")[0]).toMatch(/does not match|spent \(the records show/);
+  });
+});

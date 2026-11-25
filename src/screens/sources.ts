@@ -3,7 +3,7 @@
  * A minor is never named to a funder before the guardian accepts; a programme funder sees counts, not children.
  */
 import type { Moment, Person, World } from "../domain/model";
-import { agreementTotals, fmt, sum } from "../domain/engine";
+import { agreementTotals, fmt, fmtIso, sum } from "../domain/engine";
 import type { Source } from "../components/ui";
 import { recipientName } from "./common";
 
@@ -19,7 +19,7 @@ export function agreementSources(w: World, id: string, viewer: Person) {
   return {
     paid: src(
       `Paid to ${who}`,
-      w.ledger.filter((l) => l.agreementId === id && l.kind !== "receipt").map((l) => ({ label: l.kind === "carried-in" ? "Paid before joining Revivo Impact (carried in)" : `Payment ${l.ref}`, value: fmt(l.amount), note: `Recorded ${dayOf(l.at)} by ${w.people[l.by]?.name ?? "the funder"} (simulated: no real money moves)` })),
+      w.ledger.filter((l) => l.agreementId === id && l.kind !== "receipt").map((l) => ({ label: l.kind === "carried-in" ? "Paid before joining Revivo Impact (carried in)" : `Payment ${l.ref}`, value: fmt(l.amount), note: `${l.paidOn ? `Paid ${fmtIso(l.paidOn)}, recorded` : "Recorded"} ${dayOf(l.at)} by ${w.people[l.by]?.name ?? "the funder"} (simulated: no real money moves)` })),
       t.received >= t.paid ? "Arrival confirmed by the recipient." : `${fmt(t.paid - t.received)} not yet confirmed as received.`,
     ),
     checked: src("Spent and checked", ex.filter((e) => e.status === "checked").map(row)),

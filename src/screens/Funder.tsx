@@ -3,7 +3,7 @@ import { ArrowRight, ChevronRight, MessageCircleQuestion, CircleCheck, CircleHel
 import { useStore } from "../state/store";
 import { BEHAVIOUR, REGIONS, type Fund, type Person, type World } from "../domain/model";
 import { agreementTotals, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
-import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SeeSource, SimulatedAI, Tabs } from "../components/ui";
+import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SeeSource, SimulatedAI, Tabs, type Source } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
 import { FunderAskRevivo } from "./Track";
@@ -59,6 +59,19 @@ export function FunderOverview({ persona }: { persona: Person }) {
     { t: "Manage funding and track progress", to: "portfolio", icon: FileText },
   ];
   const pt = funderTotals(w, fid);
+  // Each overview figure opens its records, fund by fund (commercial money is never in these totals).
+  const ovSource = (k: "committed" | "paid"): Source => ({
+    title: k === "committed" ? "Committed, by fund (development and programme)" : "Paid, by fund (simulated payments)",
+    rows: Object.values(w.funds)
+      .filter((fd) => fd.funderId === fid && BEHAVIOUR[fd.type] !== "commercial")
+      .map((fd) => {
+        const gs = Object.values(w.agreements).filter((g) => g.fundId === fd.id && counts(g));
+        return { label: fd.name, value: fmt(sum(gs.map((g) => (k === "committed" ? g.amount : released(w, g.id))))) };
+      })
+      .filter((r) => r.value !== "$0"),
+  });
+  // An individual sponsor is one person: "you", never "we".
+  const solo = f.type === "Individual sponsor";
   const overviewPhoto = f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : "im-06-funder-visit.png";
   return (
     <div className="pb-8">
@@ -70,7 +83,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button type="button" className={btn("secondary")} onClick={() => setAsk(true)}>
-            <MessageCircleQuestion className="size-4" aria-hidden="true" /> Ask Revivo about our funding
+            <MessageCircleQuestion className="size-4" aria-hidden="true" /> Ask Revivo about {solo ? "your" : "our"} funding
           </button>
           <SimulatedAI />
         </div>
@@ -110,6 +123,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
       </Section>
       {isFoundation && main && (
         <Section title={main.name}>
+          <p className="mt-3 text-small text-subtle">This scholarship round only. Your other funding is in the totals below.</p>
           <div className="mt-4">
             {(() => {
               const t = fundTotals(w, main.id);
@@ -125,9 +139,10 @@ export function FunderOverview({ persona }: { persona: Person }) {
         </Section>
       )}
       <section className="mt-10 grid gap-8 border-t border-line pt-8 md:grid-cols-3">
-        <Answer q={isFoundation ? "Who has applied?" : "Who are we supporting?"} a={isFoundation ? plural(Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length, "application") : plural(pt.count, "agreement")} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
-        <Answer q="How much have we committed?" a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} />
-        <Answer q="How much have we paid?" a={fmt(pt.released)} d="Payments recorded (simulated); the people we fund confirm they arrived" />
+        <h2 className="label -mb-4 text-subtle md:col-span-3">{solo ? "All your funding" : "All your funding, every fund together"}</h2>
+        <Answer q={isFoundation ? "Who has applied?" : solo ? "Who are you supporting?" : "Who are we supporting?"} a={isFoundation ? plural(Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length, "application") : plural(pt.count, "agreement")} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
+        <Answer q={solo ? "How much have you committed?" : "How much have we committed?"} a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} source={ovSource("committed")} />
+        <Answer q={solo ? "How much have you paid?" : "How much have we paid?"} a={fmt(pt.released)} d={`Payments recorded (simulated); the people ${solo ? "you" : "we"} fund confirm they arrived`} source={ovSource("paid")} />
       </section>
       <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
     </div>
@@ -140,12 +155,12 @@ function funderTotals(w: World, fid: string) {
   return { count: ags.length, devCommitted: by("development"), progCommitted: by("programme"), comCommitted: by("commercial"), released: sum(ags.filter((g) => BEHAVIOUR[w.funds[g.fundId].type] !== "commercial").map((g) => released(w, g.id))) };
 }
 
-function Answer({ q, a, d }: { q: string; a: string; d: string }) {
+function Answer({ q, a, d, source }: { q: string; a: string; d: string; source?: Source }) {
   return (
     <div>
       <Label>{q}</Label>
       <p className="text-stat mt-2">
-        <SeeSource name={q}>{a}</SeeSource>
+        <SeeSource name={q} source={source}>{a}</SeeSource>
       </p>
       <p className="mt-1 text-small text-subtle">{d}</p>
     </div>
@@ -796,11 +811,11 @@ export function FunderApplications({ persona }: { persona: Person }) {
                   </span>
                   <AppStatus s={a.status} funderView />
                 </div>
-                {!a.light && <a className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4" href={`#/app/${persona.id}/review/${a.id}`}>Open the application</a>}
+                {a.light ? <p className="mt-1 text-small text-subtle">Summary only in this demonstration</p> : <a className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4" href={`#/app/${persona.id}/review/${a.id}`}>Open the application</a>}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-small text-subtle">Athletes under 18 appear by first name only once their guardian has accepted, otherwise without names.</p>
+          <p className="mt-2 text-small text-subtle">Athletes under 18 appear by first name only once their guardian has accepted, otherwise without names. {apps.some((a) => a.light) ? `In this demonstration, ${apps.filter((a) => !a.light).length} applications open in full, one or more at every stage; the other ${apps.filter((a) => a.light).length} are summary rows with real scores and statuses.` : ""}</p>
           <div className="relative mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[44rem] text-table">
               <thead>
@@ -824,7 +839,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
                     <td className="pr-4">
                       <AppStatus s={a.status} funderView />
                     </td>
-                    <td>{!a.light && <a className="underline underline-offset-4" href={`#/app/${persona.id}/review/${a.id}`}>Open</a>}</td>
+                    <td>{a.light ? <span className="text-small text-subtle">Summary only</span> : <a className="underline underline-offset-4" href={`#/app/${persona.id}/review/${a.id}`}>Open</a>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -947,6 +962,9 @@ export function ReviewPage({ persona, id }: { persona: Person; id: string }) {
               </li>
             ))}
           </ul>
+          <h2 className="label mt-8 text-subtle">Their statement</h2>
+          {a.statement ? <p className="mt-2 max-w-[40rem] border-l-2 border-line-strong pl-4 text-muted">{a.statement}</p> : <p className="mt-2 text-small text-muted">{a.status === "incomplete" ? "Not written yet. This application is incomplete, so it is not scored until the applicant finishes it." : "No statement."}</p>}
+          {a.status === "noteligible" && <p className="mt-3 text-small text-amber">Not considered: the published rules show this application does not qualify, so no one scores it. The applicant was told which rule it missed.</p>}
           <p className="mt-3 text-small text-subtle">{a.info ? `Information request: "${a.info.text}" · ${a.info.status === "answered" ? "answered" : "waiting for the applicant"}` : ""}</p>
         </section>
         <aside className="rounded-[10px] border border-line-strong p-5">
@@ -1129,9 +1147,10 @@ export function Portfolio({ persona }: { persona: Person }) {
   const reports = Object.values(w.reports).filter((r) => mine.some((g) => g.id === r.agreementId) && r.status !== "draft");
   const programmes = Object.values(w.programmes).filter((p) => mine.some((g) => g.id === p.agreementId));
   const byFund = (k: "committed" | "paid" | "checked") => ({ title: k === "committed" ? "Committed, by fund" : k === "paid" ? "Paid, by fund" : "Spending checked, by fund", rows: funds.filter((f) => BEHAVIOUR[f.type] !== "inkind").map((f) => ({ label: f.name, value: fmt(sum(cash.filter((g) => g.fundId === f.id).map((g) => agreementTotals(w, g.id)[k]))) })).filter((r) => r.value !== "$0") });
+  const solo = w.funders[fid].type === "Individual sponsor";
   const answers = [
-    { q: "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: "Accepted by both sides", src: byFund("committed") },
-    { q: "How much have we paid?", a: fmt(sum(money.map((m) => m.paid))), d: `${fmt(sum(money.map((m) => m.stillToPay)))} still to pay`, src: byFund("paid") },
+    { q: solo ? "How much have you committed?" : "How much have we committed?", a: fmt(sum(money.map((m) => m.committed))), d: "Accepted by both sides", src: byFund("committed") },
+    { q: solo ? "How much have you paid?" : "How much have we paid?", a: fmt(sum(money.map((m) => m.paid))), d: `${fmt(sum(money.map((m) => m.stillToPay)))} still to pay`, src: byFund("paid") },
     { q: "How much spending is checked?", a: fmt(sum(money.map((m) => m.checked))), d: `${fmt(sum(money.map((m) => m.waiting)))} waiting to be checked`, src: byFund("checked") },
   ];
   return (

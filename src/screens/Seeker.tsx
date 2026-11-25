@@ -360,7 +360,7 @@ function OppRow({ w, o, summary, kind, personaId, because }: { w: World; o: Oppo
       <a href={`#/app/${personaId}/opportunity/${o.id}`} className="group grid gap-2 py-4 lg:grid-cols-[1.6fr_1fr_0.8fr_1.4fr_auto] lg:items-center lg:gap-6">
         <span className="min-w-0">
           <span className="flex flex-wrap items-center gap-2 text-small text-subtle">
-            {f.name} {f.verified && <BadgeCheck className="size-3.5 text-muted" aria-label="Verified organisation (simulated)" />} · {f.type}
+            {f.name} {f.verified && <BadgeCheck className="size-3.5 text-muted" aria-label="Verified organisation (simulated)" />} <span className="whitespace-nowrap">· {f.type}</span>
           </span>
           <span className="mt-0.5 block font-display text-xl font-bold group-hover:text-signal">{o.title}</span>
           <span className="mt-1 inline-flex">
@@ -383,8 +383,8 @@ function OppRow({ w, o, summary, kind, personaId, because }: { w: World; o: Oppo
             {because && kind !== "not" && <span className="mt-0.5 block text-subtle">{because}</span>}
           </span>
         </span>
-        <span className="hidden items-center gap-1 text-small font-medium text-muted group-hover:text-ink lg:flex">
-          {kind !== "not" && oppStatusAt(w, o) === "open" ? "Apply" : "View"} <ChevronRight className="size-4" aria-hidden="true" />
+        <span className="flex items-center gap-1 text-small font-medium text-muted group-hover:text-ink">
+          {kind !== "not" && oppStatusAt(w, o) === "open" ? "See it and apply" : "View"} <ChevronRight className="size-4" aria-hidden="true" />
         </span>
       </a>
     </li>
@@ -426,7 +426,9 @@ function FunderRow({ f, personaId, why }: { f: Funder; personaId: string; why?: 
           {why && <span className="mt-0.5 block text-subtle">{why}</span>}
         </span>
         <span>{f.accepts === "yes" ? <Chip kind="verified">Accepts direct requests</Chip> : f.accepts === "commercial" ? <Chip kind="info">Commercial proposals only</Chip> : <Chip kind="self">Only through opportunities</Chip>}</span>
-        <ChevronRight className="hidden size-5 text-subtle lg:block" aria-hidden="true" />
+        <span className="flex items-center gap-1 text-small font-medium text-muted group-hover:text-ink">
+          <span className="lg:sr-only">See their profile</span> <ChevronRight className="size-5 text-subtle" aria-hidden="true" />
+        </span>
       </a>
     </li>
   );
@@ -605,7 +607,7 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
               ["Typical support", f.typical],
               ["Asks", f.acceptsNote],
             ].map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[8rem_1fr] gap-4 border-b border-line py-3">
+              <div key={k} className="grid gap-1 border-b border-line py-3 sm:grid-cols-[8rem_1fr] sm:gap-4">
                 <dt className="text-subtle">{k}</dt>
                 <dd>{v}</dd>
               </div>
@@ -647,12 +649,12 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
                 )}
                 </>
               ) : myRequests.length === 0 ? (
-                <p className="mt-4 text-small text-subtle">
-                  An ask links to one of your funding requests.{" "}
-                  <a className="underline" href={`#/app/${persona.id}/publish`}>
-                    Publish a funding request first.
+                <>
+                  <p className="mt-4 text-small text-subtle">An ask is for part of one of your funding requests, so publish one first. It takes a few minutes and uses your profile.</p>
+                  <a className={btn("primary", "mt-4 w-full")} href={`#/app/${persona.id}/publish`}>
+                    Publish a funding request <ArrowRight className="size-4" aria-hidden="true" />
                   </a>
-                </p>
+                </>
               ) : (
                 <Button className="mt-4 w-full" onClick={() => setOpen(true)} arrow>
                   Ask for support
@@ -662,7 +664,24 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
           ) : (
             <div className="rounded-[10px] border border-line p-5 text-muted">
               <Search className="size-5" aria-hidden="true" />
-              <p className="mt-2">{f.name} funds {f.accepts === "commercial" ? "adult athletes through commercial sponsorship agreements; it contacts athletes whose commercial profile fits." : "only through its published opportunities. Apply to one of those instead."}</p>
+              <p className="mt-2">{f.name} funds {f.accepts === "commercial" ? "adult athletes through commercial sponsorship agreements. It contacts athletes whose profile says they are open to commercial partners." : "only through its published opportunities. Apply to one of those instead."}</p>
+              {f.accepts === "commercial" ? (
+                persona.role === "athlete" && ath && !ath.minor ? (
+                  <a className={btn("secondary", "mt-4 w-full")} href={`#/app/${persona.id}/me`}>
+                    Check your profile <ArrowRight className="size-4" aria-hidden="true" />
+                  </a>
+                ) : (
+                  <p className="mt-3 text-small text-subtle">Commercial sponsorship is for adult athletes only, never for under-18s.</p>
+                )
+              ) : opps.length > 0 ? (
+                <a className={btn("primary", "mt-4 w-full")} href={`#/app/${persona.id}/opportunity/${opps[0].id}`}>
+                  See {opps.length > 1 ? "their first opportunity" : "their opportunity"} <ArrowRight className="size-4" aria-hidden="true" />
+                </a>
+              ) : (
+                <a className={btn("secondary", "mt-4 w-full")} href={`#/app/${persona.id}/discover`}>
+                  Find other funding <ArrowRight className="size-4" aria-hidden="true" />
+                </a>
+              )}
             </div>
           )}
           <p className="mt-4 text-small text-subtle">Block this funder or report a concern from Consent &amp; safety at any time.</p>

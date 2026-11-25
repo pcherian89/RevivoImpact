@@ -312,6 +312,12 @@ main > div > :first-child {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
 }
 
+/* Guided journeys below 1024px: the guide is a sheet at the bottom; the page keeps room for it so nothing stays hidden. */
+@media (max-width: 1023px) {
+  html.ri-guide-open body {
+    padding-bottom: var(--ri-guide-h, 0px);
+  }
+}
 /* Guided journeys from 1024px: the guide is a column beside the page (the page narrows; nothing is covered). */
 @media (min-width: 1024px) {
   html.ri-guide-open body {

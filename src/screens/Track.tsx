@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../state/store";
 import {
+  DATE,
   sessionDate,
   type Agreement,
   type Person,
@@ -862,9 +863,8 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
     String(nx ? nx.amount - nx.paid : halves && t.paid === 0 ? g.amount / 2 : t.stillToPay),
   );
   const act = useAction(persona.id);
-  const n =
-    w.ledger.filter((l) => l.agreementId === g.id && l.kind === "release")
-      .length + 1;
+  const [paidOn, setPaidOn] = useState(DATE[w.moment]);
+  const [ref, setRef] = useState("");
   const cond = Object.values(w.reviews)
     .filter((r) => r.agreementId === g.id)
     .pop();
@@ -873,10 +873,7 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
       <Label>Record a payment (simulated)</Label>
       <div className="mt-2 flex flex-wrap items-end gap-3">
         <div>
-          <label
-            htmlFor={`pay-${g.id}`}
-            className="block text-small text-subtle"
-          >
+          <label htmlFor={`pay-${g.id}`} className="block text-small text-subtle">
             Amount (USD), {fmt(t.stillToPay)} still to pay
           </label>
           <input
@@ -887,19 +884,38 @@ function RecordPayment({ persona, g }: { persona: Person; g: Agreement }) {
             onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
           />
         </div>
+        <div>
+          <label htmlFor={`pay-on-${g.id}`} className="block text-small text-subtle">
+            Date paid
+          </label>
+          <input
+            id={`pay-on-${g.id}`}
+            type="date"
+            max={DATE[w.moment]}
+            className={cn(inputCls, "mt-1 max-w-[11rem]")}
+            value={paidOn}
+            onChange={(e) => setPaidOn(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor={`pay-ref-${g.id}`} className="block text-small text-subtle">
+            Your payment reference (optional)
+          </label>
+          <input
+            id={`pay-ref-${g.id}`}
+            className={cn(inputCls, "mt-1 max-w-[14rem]")}
+            value={ref}
+            maxLength={40}
+            placeholder="For example, a bank transfer number"
+            onChange={(e) => setRef(e.target.value)}
+          />
+        </div>
         <Button
-          variant={
-            cond?.decision === "Continue" || !cond ? "primary" : "secondary"
-          }
+          variant={cond?.decision === "Continue" || !cond ? "primary" : "secondary"}
           onClick={() =>
             act.run(
               "recordRelease",
-              {
-                agreementId: g.id,
-                amount: Number(amount),
-                ref: `PAY-${g.id.toUpperCase()}-${n}`,
-                entryId: `le-${g.id}-${Date.now()}`,
-              },
+              { agreementId: g.id, amount: Number(amount), ref, paidOn, entryId: `le-${g.id}-${Date.now()}` },
               "Payment recorded. The recipient confirms when it arrives.",
             )
           }
@@ -2357,14 +2373,21 @@ export function ReportPage({ persona, id }: { persona: Person; id: string }) {
           <textarea id="rep-text" rows={8} className="mt-3 w-full rounded-[6px] border border-control bg-surface-2 p-4 leading-relaxed text-ink" value={body} onChange={(e) => setText(e.target.value)} />
           <div role="status" className="mt-3 text-small">
             {flags.length ? (
-              <p className="text-amber">
-                <CircleAlert className="mr-1 inline size-4" aria-hidden="true" /> {flags[0].startsWith("$") || /records show/.test(flags[0]) ? `${flags[0]}. Use the figures above, or leave numbers out of the narrative.` : `“${flags[0]}” claims more than your records show. Say what was measured instead, for example what participants said in a survey and how many answered.`}
-              </p>
+              <div className="text-amber">
+                <p>
+                  <CircleAlert className="mr-1 inline size-4" aria-hidden="true" /> {flags.length === 1 ? "One thing to fix before you send:" : `${flags.length} things to fix before you send:`}
+                </p>
+                <ul className="mt-1 list-disc pl-6">
+                  {flags.map((f) => (
+                    <li key={f}>{f.startsWith("$") || /records show|does not match/.test(f) ? `${f}. Use the figures above, or leave the number out.` : `“${f}” claims more than your records show. Say what was measured instead, for example what participants said in a survey and how many answered.`}</li>
+                  ))}
+                </ul>
+              </div>
             ) : body.includes("[") ? (
               <p className="text-muted">Replace the part in square brackets with your own words, or delete it.</p>
             ) : (
               <p className="text-muted">
-                <CircleCheck className="mr-1 inline size-4 text-ok" aria-hidden="true" /> Claims check passed: nothing claims more than the records show, and every amount matches them.
+                <CircleCheck className="mr-1 inline size-4 text-ok" aria-hidden="true" /> Nothing found to fix. The check looks for amounts and session counts that differ from your records, and for claims of impact the records can&rsquo;t show. It can&rsquo;t tell whether every sentence is true, so read it through before you send.
               </p>
             )}
           </div>

@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileStack, Footprints, Hand, House, LayoutGrid, Map, Moon, Pause, RotateCcw, Search, Sparkles, ShieldCheck, Sun, UserRound, UsersRound, Wallet, Wand2, X, type LucideIcon } from "lucide-react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, CircleDot, ClipboardList, FileStack, Footprints, Hand, House, LayoutGrid, Map, Moon, Pause, RotateCcw, Search, Sparkles, ShieldCheck, Sun, UserRound, UsersRound, Wallet, Wand2, X, type LucideIcon } from "lucide-react";
 import { useStore } from "../state/store";
 import { ImpactLockup } from "../brand/RevivoLogo";
 import { MOMENTS, type Person } from "../domain/model";
@@ -104,6 +104,7 @@ const ManagingCtx = createContext<string | undefined>(undefined);
 /** The athlete a guardian or coach is currently managing ("Managing: Tiago ▾"). */
 export const useManaging = () => useContext(ManagingCtx);
 
+const SHORT: Record<string, string> = { "Consent & safety": "Safety", "Funding & Updates": "Funding", "Audit & admin": "Admin" };
 const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Consent & safety": ShieldCheck, "Audit & admin": ShieldCheck, Programme: CalendarCheck };
 
 export function AppFrame({ persona, active, children }: { persona: Person; active: string; children: ReactNode }) {
@@ -170,7 +171,7 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
           {children}
         </main>
         {nav.length > 1 && (
-          <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-raised md:hidden" data-ri-print-hide>
+          <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-raised md:hidden" data-ri-print-hide data-ri-bottom-nav>
             <ul className="grid" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0,1fr))` }}>
               {nav.map((n) => {
                 const I = ICONS[n.label] ?? House;
@@ -178,7 +179,15 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
                   <li key={n.label}>
                     <a href={`#/app/${persona.id}/${n.screen}`} aria-current={on(n.screen) ? "page" : undefined} className={cn("flex min-h-16 flex-col items-center justify-center gap-1 px-0.5 text-center font-display text-[0.8125rem] leading-tight font-bold tracking-[0.02em] break-words hyphens-auto", on(n.screen) ? "text-ink" : "text-subtle")}>
                       <I aria-hidden="true" className={cn("size-5", on(n.screen) && "text-signal")} />
-                      {n.label}
+                      {/* Phones: a short label that fits one line; the full name stays for screen readers. */}
+                      {SHORT[n.label] ? (
+                        <>
+                          <span aria-hidden="true">{SHORT[n.label]}</span>
+                          <span className="sr-only">{n.label}</span>
+                        </>
+                      ) : (
+                        n.label
+                      )}
                     </a>
                   </li>
                 );
@@ -231,11 +240,36 @@ function WhatChanged() {
 export function GuidePanel() {
   const { guide, setGuide, go, showStep, loadStep, stepDone, moment } = useStore();
   const [err, setErr] = useState<string | null>(null);
-  // From 1024px the guide is a column beside the page, so the page narrows instead of being covered.
+  // Below 1024px the guide is a sheet at the bottom. Opening a screen shrinks it to one line, so the screen is never
+  // covered; "Show the step" brings it back. From 1024px it is a column beside the page, which narrows instead.
+  const [mini, setMini] = useState(false);
+  const sheet = useRef<HTMLElement>(null);
+  useEffect(() => {
+    setMini(false);
+  }, [guide.step, guide.journey]);
   useEffect(() => {
     document.documentElement.classList.toggle("ri-guide-open", guide.open);
     return () => document.documentElement.classList.remove("ri-guide-open");
   }, [guide.open]);
+  // The page keeps room at the bottom for the sheet, so its last lines can always be scrolled into view.
+  useEffect(() => {
+    const el = sheet.current;
+    const root = document.documentElement;
+    if (!el) return;
+    // On phones the sheet sits just above the bottom menu, so the menu stays usable.
+    const set = () => {
+      const nav = document.querySelector("[data-ri-bottom-nav]")?.getBoundingClientRect().height ?? 0;
+      el.style.bottom = window.innerWidth < 1024 ? `${nav}px` : "";
+      root.style.setProperty("--ri-guide-h", `${el.offsetHeight}px`);
+    };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--ri-guide-h");
+    };
+  });
   if (!guide.open) return null;
   const journey = JOURNEYS.find((x) => x.id === guide.journey)!;
   const s = journey.steps[guide.step];
@@ -245,20 +279,49 @@ export function GuidePanel() {
   // Earlier steps of the same date that have not happened yet: load the story so this step makes sense.
   const prevPending = journey.steps.slice(0, guide.step).some((x) => x.when === s.when && x.cmds.length > 0 && !x.phase && !stepDone(x));
   // A step whose screen is a public page (Join) opens it directly; every other step opens as its person.
-  const open = () => go(s.to.startsWith("/") ? s.to.slice(1) : `app/${s.as}/${s.to}`);
+  const open = () => {
+    go(s.to.startsWith("/") ? s.to.slice(1) : `app/${s.as}/${s.to}`);
+    if (window.innerWidth < 1024) setMini(true);
+  };
   const next = () => {
     setErr(null);
     if (guide.step < journey.steps.length - 1) setGuide({ step: guide.step + 1 });
   };
+  if (mini)
+    return (
+      <aside ref={sheet} aria-label="Guided journeys" className="fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-surface px-4 py-3 shadow-2xl lg:inset-x-auto lg:top-0 lg:right-0 lg:w-[380px] lg:border-t-0 lg:border-l lg:shadow-none" data-ri-print-hide>
+        <div className="flex items-center gap-3">
+          <p className="min-w-0 flex-1 text-small">
+            <span className="label block text-signal">
+              {journey.id} · step {guide.step + 1}/{journey.steps.length}
+            </span>
+            <span className="block truncate font-medium">{s.title}</span>
+          </p>
+          <button type="button" className={btn("secondary", "shrink-0")} onClick={() => setMini(false)} aria-label="Show the step">
+            <ChevronUp className="size-4" aria-hidden="true" /> Step
+          </button>
+          {guide.step < journey.steps.length - 1 && (
+            <button type="button" className={btn("primary", "shrink-0")} onClick={next}>
+              Next
+            </button>
+          )}
+        </div>
+      </aside>
+    );
   return (
-    <aside aria-label="Guided journeys" className="fixed inset-x-0 bottom-0 z-40 max-h-[48vh] overflow-y-auto border-t border-line-strong bg-surface p-5 shadow-2xl md:top-[4.9rem] md:right-0 md:bottom-0 md:left-auto md:max-h-none md:w-[400px] md:border-t-0 md:border-l lg:top-0 lg:w-[380px] lg:shadow-none" data-ri-print-hide>
+    <aside ref={sheet} aria-label="Guided journeys" className="fixed inset-x-0 bottom-0 z-40 max-h-[50vh] overflow-y-auto border-t border-line-strong bg-surface p-5 shadow-2xl lg:top-0 lg:right-0 lg:left-auto lg:max-h-none lg:w-[380px] lg:border-t-0 lg:border-l lg:shadow-none" data-ri-print-hide>
       <div className="flex items-center justify-between">
         <p className="label text-signal">
           Guided journeys <Map className="ml-1 inline size-3.5" aria-hidden="true" />
         </p>
-        <button type="button" onClick={() => setGuide({ open: false })} className={btn("quiet", "min-h-9")} aria-label="Close the guide">
-          <X className="size-4" aria-hidden="true" />
-        </button>
+        <span className="flex gap-1">
+          <button type="button" onClick={() => setMini(true)} className={btn("quiet", "min-h-11 lg:hidden")} aria-label="Make the guide smaller">
+            <ChevronDown className="size-4" aria-hidden="true" />
+          </button>
+          <button type="button" onClick={() => setGuide({ open: false })} className={btn("quiet", "min-h-11")} aria-label="Close the guide">
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </span>
       </div>
       <div className="mt-3 flex gap-1.5" role="tablist" aria-label="Journeys">
         {JOURNEYS.map((x) => (

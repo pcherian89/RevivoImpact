@@ -6,6 +6,7 @@
 import {
   AMIRA_PROFILE,
   BEHAVIOUR,
+  DATE,
   sessionDate,
   seedSessions,
   type Agreement,
@@ -30,6 +31,8 @@ const fail = (msg: string): never => {
   throw new RuleError(msg);
 };
 export const fmt = (n: number) => "$" + Math.round(n).toLocaleString("en-GB");
+/** "Wed 30 Jun 2027" from an ISO date. */
+export const fmtIso = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).replace(",", "");
 
 export type Event = { n: number; at: Moment; actor: string; type: CommandName; args: Record<string, unknown> };
 
@@ -200,7 +203,37 @@ export function claimsCheck(text: string, w?: World, agreementId?: string) {
       if (line) {
         const spent = sum(Object.values(w.expenses).filter((e) => e.agreementId === agreementId && e.category === line.line).map((e) => e.amount));
         if (v !== spent && v !== line.amount) out.push(`${m[0].trim()} for ${line.line.toLowerCase()} (the records show ${fmt(spent)} spent of ${fmt(line.amount)})`);
+        continue;
       }
+      // A real figure in the wrong place is still wrong: "we have spent $60,000" when $60,000 is what was committed.
+      // The money word nearest the amount decides which total it must equal.
+      const t = agreementTotals(w, agreementId);
+      const words: [RegExp, number, string][] = [
+        [/not yet spent|unspent|left to spend|still to spend/g, t.notYetSpent, "not yet spent"],
+        [/still to pay|yet to be paid|still to come/g, t.stillToPay, "still to pay"],
+        [/\bspent\b|\bspend(?:ing)?\b/g, t.spent, "spent"],
+        [/\breceived\b/g, t.received, "received"],
+        [/\bpaid\b|\breleased\b/g, t.paid, "paid"],
+        [/\bcommitted\b|\bawarded\b|\bgrant of\b|\bagreed\b/g, t.committed, "committed"],
+        [/\bchecked\b|\bverified\b/g, t.checked, "checked"],
+      ];
+      // A money word straight after the amount ("$10,368 is checked") describes it best; otherwise the nearest before.
+      const after = text.slice(m.index! + m[0].length, m.index! + m[0].length + 22).toLowerCase();
+      let next: { at: number; want: number; label: string } | null = null;
+      for (const [re, want, label] of words)
+        for (const k of after.matchAll(re)) if (!next || k.index! < next.at || (k.index === next.at && label.length > next.label.length)) next = { at: k.index!, want, label };
+      if (next && !/[.;:,]/.test(after.slice(0, next.at))) {
+        if (v !== next.want) out.push(`${m[0].trim()} ${next.label} (the records show ${fmt(next.want)} ${next.label})`);
+        continue;
+      }
+      // The phrase ending nearest the amount wins; "not yet spent" beats "spent" when both end in the same place.
+      let best: { end: number; len: number; want: number; label: string } | null = null;
+      for (const [re, want, label] of words)
+        for (const k of before.matchAll(re)) {
+          const end = k.index! + k[0].length;
+          if (!best || end > best.end || (end === best.end && k[0].length > best.len)) best = { end, len: k[0].length, want, label };
+        }
+      if (best && v !== best.want) out.push(`${m[0].trim()} ${best.label} (the records show ${fmt(best.want)} ${best.label})`);
     }
   }
   return out;
@@ -730,7 +763,7 @@ export const commands = {
       fresh(c.w.offers, oid);
       // An offer on an application linked to a funding request keeps the link, so the hold becomes the offer (no double funding).
       const req = x.linked ? c.w.requests[x.linked.requestId] : undefined;
-      c.w.offers[oid] = { id: oid, fundId: fund.id, by: c.actor, recipientKind: "athlete", recipientId: x.applicantId, applicationId: x.id, requestId: req?.id, lineId: req ? req.lines[req.lines.length - 1].id : undefined, amount: x.recommendedTier!, reason: "Reached the minimum score with every fact verified; tier by published criteria.", status: "held", at: c.at, light: x.light };
+      c.w.offers[oid] = { id: oid, fundId: fund.id, by: c.actor, recipientKind: "athlete", recipientId: x.applicantId, applicationId: x.id, requestId: req?.id, lineId: req ? req.lines[req.lines.length - 1].id : undefined, amount: x.recommendedTier!, reason: "Reached the minimum score with every fact verified; tier by published criteria.", status: "held", at: c.at, light: x.light || /^eas-\d+$/.test(x.id) };
       x.status = "offered";
     }
     for (const x of shortlisted.filter((y) => y.pendingFact)) x.status = "waiting";
@@ -758,7 +791,7 @@ export const commands = {
       const oid = `of-${x.id}`;
       fresh(c.w.offers, oid);
       const req = x.linked ? c.w.requests[x.linked.requestId] : undefined;
-      c.w.offers[oid] = { id: oid, fundId: fund.id, by: c.actor, recipientKind: "athlete", recipientId: x.applicantId, applicationId: x.id, requestId: req?.id, lineId: req ? req.lines[req.lines.length - 1].id : undefined, amount: x.recommendedTier!, reason: a.note.trim(), status: "held", at: c.at, light: x.light };
+      c.w.offers[oid] = { id: oid, fundId: fund.id, by: c.actor, recipientKind: "athlete", recipientId: x.applicantId, applicationId: x.id, requestId: req?.id, lineId: req ? req.lines[req.lines.length - 1].id : undefined, amount: x.recommendedTier!, reason: a.note.trim(), status: "held", at: c.at, light: x.light || /^eas-\d+$/.test(x.id) };
       x.status = "offered";
     } else x.status = a.decision;
     x.decisionNote = a.note.trim();
@@ -1017,7 +1050,7 @@ export const commands = {
     audit(c, "Reported a concern to the platform safeguarding team (simulated)", a.funderId ? c.w.funders[a.funderId]?.name ?? "A funder" : "Platform");
   },
 
-  recordRelease(c: Ctx, a: { agreementId: string; amount: number; ref: string; entryId: string }) {
+  recordRelease(c: Ctx, a: { agreementId: string; amount: number; ref?: string; entryId: string; paidOn?: string }) {
     const ag = c.w.agreements[a.agreementId];
     const fund = c.w.funds[ag.fundId];
     const p = c.w.people[c.actor];
@@ -1030,13 +1063,22 @@ export const commands = {
     }
     positive(a.amount, "A payment");
     need(!c.w.ledger.some((l) => l.id === a.entryId), "That record already exists. Nothing was changed.");
-    need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === a.ref), `Payment ${a.ref} is already recorded.`);
+    // Payment date: required, never after today's demo date, never before the agreement was accepted (money paid
+    // before joining is "carried in" instead). The reference is optional: the finance team's own if they have one.
+    const today = DATE[c.at];
+    const paidOn = a.paidOn || today;
+    need(/^\d{4}-\d{2}-\d{2}$/.test(paidOn), "Enter the payment date as day, month and year.");
+    need(paidOn <= today, `The payment date can't be after today (${fmtIso(today)}).`);
+    need(ag.origin === "Existing agreement" || paidOn >= DATE[ag.acceptedAt], `The payment date can't be before the agreement was accepted (${fmtIso(DATE[ag.acceptedAt])}).`);
+    const ref = (a.ref ?? "").trim() || `PAY-${ag.id.toUpperCase()}-${c.w.ledger.filter((l) => l.agreementId === ag.id && l.kind === "release").length + 1}`;
+    need(ref.length <= 40, "Keep the payment reference to 40 characters or fewer.");
+    need(!c.w.ledger.some((l) => l.agreementId === ag.id && l.ref === ref), `Payment ${ref} is already recorded.`);
     need(released(c.w, ag.id) + a.amount <= ag.amount, "You can't pay more than was committed.");
     const sched = scheduleOf(c.w, ag.id);
     const dueNow = sum(sched.filter((x) => x.status === "due" || x.status === "part-paid").map((x) => x.amount - x.paid));
     const next = sched.find((x) => x.status !== "paid" && x.status !== "due" && x.status !== "part-paid");
     need(a.amount <= dueNow, dueNow > 0 ? `Only ${fmt(dueNow)} is due now under the payment schedule.` : `Nothing is due yet. The next payment${next ? ` (${fmt(next.amount - next.paid)}, ${next.dueLabel})` : ""} ${next?.condition && !next.conditionMet ? `waits until ${next.condition}` : "is not due yet"}.`);
-    c.w.ledger.push({ id: a.entryId, agreementId: ag.id, kind: "release", amount: a.amount, by: c.actor, at: c.at, ref: a.ref });
+    c.w.ledger.push({ id: a.entryId, agreementId: ag.id, kind: "release", amount: a.amount, by: c.actor, at: c.at, ref, paidOn });
     audit(c, `Recorded a payment of ${fmt(a.amount)} (simulated)${fund.policy === "Simple" && c.w.offers[ag.offerId ?? ""]?.by === c.actor ? " · single-person approval" : ""}`, fund.name);
   },
 
@@ -1407,6 +1449,25 @@ function seedArrivals(w: World, to: Moment) {
     for (let k = 0; k < 81; k++) mk("submitted", { scores: [{ by: "daniel", total: 6 + (k % 5) }, { by: "reviewer2", total: 5 + (k % 6) }] });
     for (let k = 0; k < 9; k++) mk("noteligible");
     for (let k = 0; k < 5; k++) mk("incomplete");
+    // P5: a representative set of fully explorable applications across every stage (founder, 25 Nov 2026), so a funder
+    // can open real examples at each step. The rest stay summary rows and say so.
+    const STATEMENTS = [
+      (sp: string) => `I train six days a week in ${sp.toLowerCase()} and pay my own coaching fees from a part-time job. This would cover coaching and two national competitions, so I can train instead of working extra shifts.`,
+      (sp: string) => `My club has supported me since I was twelve. I reached a national final this season. The money would pay for competition travel and replace equipment that no longer meets the rules for ${sp.toLowerCase()}.`,
+      (sp: string) => `I want to compete nationally next season. I need help with entry fees, travel and a strength coach. My family covers what it can, and my coach has written a training plan with me.`,
+    ];
+    const OTHER = ["None", "Club hardship fund, $250", "None", "Regional sports council travel grant, $400"];
+    ["eas-1", "eas-2", "eas-28", "eas-40", "eas-46", "eas-48", "eas-60", "eas-90", "eas-129", "eas-138"].forEach((id, k) => {
+      const x = w.applications[id];
+      if (!x) return;
+      const ath = w.athletes[x.applicantId];
+      Object.assign(x, {
+        light: false,
+        statement: x.status === "incomplete" ? "" : STATEMENTS[k % 3](ath.sport),
+        otherFunding: x.status === "incomplete" ? "" : OTHER[k % 4],
+        shared: ["Name", "Age", "Sport", "Region", "Results", "Documents", "Budget", "Other funding", "Statement"],
+      });
+    });
     // Women's Sporting Development Fund: 12 offers held on 6 May (8 × 3,000 + 4 × 3,500)
     [...Array(8).fill(3000), ...Array(4).fill(3500)].forEach((amt, k) => {
       const oid = `of-wsdf-${k + 1}`;
