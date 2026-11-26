@@ -108,7 +108,7 @@ export function scheduleOf(w: World, agreementId: string): Instalment[] {
     const dels = Object.values(w.deliverables).filter((d) => d.agreementId === g.id);
     plan = [
       { amount: half, ...accepted },
-      { amount: g.amount - half, dueISO: "2027-12-01", dueLabel: "Wed 1 Dec", condition: "the first two deliverables are done", met: dels.length >= 2 && dels.slice(0, 2).every((d) => d.status === "complete") },
+      { amount: g.amount - half, dueISO: "2027-12-01", dueLabel: "Wed 1 Dec", condition: "the first two agreed tasks are done", met: dels.length >= 2 && dels.slice(0, 2).every((d) => d.status === "complete") },
     ];
   } else if (type === "Programme grant") {
     const q = Math.floor(g.amount / 5);
@@ -483,7 +483,7 @@ export function mayReachMinors(w: World, personId: string) {
   return f.type === "Individual sponsor" ? !!p!.enhancedCheck : true;
 }
 
-function canActForAthlete(w: World, actor: string, athleteId: string, power: "submit" | "prepare") {
+export function canActForAthlete(w: World, actor: string, athleteId: string, power: "submit" | "prepare") {
   const a = w.athletes[athleteId];
   if (!a) return false;
   if (!a.minor && actor === athleteId) return true;
@@ -585,7 +585,7 @@ export const commands = {
     need(SPORT_WORDS.some((x) => a.sport.toLowerCase().includes(x)) || SPORTS_LIST.includes(a.sport), "Revivo Impact is for sport. Choose your sport.");
     const base = a.personId === "amira" ? AMIRA_PROFILE() : null;
     c.w.athletes[a.personId] = base ?? { id: a.personId, name: a.name, age: a.age, minor: false, gender: a.gender, sport: a.sport, discipline: a.sport, level: "Not yet added", levelRank: 1, region: a.region, discoverable: false, currentSupport: [], tags: [a.sport.toLowerCase(), a.region], createdAt: c.at, facts: [] };
-    if (!c.w.people[a.personId]) c.w.people[a.personId] = { id: a.personId, name: a.name, role: "athlete", title: `Athlete, ${a.age} · ${a.sport.toLowerCase()}`, athleteId: a.personId, perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: true };
+    if (!c.w.people[a.personId]) c.w.people[a.personId] = { id: a.personId, name: a.name, role: "athlete", title: `${a.sport} athlete, ${a.age}`, athleteId: a.personId, perms: [], group: "Seeking funding", journeys: "", tasks: [], persona: true };
     audit(c, "Registered as an adult athlete (simulated email code)", a.name);
   },
 
@@ -858,7 +858,7 @@ export const commands = {
         const words = [...ath.name.split(" "), ...(ath.club ? [ath.club] : [])].filter((x) => x.length > 2).map((x) => x.toLowerCase());
         const text = `${a.title} ${a.lines.map((l) => l.label).join(" ")} ${a.neededMonth}`.toLowerCase();
         need(!words.some((x) => text.includes(x)), "Remove the athlete's name or club: cards for athletes under 18 never show them.");
-        need(/^(january|february|march|april|may|june|july|august|september|october|november|december)$/i.test(a.neededMonth.trim()), "For athletes under 18, give only the month the money is needed, not an exact date.");
+        need(/^(january|february|march|april|may|june|july|august|september|october|november|december)( 20\d\d)?$/i.test(a.neededMonth.trim()), "For athletes under 18, give only the month the money is needed, not an exact date.");
         region = chk.region;
       }
     } else {
@@ -1200,7 +1200,7 @@ export const commands = {
     need(!live, "Someone has offered or agreed funding on this request. Decline open offers first; agreed funding continues.");
     r.status = "closed";
     r.discoverable = false;
-    for (const x of Object.values(c.w.asks)) if (x.requestId === r.id && x.status === "sent") delete c.w.asks[x.id];
+    for (const x of Object.values(c.w.asks)) if (x.requestId === r.id && x.status === "sent") x.status = "cancelled";
     audit(c, "Withdrew a funding request (open asks cancelled)", r.title);
   },
 
@@ -1310,8 +1310,8 @@ export const commands = {
   submitDeliverable(c: Ctx, a: { deliverableId: string; evidence: string }) {
     const d = c.w.deliverables[a.deliverableId] ?? fail("That deliverable does not exist.");
     const g = c.w.agreements[d.agreementId];
-    need(c.actor === g.recipientId, "Only the sponsored athlete sends proof of a deliverable.");
-    need(d.done + d.pending < d.target, "Everything for this deliverable has already been sent.");
+    need(c.actor === g.recipientId, "Only the sponsored athlete sends proof of an agreed task.");
+    need(d.done + d.pending < d.target, "Everything for this agreed task has already been sent.");
     need(a.evidence?.trim().length > 3, "Say what the proof shows, for example “Kit worn at the Southern Open, photo attached”.");
     d.pending += 1;
     d.status = "in-progress";
@@ -1322,7 +1322,7 @@ export const commands = {
   acceptDeliverable(c: Ctx, a: { deliverableId: string }) {
     const d = c.w.deliverables[a.deliverableId] ?? fail("That deliverable does not exist.");
     const fid = c.w.funds[c.w.agreements[d.agreementId].fundId].funderId;
-    need(memberOf(c.w, c.actor, fid, "Approve") || memberOf(c.w, c.actor, fid, "Review"), "Only the sponsor accepts deliverables.");
+    need(memberOf(c.w, c.actor, fid, "Approve") || memberOf(c.w, c.actor, fid, "Review"), "Only the sponsor accepts agreed tasks.");
     need(d.pending > 0, "There is no proof waiting to be accepted.");
     d.pending -= 1;
     d.done += 1;

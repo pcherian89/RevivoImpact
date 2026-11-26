@@ -114,9 +114,9 @@ export const policyText = (p: "Simple" | "Standard" | "Institutional") => (p ===
 export function Section({ title, children, aside, id }: { title: string; children: ReactNode; aside?: ReactNode; id?: string }) {
   const hid = id ?? title.toLowerCase().replace(/[^a-z]+/g, "-");
   return (
-    <section aria-labelledby={hid} className="mt-10 max-w-[64rem]">
+    <section aria-labelledby={hid} className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
-        <h2 id={hid} className="label text-subtle">
+        <h2 id={hid} className="text-subtitle text-ink">
           {title}
         </h2>
         {aside}
@@ -145,3 +145,6 @@ export const Field = ({ label, hint, children, htmlFor }: { label: string; hint?
   </div>
 );
 export const inputCls = "h-12 w-full rounded-[6px] border border-control bg-surface-2 px-3 text-ink";
+
+/** The id the guided story expects when it is still free (so "I'll do it" and "Show me" lead to the same records), otherwise a fresh one. */
+export const storyId = (taken: Record<string, unknown>, preferred: string, fresh: string) => (taken[preferred] ? fresh : preferred);

@@ -28,7 +28,7 @@ const STEPS = [
   { t: "Discover", d: "Athletes and organisations find funding and sponsors; funders find athletes, teams and initiatives." },
   { t: "Apply or connect", d: "One reusable profile for applications, nominations, structured requests and offers." },
   { t: "Fund", d: "People decide, a second person approves; commitments and payments are recorded separately." },
-  { t: "Track", d: "Payments confirmed received, spending checked, sporting progress and deliverables recorded." },
+  { t: "Track", d: "Payments confirmed received, spending checked, sporting progress and agreed tasks recorded." },
   { t: "Review", d: "A person reviews each funding relationship: continue, add conditions, pause or renew." },
 ];
 

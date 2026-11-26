@@ -603,6 +603,23 @@ describe("recovering from mistakes (P5 review)", () => {
     const w = at("jun30");
     expect(cmd(w, "nadia", "closeRequest", { requestId: "rq-nadia" }, "jun30")).toMatch(/offered or agreed/);
   });
+  it("withdrawing a request keeps it on record and marks its open asks as cancelled", () => {
+    const w = upTo((e) => e.type === "sendAsk" && e.args.askId === "ask-nadia-1");
+    expect(cmd(w, "nadia", "closeRequest", { requestId: "rq-nadia" })).toBeNull();
+    expect(w.requests["rq-nadia"].status).toBe("closed");
+    expect(w.requests["rq-nadia"].discoverable).toBe(false);
+    expect(w.asks["ask-nadia-1"].status).toBe("cancelled");
+  });
+  it("a coach without the family's authorisation cannot prepare an application for a young athlete", () => {
+    const w = at("may06");
+    w.authorisations = w.authorisations.filter((z) => z.athleteId !== "tiago");
+    expect(cmd(w, "jonas", "saveApplication", { appId: "app-x", oppId: "ostral-ctg", athleteId: "tiago", requested: 900, statement: "x", otherFunding: "None" })).not.toBeNull();
+  });
+  it("a guardian may give the month a young athlete's money is needed with its year", () => {
+    const w = at("may06");
+    expect(cmd(w, "rosa", "publishRequest", { requestId: "rq-t2", ownerKind: "athlete", ownerId: "tiago", title: "Competition travel", sport: "Swimming", lines: [{ label: "Competition travel and entry", amount: 2400 }], visibility: "Verified funders only", neededBy: "August 2027", neededMonth: "August 2027", verifiedLabel: "x", tags: [] })).toBeNull();
+    expect(cmd(w, "rosa", "publishRequest", { requestId: "rq-t3", ownerKind: "athlete", ownerId: "tiago", title: "Competition travel", sport: "Swimming", lines: [{ label: "Competition travel and entry", amount: 2400 }], visibility: "Verified funders only", neededBy: "14 August", neededMonth: "14 August", verifiedLabel: "x", tags: [] })).toMatch(/only the month/);
+  });
   it("spending can be removed by the person who added it until it is checked", () => {
     const w = at("jun30");
     expect(cmd(w, "amira", "addExpense", { expenseId: "x-oops", agreementId: "ag-amira", what: "Physio session", amount: 125, paidOn: "2027-06-20", receipt: false }, "jun30")).toBeNull();

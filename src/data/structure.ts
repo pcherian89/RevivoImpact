@@ -111,3 +111,10 @@ export const SCREENS: ScreenDef[] = [
   { n: 23, name: "Audit & admin", question: "Who did what, when and why?", template: "T9 Audit", contents: "Audit table; verification, safeguarding checks and reports of concern for the platform admin.", phase: "P3" },
 ];
 
+
+/** Who a person is, in plain words: name, role and the organisation they act for (shown on every screen). */
+export function identityOf(p: Person, w: World): { name: string; role: string; org: string } {
+  const org =
+    p.orgId ? w.orgs[p.orgId]?.name ?? "" : p.funderId && p.role !== "individual" ? w.funders[p.funderId]?.name ?? "" : p.role === "admin" ? "Revivo Impact" : "";
+  return { name: p.name, role: p.title, org: p.role === "athlete" ? "" : org };
+}

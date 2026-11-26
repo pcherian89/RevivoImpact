@@ -7,7 +7,7 @@ import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Pane
 import { FundBar, NeedBar } from "../components/money";
 import { fundSources } from "./sources";
 import { FunderAskRevivo } from "./Track";
-import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, useAction } from "./common";
+import { ActionButton, AppStatus, athleteLabel, Empty, Field, inputCls, Message, policyText, recipientName, Row, Section, storyId, useAction } from "./common";
 import { fmtDate } from "./Seeker";
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -16,14 +16,18 @@ const fundsOf = (w: World, funderId: string) => Object.values(w.funds).filter((f
 /* ================================================================= Overview */
 
 export function FunderOverview({ persona }: { persona: Person }) {
-  const { world: w } = useStore();
+  const { world: w, moment } = useStore();
   const [ask, setAsk] = useState(false);
   const fid = persona.funderId!;
   const f = w.funders[fid];
   const funds = fundsOf(w, fid);
   const needs: { t: string; d: string; a: string; to: string }[] = [];
   for (const o of Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "awaiting"))
-    if (o.draftedBy === persona.id || persona.perms.includes("Approve")) needs.push(o.draftedBy === persona.id ? { t: `Your draft "${o.title}" waits for a colleague's approval`, d: "You prepared it, so a different person must publish it.", a: "See opportunities", to: "opps" } : { t: `${w.people[o.draftedBy!]?.name ?? "A colleague"}'s draft is waiting for approval`, d: `${o.title} · you did not prepare it, so you can publish it`, a: "Review and publish", to: "opps" });
+    if (o.draftedBy !== persona.id && persona.perms.includes("Approve")) {
+      const by = w.people[o.draftedBy!];
+      needs.push({ t: `Approve and publish a new ${w.funds[o.fundId].type === "Scholarship award" ? "sports scholarship" : "funding opportunity"}`, d: `${by ? `${by.name} (${by.title.split(",")[0].toLowerCase()})` : "A colleague"} prepared “${o.title}”. Check it before it opens for applications.`, a: w.funds[o.fundId].type === "Scholarship award" ? "Review scholarship" : "Review opportunity", to: "opps" });
+    }
+  const myDrafts = Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "awaiting" && o.draftedBy === persona.id);
   const waiting = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && o.status === "second-approval");
   const forMe = waiting.filter((o) => o.by !== persona.id);
   if (forMe.length && persona.perms.includes("Approve")) needs.push({ t: `${forMe.length} offer${forMe.length > 1 ? "s" : ""} waiting for your second approval`, d: "A colleague made them; this fund needs two people.", a: "Give second approval", to: "apps" });
@@ -45,13 +49,17 @@ export function FunderOverview({ persona }: { persona: Person }) {
     if (!Object.values(w.offers).some((o) => o.recipientId === it.athleteId && w.funds[o.fundId].funderId === fid))
       needs.push({ t: `${w.athletes[it.athleteId]?.name.split(" ")[0]} shared more with you`, d: "They answered your interest. Propose an agreement, or leave it.", a: "See what they shared", to: `athlete/${it.athleteId}` });
   const shortlisted = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "shortlisted");
-  if (shortlisted.length && persona.perms.includes("Approve")) needs.push({ t: `${shortlisted.length} recommendations are ready for decision`, d: "See the budget and award levels before you decide.", a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
+  if (shortlisted.length && persona.perms.includes("Approve")) {
+    const so = w.opps[shortlisted[0].oppId];
+    needs.push({ t: `Decide the ${w.funds[so.fundId].type === "Scholarship award" ? "scholarship" : ""} offers · ${shortlisted.length} shortlisted`.replace("the  offers", "the offers"), d: `${so.title} · ${fmt(fundTotals(w, so.fundId).announced)} budget. Reviewers recommended them; you decide.`, a: "Decide offers", to: `selection/${shortlisted[0].oppId}` });
+  }
   const toReview = Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status === "submitted" && a.scores.length < 2 && !a.scores.some((s) => s.by === persona.id) && !a.light);
   if (toReview.length && persona.perms.includes("Review")) needs.push({ t: `${toReview.length} application${toReview.length > 1 ? "s" : ""} to review`, d: toReview.map((a) => athleteLabel(w, a.applicantId, persona)).join(", "), a: "Review", to: `review/${toReview[0].id}` });
   const dueAll = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g) && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind" && agreementTotals(w, g.id).paid > 0 && scheduleOf(w, g.id).some((x) => x.status === "due" || x.status === "part-paid"));
   const dueNow = dueAll.filter((g) => !g.light);
   const dueGrouped = dueAll.length - dueNow.length;
-  if (dueAll.length && persona.perms.includes("Finance")) needs.push({ t: `${plural(dueAll.length, "payment")} due now`, d: [...dueNow.map((g) => recipientName(w, g.recipientKind, g.recipientId, persona)), ...(dueGrouped ? [`${dueGrouped} other ${dueGrouped === 1 ? "agreement" : "agreements"}`] : [])].join(", "), a: "Record payments", to: dueNow.length === 1 && !dueGrouped ? `agreement/${dueNow[0].id}` : "portfolio" });
+  const dueTotal = sum(dueAll.flatMap((g) => scheduleOf(w, g.id).filter((x) => x.status === "due" || x.status === "part-paid").map((x) => x.amount - x.paid)));
+  if (dueAll.length && persona.perms.includes("Finance")) needs.push({ t: `${dueAll.length === 1 ? "1 payment is" : `${dueAll.length} payments are`} due · ${fmt(dueTotal)}`, d: [...dueNow.map((g) => recipientName(w, g.recipientKind, g.recipientId, persona)), ...(dueGrouped ? [`${dueGrouped} other ${dueGrouped === 1 ? "scholarship" : "scholarships"}`] : [])].join(", "), a: dueAll.length === 1 ? "Record the payment" : `Record the ${dueAll.length} payments`, to: dueNow.length === 1 && !dueGrouped ? `agreement/${dueNow[0].id}` : "portfolio" });
   const toRelease = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light && released(w, g.id) === 0 && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
   if (toRelease.length && persona.perms.includes("Finance")) needs.push({ t: toRelease.length > 1 ? `${toRelease.length} first payments to record` : `First payment to record for ${recipientName(w, toRelease[0].recipientKind, toRelease[0].recipientId, persona)}`, d: "Your finance team pays; you record it here (simulated: no money moves).", a: "Record a payment", to: `agreement/${toRelease[0].id}` });
   const main = funds.find((x) => x.id === "eas") ?? funds[0];
@@ -59,7 +67,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const quick = [
     { t: "Discover athletes", to: "fdiscover?athletes", icon: Search },
     { t: "Discover funding requests and teams", to: "fdiscover?requests", icon: HandHeart },
-    ...(f.type === "Individual sponsor" ? [] : [{ t: "Publish a sports funding opportunity", to: "opps", icon: Megaphone }]),
+    ...(f.type === "Individual sponsor" || !(persona.perms.includes("Approve") || persona.perms.includes("Admin")) ? [] : [{ t: "Publish a sports funding opportunity", to: "opps", icon: Megaphone }]),
     { t: "Manage funding and track progress", to: "portfolio", icon: FileText },
   ];
   const pt = funderTotals(w, fid);
@@ -79,11 +87,17 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const overviewPhoto = f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : "im-06-funder-visit.png";
   return (
     <div className="pb-8">
-      <HeroBand file={overviewPhoto} phone="none" className="max-w-[64rem]">
-        <p className="label text-signal">{f.name} · Overview</p>
-        <h1 className="text-title mt-2">What needs you, {persona.name.split(" ")[0]}?</h1>
+      <HeroBand file={overviewPhoto} phone="none">
+        <p className="label text-signal">{solo ? "Your support" : f.name} · Overview</p>
+        <h1 className="text-title mt-2">Funding overview</h1>
         <p className="text-lead mt-3 max-w-[36rem] text-muted">
-          Your funding at a glance: decisions waiting for you, money promised and paid, and how athletes and programmes are using it.
+          {solo
+            ? "The athletes and clubs you support: asks to answer, what you have agreed and paid, and how the money is used."
+            : persona.perms.includes("Finance") && !persona.perms.includes("Approve")
+              ? `You record ${f.name}'s payments (simulated) and check spending against receipts.`
+              : persona.perms.includes("Review") && !persona.perms.includes("Approve")
+                ? `You review applications for ${f.name}, check progress and decide whether funding continues.`
+                : `What needs a decision from you, what ${f.name} has agreed and paid, and how athletes and programmes use it.`}
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button type="button" className={btn("secondary")} onClick={() => setAsk(true)}>
@@ -93,8 +107,17 @@ export function FunderOverview({ persona }: { persona: Person }) {
         </div>
       </HeroBand>
       <FunderAskRevivo open={ask} onClose={() => setAsk(false)} persona={persona} />
-      <Section title={`Needs you · ${Math.min(needs.length, 3)}`}>
-        {needs.length === 0 ? <Empty>Nothing needs you right now. Discover athletes and requests, or follow your funding.</Empty> : (
+      <Section title={`Needs your action (${Math.min(needs.length, 3)})`}>
+        {needs.length === 0 ? (
+          <Empty>
+            {(() => {
+              const due = moment === "jun30" ? mineAg.filter((g) => !g.light && counts(g) && BEHAVIOUR[w.funds[g.fundId].type] !== "commercial" && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind" && agreementTotals(w, g.id).paid > agreementTotals(w, g.id).spent) : [];
+              return due.length
+                ? `Nothing needs your action yet. Quarterly updates are due today from ${due.map((g) => recipientName(w, g.recipientKind, g.recipientId, persona)).join(" and ")}; their spending appears here to check as soon as it arrives.`
+                : "Nothing needs your action right now. Discover athletes and requests, or follow your funding.";
+            })()}
+          </Empty>
+        ) : (
           <ul>
             {needs.slice(0, 3).map((n, i) => (
               <Row key={n.t}>
@@ -112,11 +135,12 @@ export function FunderOverview({ persona }: { persona: Person }) {
         {(() => {
           const sentOffers = Object.values(w.offers).filter((o) => w.funds[o.fundId].funderId === fid && ["held", "safeguarding"].includes(o.status) && !o.applicationId && !o.light);
           const sentInterest = Object.values(w.interests).filter((x) => x.funderId === fid && x.status === "sent");
-          if (!sentOffers.length && !sentInterest.length) return null;
+          if (!sentOffers.length && !sentInterest.length && !myDrafts.length) return null;
           return (
             <p className="mt-4 text-small text-subtle">
               <span className="font-medium text-muted">Waiting for others: </span>
               {[
+                ...myDrafts.map((o) => `your draft “${o.title}” is waiting for a colleague to approve and publish it (you prepared it, so someone else publishes it)`),
                 sentOffers.length ? `${plural(sentOffers.length, "offer")} waiting to be accepted (${fmt(sum(sentOffers.map((o) => o.amount)))} set aside)` : "",
                 sentInterest.length ? `${sentInterest.length === 1 ? "interest" : `${sentInterest.length} expressions of interest`} sent to ${sentInterest.map((x) => w.athletes[x.athleteId]?.name.split(" ")[0]).join(", ")}, waiting for an answer` : "",
               ].filter(Boolean).join(" · ")}
@@ -555,7 +579,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
             </button>
           )}
         </Field>
-        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: `of-${fid}-${Date.now()}`, fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: toDollars(amount), reason }, "Offer sent (simulated).") && setOpen(false)}>
+        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: storyId(w.offers, `of-${({ halvorsen: "hal", corvane: "cv" } as Record<string, string>)[fid] ?? fid}-${r.ownerId}`, `of-${fid}-${Date.now()}`), fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: toDollars(amount), reason }, "Offer sent (simulated).") && setOpen(false)}>
           Send offer
         </Button>
         <Message error={act.error} />
@@ -644,14 +668,14 @@ export function AthleteForFunder({ persona, id }: { persona: Person; id: string 
           <input id="sp-amt" inputMode="numeric" className={cn(inputCls, "max-w-[12rem]")} value={amount} onChange={(e) => setAmount(e.target.value)} />
           <MoneyHint value={amount} />
         </Field>
-        <p className="mt-4 font-medium">Deliverables (up to 3)</p>
+        <p className="mt-4 font-medium">Agreed tasks (up to 3)</p>
         <ul className="mt-1 space-y-1 text-small text-muted">
           <li>· Wear partner kit at 4 meets</li>
           <li>· One coaching clinic at a community club by Thu 30 Sep</li>
           <li>· One content day by Fri 31 Mar 2028</li>
         </ul>
-        <p className="mt-3 text-small text-subtle">Payments: half on signing, half after deliverables 1 and 2 are accepted. Reported only in commercial totals.</p>
-        <Button className="mt-6" onClick={() => comFund && act.run("makeOffer", { offerId: `of-${fid}-${id}`, fundId: comFund.id, recipientKind: "athlete", recipientId: id, amount: toDollars(amount), reason: "Adult national-level athlete whose season plan fits our partnerships.", deliverables: ["Wear partner kit at 4 meets", "One coaching clinic by Thu 30 Sep", "One content day by Fri 31 Mar 2028"] }, "Proposal sent.") && setOpen(false)}>
+        <p className="mt-3 text-small text-subtle">Payments: half on signing, half after the first two agreed tasks are accepted. Reported only in commercial totals.</p>
+        <Button className="mt-6" onClick={() => comFund && act.run("makeOffer", { offerId: storyId(w.offers, `of-${({ corvane: "cv" } as Record<string, string>)[fid] ?? fid}-${id}`, `of-${fid}-${id}-${Date.now()}`), fundId: comFund.id, recipientKind: "athlete", recipientId: id, amount: toDollars(amount), reason: "Adult national-level athlete whose season plan fits our partnerships.", deliverables: ["Wear partner kit at 4 meets", "One coaching clinic by Thu 30 Sep", "One content day by Fri 31 Mar 2028"] }, "Proposal sent.") && setOpen(false)}>
           Send proposal
         </Button>
         <Message error={act.error} />
@@ -903,7 +927,7 @@ export function FunderApplications({ persona }: { persona: Person }) {
                       <ActionButton actor={persona.id} type="answerAsk" args={{ askId: a.id, answer: "notnow" }} variant="secondary">Not now</ActionButton>
                     </div>
                   ) : (
-                    <Chip kind="self">{a.status === "offered" ? "Offer made" : a.status === "notnow" ? "Not now" : "Question asked"}</Chip>
+                    <Chip kind="self">{a.status === "offered" ? "Offer made" : a.status === "notnow" ? "Not now" : a.status === "cancelled" ? "Cancelled: request withdrawn" : "Question asked"}</Chip>
                   )}
                 </Row>
               );
@@ -1139,11 +1163,11 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
   return (
     <div className="pb-8">
       <PageHead eyebrow={`Selection & decisions · ${o.title}`} title="Who should we fund?" lead={`${apps.length} applications · minimum score ${o.minScore ?? "—"} of 16 · ${policyText(fund.policy).toLowerCase()}`} />
-      <Section title="Budget meter">
+      <Section title="How much is left to offer?">
         <div className="mt-4">
           <FundBar announced={t.announced} committed={t.committed} reserved={t.held + (o.status === "decided" ? 0 : proposed)} />
         </div>
-        {o.status !== "decided" && <p className="mt-3 text-small text-muted">If you press &ldquo;Send decisions&rdquo;: {offerable.length} offers ({byTier.map((b) => `${b.n} × ${fmt(b.tier)}`).join(" + ")} = {fmt(proposed)}) held until accepted; {fmt(t.available - proposed)} stays available.</p>}
+        {o.status !== "decided" && <p className="mt-3 text-small text-muted">If you send these decisions: {offerable.length} offers ({byTier.map((b) => `${b.n} × ${fmt(b.tier)}`).join(" + ")} = {fmt(proposed)}) would be set aside until each person accepts, and {fmt(t.available - proposed)} would still be available.</p>}
       </Section>
       <Section title={o.status === "decided" ? `Decisions sent · ${apps.filter((a) => a.status === "offered" || a.status === "accepted").length} offers · ${apps.filter((a) => a.status === "waiting").length} on the waiting list` : `Still to decide · ${short.length} shortlisted`}>
         <ul>
@@ -1155,7 +1179,7 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
                 </span>
                 <span className="text-small">{a.recommendedTier ? `Recommended: ${fmt(a.recommendedTier)} (the published level, not the amount requested)` : inReview.includes(a) ? "Still being reviewed" : "Not shortlisted"}</span>
               </div>
-              {o.status !== "decided" && ["shortlisted", "submitted", "info"].includes(a.status) && persona.perms.includes("Approve") ? <DecideOne persona={persona} appId={a.id} /> : ["offered", "waiting", "notselected", "accepted"].includes(a.status) && <p className="mt-2 text-small text-subtle">Decision sent: <AppStatus s={a.status} funderView />{a.decisionNote ? ` · “${a.decisionNote}”` : ""}</p>}
+              {o.status !== "decided" && ["shortlisted", "submitted", "info"].includes(a.status) && !inReview.includes(a) && persona.perms.includes("Approve") ? <DecideOne persona={persona} appId={a.id} /> : ["offered", "waiting", "notselected", "accepted"].includes(a.status) && <p className="mt-2 text-small text-subtle">Decision sent: <AppStatus s={a.status} funderView />{a.decisionNote ? ` · “${a.decisionNote}”` : ""}</p>}
             </li>
           ))}
           {o.status !== "decided" && <Row>
@@ -1170,12 +1194,17 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
         ) : (
           <>
             {inReview.length > 0 ? (
-              <p className="flex gap-2 text-amber" role="status">
-                <CircleHelp className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-                <span>
-                  {inReview.length === 1 ? "One application still needs" : `${inReview.length} applications still need`} the reviewers&rsquo; scores ({inReview.slice(0, 3).map((a) => athleteLabel(w, a.applicantId, persona)).join(", ")}). Nobody is turned down while they are being reviewed: send decisions once every application is reviewed, or decide shortlisted people one at a time above.
-                </span>
-              </p>
+              <div>
+                <button type="button" disabled aria-describedby="why-wait" className={btn("primary", "cursor-not-allowed opacity-50")}>
+                  Send decisions
+                </button>
+                <p id="why-wait" className="mt-3 flex gap-2 text-muted" role="status">
+                  <CircleHelp className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                  <span>
+                    Available once every application is reviewed. {inReview.length === 1 ? "One application still needs" : `${inReview.length} applications still need`} the reviewers&rsquo; scores ({inReview.slice(0, 3).map((a) => athleteLabel(w, a.applicantId, persona)).join(", ")}), and nobody is turned down while they are being reviewed. You can decide shortlisted people one at a time above.
+                  </span>
+                </p>
+              </div>
             ) : short.length === 0 && reviewed === 0 ? (
               <p className="text-muted">Nothing to send yet. Shortlisted applications appear here.</p>
             ) : !confirming ? (
@@ -1252,7 +1281,7 @@ export function Portfolio({ persona }: { persona: Person }) {
         ))}
       </section>
       {(toCheck.length > 0 || reports.some((r) => r.status === "submitted") || own.some((g) => g.status === "awaiting-approval")) && (
-        <Section title="Needs you">
+        <Section title="Needs your action">
           <ul>
             {own.filter((g) => g.status === "awaiting-approval").map((g) => (
               <Row key={g.id}>
@@ -1541,7 +1570,7 @@ function AddExisting({ persona, open, onClose }: { persona: Person; open: boolea
       <Button
         className="mt-6"
         onClick={() => {
-          const id = `ag-ex-${org}-${Date.now()}`;
+          const id = storyId(w.agreements, `ag-${org}`, `ag-ex-${org}-${Date.now()}`);
           if (act.run("addExistingFunding", { agreementId: id, fundId, orgId: org, amount: toDollars(amount), purpose, paid: paid.trim() ? toDollars(paid) : 0, spent: spent.trim() ? toDollars(spent) : 0, nextUpdate: "Next update due Thu 30 Sep" }, "Added. A second person with Approve now confirms it.")) {
             onClose();
             go(`app/${persona.id}/agreement/${id}`);

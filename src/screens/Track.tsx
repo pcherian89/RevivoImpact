@@ -136,10 +136,14 @@ export function AgreementStages({
     (p) => p.agreementId === g.id,
   );
   const me = sideOf(w, viewer, g) === "recipient";
-  const nodes = commercial
+  // Every money figure on the line opens the records behind it.
+  const src = agreementSources(w, g.id, viewer);
+  const agreedSrc: Source = { title: me ? "Agreed" : "Committed", rows: [{ label: `${fund.type} · ${fund.name}`, value: fmt(g.amount), note: `${g.origin === "Existing agreement" ? "Existing funding" : `Accepted ${dayOf(g.acceptedAt)}`}` }] };
+  const spentSrc = { title: "Spending recorded", rows: [...src.checked.rows, ...src.waiting.rows, ...src.carried.rows] };
+  const nodes: { short: string; full: string; stat: string; source?: Source }[] = commercial
     ? [
-        { short: "Agreed", full: "Sponsorship agreed", stat: fmt(g.amount) },
-        { short: "Paid", full: "Paid", stat: t.paid ? fmt(t.paid) : "Not yet" },
+        { short: "Agreed", full: "Sponsorship agreed", stat: fmt(g.amount), source: agreedSrc },
+        { short: "Paid", full: "Paid", stat: t.paid ? fmt(t.paid) : "Not yet", source: t.paid ? src.paid : undefined },
         {
           short: "Agreed tasks",
           full: me ? "What you agreed to do" : "What they agreed to do",
@@ -158,11 +162,13 @@ export function AgreementStages({
           short: "Agreed",
           full: me ? "Agreed" : "Committed",
           stat: fmt(g.amount),
+          source: agreedSrc,
         },
         {
           short: "Paid",
           full: me ? "Paid to you" : "Paid",
           stat: t.paid ? fmt(t.paid) : "Not yet",
+          source: t.paid ? src.paid : undefined,
         },
         {
           short: "Received",
@@ -173,11 +179,13 @@ export function AgreementStages({
           short: "Spent",
           full: "Spending recorded",
           stat: t.spent ? fmt(t.spent) : "Not yet",
+          source: t.spent ? spentSrc : undefined,
         },
         {
           short: "Checked",
           full: "Spending checked by the funder",
           stat: t.checked ? fmt(t.checked) : "Not yet",
+          source: t.checked ? src.checked : undefined,
         },
         ...(programme
           ? [
@@ -216,7 +224,11 @@ export function AgreementStages({
     nodes.findIndex((n) => n.stat === "Not yet" || n.stat === "—"),
   );
   const allDone = nodes.every((n) => n.stat !== "Not yet" && n.stat !== "—");
-  const cur = allDone ? nodes.length - 1 : current;
+  // The next real step: sponsorship tasks until they are done; spending until all the money paid is accounted for.
+  const tasksIdx = nodes.findIndex((n) => n.short === "Agreed tasks");
+  const tasksLeft = dels.some((d) => d.done < d.target);
+  const spentIdx = nodes.findIndex((n) => n.short === "Spent");
+  const cur = commercial && tasksIdx >= 0 && tasksLeft && t.paid > 0 && current > tasksIdx ? tasksIdx : !commercial && spentIdx >= 0 && t.paid > 0 && t.received >= t.paid && t.spent < t.paid && current > spentIdx ? spentIdx : allDone ? nodes.length - 1 : current;
   const line = (
     <FundingLine
       from={w.funders[fund.funderId].name}
@@ -354,7 +366,9 @@ export function AgreementPage({
             ? commercial
               ? "How is my sponsorship going?"
               : "How is this funding being used?"
-            : `How is the money for ${who} being used?`
+            : commercial
+              ? `Is ${who} delivering what we agreed?`
+              : `How is the money for ${who} being used?`
         }
         lead={`${fmt(g.amount)} ${me ? "agreed with" : "committed to"} ${me ? funder.name : who}${g.purpose ? ` · ${g.purpose}` : ""}${g.nextUpdate ? ` · ${g.nextUpdate}` : ""}`}
       />
@@ -1093,7 +1107,7 @@ function Deliverables({
   return (
     <Section title="What was agreed in return">
       {dels.length === 0 ? (
-        <Empty>No deliverables recorded.</Empty>
+        <Empty>No agreed tasks recorded.</Empty>
       ) : (
         <ul>
           {dels.map((d) => (
@@ -1783,7 +1797,7 @@ function SessionStrip({
                   : "To come"
             }
             className={cn(
-              "flex h-5 items-center justify-center rounded-[2px] text-[9px] font-bold",
+              "flex h-5 items-center justify-center rounded-[2px] text-[12px] font-bold",
               x?.status === "delivered"
                 ? "bg-ink"
                 : x?.status === "missed"
@@ -2681,7 +2695,7 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
       if (t.waiting) out.push(`${fmt(t.waiting)} of spending not yet checked`);
       if (t.notYetSpent && t.paid) out.push(`${fmt(t.notYetSpent)} paid but not accounted for`);
       const d = Object.values(w.deliverables).filter((x) => x.agreementId === g.id && x.status !== "complete");
-      if (d.length) out.push(`${d.length} deliverable${d.length > 1 ? "s" : ""} not finished`);
+      if (d.length) out.push(`${d.length} agreed task${d.length > 1 ? "s" : ""} not finished`);
       if (g.recipientKind === "athlete" && progressPaused(w, g.recipientId)) out.push("progress sharing paused");
       const p = Object.values(w.programmes).find((x) => x.agreementId === g.id);
       if (p) {
@@ -2690,7 +2704,7 @@ export function funderAnswer(w: World, persona: Person, q: string): FunderAnswer
       }
       return out.length ? [{ label: who(g), note: out.join(" · "), href: link(g) }] : [];
     });
-    return { q, lead: rows.length ? `${rows.length} agreement${rows.length > 1 ? "s have" : " has"} something to look at before renewing. Deciding is yours.` : "Nothing outstanding on the agreements you manage.", rows, from: "Reviews, expenses, deliverables, progress and sessions" };
+    return { q, lead: rows.length ? `${rows.length} agreement${rows.length > 1 ? "s have" : " has"} something to look at before renewing. Deciding is yours.` : "Nothing outstanding on the agreements you manage.", rows, from: "Reviews, expenses, agreed tasks, progress and sessions" };
   }
   return { q, lead: "I answer questions about your funding records. Try one of the questions above, ask how much you have paid, or name an athlete or organisation you fund.", rows: [], from: "", refusal: true };
 }

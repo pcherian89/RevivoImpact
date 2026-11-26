@@ -61,7 +61,7 @@ for (const theme of themes)
       await page.waitForTimeout(250);
       for (const c of clicks) {
         const guide = page.getByRole("complementary", { name: "Guided journeys" });
-        if (c.startsWith("tab:")) await guide.getByRole("tab", { name: c.slice(4), exact: true }).click();
+        if (c.startsWith("tab:")) await guide.getByRole("tab", { name: new RegExp(`^${c.slice(4)} `) }).click();
         else if (c.startsWith("step:")) await guide.locator("ol > li").nth(Number(c.slice(5)) - 1).getByRole("button").click();
         else {
           // On phones the guide and roles buttons live inside the "Demo" menu.

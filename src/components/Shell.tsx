@@ -4,7 +4,7 @@ import { useStore } from "../state/store";
 import { ImpactLockup } from "../brand/RevivoLogo";
 import { MOMENTS, type Person } from "../domain/model";
 import { JOURNEYS } from "../domain/story";
-import { navFor } from "../data/structure";
+import { identityOf, navFor } from "../data/structure";
 import { btn, cn, Label } from "./ui";
 
 /* ------------------------------------------------ prototype bar & banner */
@@ -12,6 +12,7 @@ import { btn, cn, Label } from "./ui";
 export function PrototypeBar() {
   const { moment, setMoment, go, guide, setGuide, reset, ownEvents } = useStore();
   const [open, setOpen] = useState(false);
+  const [sure, setSure] = useState(false);
   const m = MOMENTS.find((x) => x.id === moment)!;
   const pill = "min-h-9 px-3 font-sans text-small font-medium tracking-normal";
   return (
@@ -63,9 +64,19 @@ export function PrototypeBar() {
                 ))}
                 <div className="mt-2 border-t border-line pt-2">
                   <MotionItem />
-                  <button type="button" role="menuitem" onClick={() => (setOpen(false), reset())} className="flex w-full items-center gap-2 rounded-[6px] px-3 py-2 text-left text-muted hover:bg-surface-2 hover:text-ink">
-                    <RotateCcw className="size-4" aria-hidden="true" /> Reset the demonstration
-                  </button>
+                  {sure ? (
+                    <div className="px-3 py-2">
+                      <p className="text-small">Clear everything done in this demonstration and go back to the start?</p>
+                      <div className="mt-2 flex gap-2">
+                        <button type="button" role="menuitem" onClick={() => (setOpen(false), setSure(false), reset())} className={btn("primary", "min-h-10 px-4")}>Yes, reset</button>
+                        <button type="button" role="menuitem" onClick={() => setSure(false)} className={btn("quiet", "min-h-10 px-4")}>Keep it</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" role="menuitem" onClick={() => setSure(true)} className="flex w-full items-center gap-2 rounded-[6px] px-3 py-2 text-left text-muted hover:bg-surface-2 hover:text-ink">
+                      <RotateCcw className="size-4" aria-hidden="true" /> Reset the demonstration
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -165,8 +176,8 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
             <div className="flex items-center gap-2">
               {managed.length > 0 && (
                 <label className="flex items-center gap-2 text-small">
-                  <span className="hidden text-subtle sm:inline">Managing</span>
-                  <select aria-label="Athlete you are managing" value={managing} onChange={(e) => setManaging(e.target.value)} className="h-10 max-w-[9rem] rounded-full border border-line-strong bg-raised px-3 font-medium text-ink">
+                  <span className="hidden text-subtle sm:inline">Athlete:</span>
+                  <select aria-label="Athlete you are acting for" value={managing} onChange={(e) => setManaging(e.target.value)} className="h-10 max-w-[9rem] rounded-full border border-line-strong bg-raised px-3 font-medium text-ink">
                     {managed.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.name.split(" ")[0]}
@@ -175,19 +186,35 @@ export function AppFrame({ persona, active, children }: { persona: Person; activ
                   </select>
                 </label>
               )}
-              <button type="button" onClick={() => go("roles")} className={btn("secondary", "min-h-11 max-w-[7.5rem] shrink-0 px-3 font-sans text-small font-medium tracking-normal sm:max-w-[18rem]")}>
-                <UserRound className="hidden size-4 shrink-0 text-signal sm:block" aria-hidden="true" />
-                <span className="truncate">
-                  <span className="ri-guide-hide hidden sm:inline">Viewing as </span>
-                  {persona.name.split(" ")[0]}
-                  <span className="ri-guide-hide hidden sm:inline"> · Change</span>
-                  <span className="sr-only sm:hidden"> (change person)</span>
-                </span>
-              </button>
+
               <ThemeButtons withMotion={false} />
             </div>
           </div>
         </header>
+        {/* Who you are looking at, on every screen: name, role and the organisation they act for. */}
+        {(() => {
+          const id = identityOf(persona, world);
+          const athlete = managed.find((a) => a.id === managing);
+          return (
+            <div className="border-b border-line bg-raised">
+              <div className="container-site flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-2 text-small">
+                <UserRound className="size-4 shrink-0 text-signal" aria-hidden="true" />
+                <p className="min-w-0 flex-1">
+                  <span className="text-subtle">Viewing as </span>
+                  <span className="font-medium text-ink">{id.name}</span>
+                  <span className="text-muted">
+                    {" "}· {id.role}
+                    {id.org ? ` · ${id.org}` : ""}
+                    {athlete && (persona.role === "coach" || persona.role === "guardian") ? ` · acting for ${athlete.name.split(" ")[0]}${athlete.minor ? ` (${athlete.age})` : ""}` : ""}
+                  </span>
+                </p>
+                <button type="button" onClick={() => go("roles")} className="inline-flex min-h-11 items-center text-subtle underline underline-offset-4 hover:text-ink">
+                  Change person
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         <Notice />
         <main id="main" className="container-site">
           {children}
@@ -260,7 +287,7 @@ function WhatChanged() {
 /* ------------------------------------------------------------ guide panel */
 
 export function GuidePanel() {
-  const { guide, setGuide, go, showStep, loadStep, stepDone, moment, reset } = useStore();
+  const { guide, setGuide, go, showStep, loadStep, stepDone, moment, reset, world } = useStore();
   const [err, setErr] = useState<string | null>(null);
   // Below 1024px the guide is a sheet at the bottom. Opening a screen shrinks it to one line, so the screen is never
   // covered; "Show the step" brings it back. From 1024px it is a column beside the page, which narrows instead.
@@ -300,10 +327,11 @@ export function GuidePanel() {
   const done = stepDone(s);
   // Earlier steps of the same date that have not happened yet: load the story so this step makes sense.
   const prevPending = journey.steps.slice(0, guide.step).some((x) => x.when === s.when && x.cmds.length > 0 && !x.phase && !stepDone(x));
+  const skipped = journey.steps.slice(0, guide.step).some((x) => x.cmds.length > 0 && !x.phase && !stepDone(x));
   // A step whose screen is a public page (Join) opens it directly; every other step opens as its person.
   // A public page (Join) that has just been done shows the person's new Home instead of an empty form.
   const open = (after = false) => {
-    go(s.to.startsWith("/") ? (after || done ? `app/${s.as}/home` : s.to.slice(1)) : `app/${s.as}/${s.to}`);
+    go(s.to.startsWith("/") ? (after || done ? `app/${s.as}/home` : s.to.slice(1)) : `app/${s.as}/${(after || done) && s.after ? s.after : s.to}`);
     if (window.innerWidth < 1024) setMini(true);
   };
   const next = () => {
@@ -316,7 +344,7 @@ export function GuidePanel() {
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 text-small">
             <span className="label block text-signal">
-              {journey.id} · step {guide.step + 1}/{journey.steps.length}
+              {journey.id} · step {guide.step + 1}/{journey.steps.length}{done ? " · done" : ""}
             </span>
             <span className="line-clamp-2 block font-medium">{s.title}</span>
           </p>
@@ -346,10 +374,11 @@ export function GuidePanel() {
           </button>
         </span>
       </div>
-      <div className="mt-3 flex gap-1.5" role="tablist" aria-label="Journeys">
+      <div className="mt-3 flex gap-1" role="tablist" aria-label="Journeys">
         {JOURNEYS.map((x) => (
-          <button key={x.id} role="tab" aria-selected={x.id === guide.journey} type="button" onClick={() => (setErr(null), setGuide({ journey: x.id, step: 0 }))} className={cn("min-h-10 flex-1 rounded-full border font-display text-base font-bold", x.id === guide.journey ? "border-signal text-ink" : "border-line-strong text-subtle hover:text-ink")}>
-            {x.id}
+          <button key={x.id} role="tab" aria-selected={x.id === guide.journey} type="button" onClick={() => (setErr(null), setGuide({ journey: x.id, step: 0 }))} className={cn("min-h-11 flex-1 rounded-[8px] border px-1 py-1 leading-tight", x.id === guide.journey ? "border-signal text-ink" : "border-line-strong text-subtle hover:text-ink")}>
+            <span className="block font-display text-base font-bold">{x.id}</span>
+            <span className="block text-[11px]">{x.short}</span>
           </button>
         ))}
       </div>
@@ -369,7 +398,12 @@ export function GuidePanel() {
           {atDate.label} {s.phase && "· coming in the next build"}
         </p>
         <h3 className="mt-1 font-display text-xl font-bold">{s.title}</h3>
-        <p className="mt-1 text-small text-muted">You are now: {s.who}</p>
+        {(() => { const p = world.people[s.as]; const id = p ? identityOf(p, world) : null; return (
+          <p className="mt-2 flex gap-2 text-small">
+            <UserRound className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden="true" />
+            <span><span className="text-subtle">You see the screen of </span><span className="font-medium">{id ? id.name : s.who}</span>{id && <span className="text-muted"> · {id.role}{id.org ? ` · ${id.org}` : ""}</span>}
+            {s.who.includes("→") || s.who.includes(",") || s.who.includes("then") ? <span className="block text-subtle">People in this step: {s.who}</span> : null}</span>
+          </p>); })()}
         <p className="mt-3">{s.what}</p>
         {s.ai && (
           <p className="mt-3 flex gap-2 text-small text-muted">
@@ -382,7 +416,7 @@ export function GuidePanel() {
         )}
         {done && (
           <p className="mt-3 flex items-center gap-2 text-small text-signal">
-            <CheckCircle2 className="size-4" aria-hidden="true" /> Done.
+            <CheckCircle2 className="size-4" aria-hidden="true" /> Done. {s.cmds.length ? "This step has already happened, so there is nothing to repeat." : ""}
           </p>
         )}
         {done && <WhatChanged />}
@@ -392,7 +426,7 @@ export function GuidePanel() {
               <button type="button" className={btn("primary")} onClick={() => (loadStep(journey.id, guide.step), open(), setErr(null))}>
                 {sameDate ? "Fill in the earlier steps and continue" : `Move to ${atDate.short} and continue`}
               </button>
-              <span className="mt-2 block text-small text-subtle">Earlier steps are filled in for you.</span>
+              {skipped && <span className="mt-2 block text-small text-subtle">Earlier steps you have not done are filled in for you.</span>}
             </span>
           ) : s.cmds.length && !done && !s.phase ? (
             <>
@@ -449,7 +483,7 @@ export function GuidePanel() {
           </ul>
           <div className="mt-4 flex flex-wrap gap-2">
           {journey.id !== "E" && (
-            <button type="button" className={btn("primary")} onClick={() => setGuide({ journey: JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id, step: 0 })}>
+            <button type="button" className={btn("primary")} onClick={() => { const nid = JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id; loadStep(nid, 0); setGuide({ journey: nid, step: 0 }); }}>
               Next: journey {JOURNEYS[JOURNEYS.findIndex((j) => j.id === journey.id) + 1].id}
             </button>
           )}

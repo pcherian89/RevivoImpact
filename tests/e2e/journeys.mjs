@@ -287,7 +287,7 @@ await page.waitForTimeout(200);
 await page.getByRole("button", { name: "Not this time" }).first().click();
 await click("Send this decision");
 await check("Gap: one applicant decided on their own", (await text()).includes("Decision sent"));
-await check("Gap: nobody is turned down while still being reviewed", (await text()).includes("Still being reviewed") && (await text()).includes("Nobody is turned down while they are being reviewed"));
+await check("Gap: nobody is turned down while still being reviewed", (await text()).includes("Still being reviewed") && (await text()).includes("nobody is turned down while they are being reviewed"));
 
 // ---- P3: track and review (30 Jun), by real clicks
 await page.goto(`${file}?moment=jun30&motion=reduced#/app/amira/home`);

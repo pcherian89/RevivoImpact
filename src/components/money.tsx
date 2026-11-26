@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn, SeeSource, type Source } from "./ui";
 import { fmt } from "../domain/engine";
 
-export type LineNode = { short: string; full: string; stat?: ReactNode; note?: string };
+export type LineNode = { short: string; full: string; stat?: ReactNode; note?: string; source?: Source };
 
 /**
  * The Funding Line (docs/04 §5): one straight track from the funder (left endpoint) to the recipient (right
@@ -64,13 +64,23 @@ export function FundingLine({
               </div>
               <div>
                 <p className={cn("label-data", state === "current" ? "text-signal" : "text-subtle")}>
-                  <span className="sr-only">{node.full}: </span>
-                  <span aria-hidden="true">{node.short}</span>
+                  {node.full !== node.short ? (
+                    <>
+                      <span className="sr-only">{node.full}: </span>
+                      <span aria-hidden="true">{node.short}</span>
+                    </>
+                  ) : (
+                    node.short
+                  )}
                   {state === "current" && <span className="sr-only"> (current step)</span>}
                 </p>
                 {node.stat && (
                   <p className={cn("mt-1 font-medium", state === "future" ? "text-subtle" : "text-ink")}>
-                    {onSource ? (
+                    {node.source ? (
+                      <SeeSource name={node.full} source={node.source}>
+                        {node.stat}
+                      </SeeSource>
+                    ) : onSource ? (
                       <SeeSource name={node.full} onClick={() => onSource(node)}>
                         {node.stat}
                       </SeeSource>
@@ -158,7 +168,7 @@ export function FundingBar({ m, audience, sources, who, commercial }: { m: Money
     { key: "checked" as const, v: m.checked, label: recipient ? "Spent, checked by the funder" : "Spent and checked", cls: "bg-ink" },
     { key: "carried" as const, v: carried, label: "Spent before joining Revivo Impact", cls: "border border-ink bg-ink/40" },
     { key: "waiting" as const, v: m.spent - m.checked - carried, label: "Spent, waiting to be checked", cls: "hatch border border-steel" },
-    { key: "notYetSpent" as const, v: Math.max(0, m.paid - m.spent), label: "Paid, not yet spent", cls: "border border-ink bg-surface-2" },
+    { key: "notYetSpent" as const, v: Math.max(0, m.paid - m.spent), label: "Paid, not yet spent", cls: "border-2 border-ink bg-ink/15" },
     { key: "stillToPay" as const, v: m.committed - m.paid, label: recipient ? "Still to come" : "Still to pay", cls: "border border-dashed border-control" },
   ].filter((x) => x.v > 0 || x.key === "stillToPay" || x.key === "notYetSpent");
   const paidPct = m.committed ? (m.paid / m.committed) * 100 : 0;

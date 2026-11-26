@@ -14,7 +14,7 @@ await page.getByRole("button", { name: "Start the guided journey" }).click();
 let ok = 0, bad = 0;
 const guide = page.getByRole("complementary", { name: "Guided journeys" });
 for (const j of ["A", "B", "C", "E"]) {
-  await guide.getByRole("tab", { name: j, exact: true }).click();
+  await guide.getByRole("tab", { name: new RegExp(`^${j} `) }).click();
   const steps = await guide.locator("ol > li").count();
   for (let i = 0; i < steps; i++) {
     await guide.locator("ol > li").nth(i).getByRole("button").click();
