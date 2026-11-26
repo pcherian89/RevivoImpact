@@ -13,6 +13,7 @@ export function PrototypeBar() {
   const { moment, setMoment, go, guide, setGuide, reset, ownEvents } = useStore();
   const [open, setOpen] = useState(false);
   const [sure, setSure] = useState(false);
+  const [pending, setPending] = useState<(typeof MOMENTS)[number]["id"] | null>(null);
   const m = MOMENTS.find((x) => x.id === moment)!;
   const pill = "min-h-9 px-3 font-sans text-small font-medium tracking-normal";
   return (
@@ -37,6 +38,11 @@ export function PrototypeBar() {
             <span className="ri-guide-show hidden whitespace-nowrap">Roles</span>
           </button>
           </span>
+          {!guide.open && (
+            <button type="button" onClick={() => setGuide({ open: true })} aria-label="Guided journeys" className={btn("secondary", cn(pill, "px-2.5 sm:hidden"))}>
+              <Footprints className="size-4" aria-hidden="true" />
+            </button>
+          )}
           <div className="relative">
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" className={btn("secondary", pill)}>
               <CalendarDays className="size-4" aria-hidden="true" />
@@ -55,9 +61,18 @@ export function PrototypeBar() {
                   </button>
                 </div>
                 <Label className="px-2 pt-1 pb-2">Demonstration date</Label>
-                {ownEvents > 0 && <p className="px-2 pb-2 text-small text-amber">Choosing another date loads the story at that date and replaces what you have changed.</p>}
+                {ownEvents > 0 && !pending && <p className="px-2 pb-2 text-small text-muted">Choosing another date loads the story at that date and replaces what you have changed. It asks first.</p>}
+                {pending && (
+                  <div className="mx-1 mb-2 rounded-[8px] border border-line-strong p-3">
+                    <p className="text-small">Move to {MOMENTS.find((x) => x.id === pending)!.label}? What you have changed in this demonstration will be replaced by the story at that date.</p>
+                    <div className="mt-2 flex gap-2">
+                      <button type="button" role="menuitem" onClick={() => (setMoment(pending), setPending(null), setOpen(false))} className={btn("primary", "min-h-10 px-4")}>Yes, move</button>
+                      <button type="button" role="menuitem" onClick={() => setPending(null)} className={btn("quiet", "min-h-10 px-4")}>Stay here</button>
+                    </div>
+                  </div>
+                )}
                 {MOMENTS.map((x) => (
-                  <button key={x.id} role="menuitemradio" aria-checked={x.id === moment} type="button" onClick={() => (setMoment(x.id), setOpen(false))} className={cn("flex w-full flex-col items-start rounded-[6px] px-3 py-2 text-left hover:bg-surface-2", x.id === moment && "bg-surface-2")}>
+                  <button key={x.id} role="menuitemradio" aria-checked={x.id === moment} type="button" onClick={() => (x.id === moment ? setOpen(false) : ownEvents > 0 ? setPending(x.id) : (setMoment(x.id), setOpen(false)))} className={cn("flex w-full flex-col items-start rounded-[6px] px-3 py-2 text-left hover:bg-surface-2", x.id === moment && "bg-surface-2")}>
                     <span className="font-medium">{x.label}</span>
                     <span className="text-small text-subtle">{x.note}</span>
                   </button>
@@ -134,10 +149,33 @@ const SHORT: Record<string, string> = { "Consent & safety": "Safety", "Funding &
 const ICONS: Record<string, LucideIcon> = { Home: House, Overview: House, Today: House, Discover: Search, Applications: ClipboardList, "Asks & offers": ClipboardList, Opportunities: FileStack, "My Funding": Wallet, Funding: Wallet, "Funding & Updates": Wallet, Sessions: ClipboardList, Profile: UserRound, Organisation: UsersRound, "My Athletes": UsersRound, "Consent & safety": ShieldCheck, "Audit & admin": ShieldCheck, Programme: CalendarCheck };
 
 export function AppFrame({ persona, active, children }: { persona: Person; active: string; children: ReactNode }) {
-  const { go, world } = useStore();
+  const { go, world, route } = useStore();
   const nav = navFor(persona, world);
   const managed = persona.role === "guardian" ? Object.values(world.athletes).filter((a) => a.guardianId === persona.id) : persona.role === "coach" ? world.authorisations.filter((z) => z.coachId === persona.id).map((z) => world.athletes[z.athleteId]) : [];
-  const [managing, setManaging] = useState<string | undefined>(managed[0]?.id);
+  const key = `revivo-impact:managing:${persona.id}`;
+  const [managing, setManagingState] = useState<string | undefined>(() => {
+    try {
+      const saved = sessionStorage.getItem(key);
+      if (saved && managed.some((a) => a.id === saved)) return saved;
+    } catch {
+      /* ignore */
+    }
+    return managed[0]?.id;
+  });
+  const setManaging = (id: string) => {
+    setManagingState(id);
+    try {
+      sessionStorage.setItem(key, id);
+    } catch {
+      /* ignore */
+    }
+  };
+  // A link that names the athlete (an application opened "for" one of them) switches to that athlete everywhere.
+  useEffect(() => {
+    const f = new URLSearchParams(location.hash.split("?")[1] ?? "").get("for");
+    if (f && f !== managing && managed.some((a) => a.id === f)) setManaging(f);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route]);
   useEffect(() => {
     if (managed.length && !managed.some((a) => a.id === managing)) setManaging(managed[0].id);
   }, [managed, managing]);
@@ -401,8 +439,8 @@ export function GuidePanel() {
         {(() => { const p = world.people[s.as]; const id = p ? identityOf(p, world) : null; return (
           <p className="mt-2 flex gap-2 text-small">
             <UserRound className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden="true" />
-            <span><span className="text-subtle">You see the screen of </span><span className="font-medium">{id ? id.name : s.who}</span>{id && <span className="text-muted"> · {id.role}{id.org ? ` · ${id.org}` : ""}</span>}
-            {s.who.includes("→") || s.who.includes(",") || s.who.includes("then") ? <span className="block text-subtle">People in this step: {s.who}</span> : null}</span>
+            <span><span className="text-subtle">{done ? "Shown on the screen of " : "Opens the screen of "}</span><span className="font-medium">{id ? id.name : s.who}</span>{id && <span className="text-muted"> · {id.role}{id.org ? ` · ${id.org}` : ""}</span>}
+            {/→|\bthen\b/.test(s.who) ? <span className="block text-subtle">People in this step: {s.who}.{!done && s.cmds.length ? " To do it yourself, use Change person for each of them in turn." : ""}</span> : null}</span>
           </p>); })()}
         <p className="mt-3">{s.what}</p>
         {s.ai && (
@@ -416,7 +454,7 @@ export function GuidePanel() {
         )}
         {done && (
           <p className="mt-3 flex items-center gap-2 text-small text-signal">
-            <CheckCircle2 className="size-4" aria-hidden="true" /> Done. {s.cmds.length ? "This step has already happened, so there is nothing to repeat." : ""}
+            <CheckCircle2 className="size-4" aria-hidden="true" /> Done.
           </p>
         )}
         {done && <WhatChanged />}

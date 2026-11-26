@@ -241,7 +241,7 @@ Brackets above the bar mark **Released** (the first three segments, with "receiv
 
 **Fund bar** (length = Announced): Committed (solid ink) · Held for offers (dashed outline) · Available to award (no
 fill, subtle text). **Need bar** (length = Requested): Received (ink with a tick) · Pledged, not yet received (ink
-outline) · pending offers (dashed) · Remaining (empty, with the amount in words). **Deliverables** (commercial) are a separate
+outline) · pending offers (dashed) · Remaining (empty, with the amount in words). **Deliverables** (shown to people as "agreed tasks", 26 Nov 2026) (commercial) are a separate
 strip of up to three items with a status chip each, never a money bar. **In-kind** never appears in a cash
 bar: a separate line reads "60 kits · declared value $9,000 (not cash)". **Carried-in** amounts carry their own label
 and never count as verified.

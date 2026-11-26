@@ -32,7 +32,7 @@ does not. Not the most features, screens or charts: the clearest solution to the
   (independent AI reviewers acting as untrained first-time users, clearly labelled as AI, not human testing),
   workflow efficiency, visual design, accessibility, financial and safeguarding. They must produce real changes.
 
-**Current status (25 Nov 2026): P5 complete, waiting for the founder's approval gate.** Final build
+**Current status (26 Nov 2026): P5 complete and the final clarity review done (`docs/15` §11–§13, matrices `docs/16`–`17`), waiting for the founder's approval gate.** Final build
 `prototype/revivo-impact-final.html`; presenter guide `docs/14-presenter-guide.md`; QA report `docs/15-p5-qa-report.md`.
 Human usability sessions are optional (founder's P5 brief); AI reviews are always labelled as AI, never as human testing.
 

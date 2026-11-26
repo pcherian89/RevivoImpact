@@ -15,7 +15,7 @@ never moves money.
 | Company | Revivo Sportech — "Pulse of Sport. Mind of the Game." (company tagline, never used as Impact's) |
 | Product tagline | "Connecting sport with opportunity." (founder decision D1) |
 | Supporting line | "Find funding. Support sporting talent. See how your support is used." |
-| Status | **P5 complete; waiting for the founder's approval gate.** Open `prototype/revivo-impact-final.html` in any browser (offline). Presenter guide: `docs/14-presenter-guide.md`. QA report: `docs/15-p5-qa-report.md`. Screenshots: `docs/p5-previews/`. To build it yourself: `npm install`, then `npm run dev`; `npm run build` makes one offline HTML file in `dist/`. Checks: `npm run check` (types, unit tests, copy lint, build, journeys, guided steps, every role at three widths, accessibility). |
+| Status | **P5 complete, plus the final clarity review (26 Nov 2026); waiting for the founder's approval gate.** Open `prototype/revivo-impact-final.html` in any browser (offline). Presenter guide: `docs/14-presenter-guide.md`. QA report: `docs/15-p5-qa-report.md`. Screenshots: `docs/p5-previews/`; before and after the clarity review: `docs/clarity-previews/`. Internal review matrices: `docs/16`, `docs/17`. To build it yourself: `npm install`, then `npm run dev`; `npm run build` makes one offline HTML file in `dist/`. Checks: `npm run check` (types, unit tests, copy lint, build, journeys, guided steps, every role at three widths, accessibility). |
 | Prototype form | One self-contained offline HTML file, like the Revivo Pathway prototype. Fictional data, simulated AI, no backend. |
 | Relationship to Revivo Pathway | Fully independent. An optional, simulated "import from Revivo Pathway" exists on the profile only. |
 

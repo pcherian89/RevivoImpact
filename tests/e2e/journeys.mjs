@@ -178,7 +178,7 @@ await click("Publish request");
 await go("app/kenji/fdiscover");
 t = await text();
 await check("E3 Kenji sees only the anonymised card, never Tiago's name", t.includes("Swimmer · 16–17") && !t.includes("Tiago"));
-const tiagoReq = await page.locator('a[href*="request/rq-tiago"]').first().getAttribute("href");
+const tiagoReq = await page.locator('a[href*="request/rq-m1604"]').first().getAttribute("href");
 await page.evaluate((h) => (location.hash = h.slice(1)), tiagoReq);
 await page.waitForTimeout(80);
 await click("Offer support");
@@ -368,13 +368,15 @@ await go("app/maya/programme/play-every-day");
 await page.getByRole("button", { name: /Demo date|6 May|30 Jun|12 Apr/ }).first().click();
 await check("Date menu warns that your changes will be replaced", (await text()).includes("replaces what you have changed"));
 await page.getByRole("menuitemradio", { name: /12 Apr/ }).click();
+await check("Date menu asks before replacing your changes", (await text()).includes("What you have changed in this demonstration will be replaced"));
+await page.getByRole("menuitem", { name: "Yes, move" }).click();
 await page.waitForTimeout(150);
 await check("Changing the date after acting works", (await page.getByRole("button", { name: /Demo date/ }).first().innerText()).includes("12 Apr"));
 await page.goto(`${file}?story=complete&motion=reduced&fresh=2#/app/rosa/safety`);
 await page.waitForTimeout(200);
 await page.getByRole("button", { name: "No" }).nth(1).click();
 await check("Guardian sees a confirmation when progress sharing is turned off", (await text()).includes("off for Tiago"));
-await go("app/kenji/agreement/ag-oriel-tiago");
+await go("app/kenji/agreement/ag-oriel-m1604");
 await check("Funder sees progress sharing paused, not the updates", (await text()).includes("Progress sharing is paused"));
 
 // P4: Ask Revivo for funders, matching explanations, request help, receipts and the funder report

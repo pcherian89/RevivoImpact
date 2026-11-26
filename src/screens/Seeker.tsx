@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BadgeCheck, Receipt, Building2, ChevronRight, CircleCheck, CircleHelp, CircleX, HandHeart, Landmark, Lock, Megaphone, Search, Shirt, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { useStore } from "../state/store";
-import { BEHAVIOUR, DATE, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
+import { BEHAVIOUR, DATE, refOf, type Athlete, type Funder, type Opportunity, type Person, type World } from "../domain/model";
 import { agreementsFor, agreementTotals, canActForAthlete, counts, nextInstalment, eligibility, type Criterion, programmeTotals, fmt, fundTotals, identifiability, offersFor, oppStatusAt, progressPaused, requestTotals, stateLabel } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SimulatedAI, Tabs, toDollars, MoneyHint } from "../components/ui";
 import { FundingBar, NeedBar } from "../components/money";
@@ -601,7 +601,7 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
   if (!f) return <Empty>This funder does not exist.</Empty>;
   const opps = Object.values(w.opps).filter((o) => w.funds[o.fundId].funderId === f.id && o.status !== "awaiting" && o.status !== "draft");
   const Icon = typeIcon[f.type];
-  const sent = Object.values(w.asks).find((a) => a.funderId === f.id && a.by === persona.id);
+  const sent = Object.values(w.asks).find((a) => a.funderId === f.id && a.by === persona.id && a.status !== "cancelled");
   return (
     <div className="pb-8">
       <HeroBand file={f.type === "Individual sponsor" ? "im-19-individual-sponsor.png" : f.type === "Sports brand" ? "im-14-sponsorship-sprinter.png" : "im-06-funder-visit.png"}>
@@ -737,7 +737,7 @@ export function FunderProfile({ persona, id }: { persona: Person; id: string }) 
           <MoneyHint value={amount} />
             </Field>
             <p className="mt-5 text-small text-subtle">{f.name.split(" ")[0]} will see: name, sport and region, verified facts and the request. Not your contact details.</p>
-            <Button className="mt-6" onClick={() => act.run("sendAsk", { askId: storyId(w.asks, `ask-${w.requests[reqId]?.ownerId}-1`, `ask-${Date.now()}`), requestId: reqId, funderId: f.id, lineId, amount: toDollars(amount), support }, "Ask sent (simulated).") && setOpen(false)}>
+            <Button className="mt-6" onClick={() => act.run("sendAsk", { askId: storyId(w.asks, `ask-${refOf(w, w.requests[reqId]?.ownerId ?? "")}-1`, `ask-${Date.now()}`), requestId: reqId, funderId: f.id, lineId, amount: toDollars(amount), support }, "Ask sent (simulated).") && setOpen(false)}>
               Send ask
             </Button>
             <Message error={act.error} />
@@ -786,7 +786,7 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
     { t: "Proof of age (ID document)", ok: true },
     { t: "Results evidence", ok: ath.facts.some((f) => f.kind === "result") },
     { t: "Coach or club reference", ok: ath.facts.some((f) => f.kind === "coach") || isCoach },
-    { t: "Budget with invoices or quotes", ok: false, note: "Coaching-fee invoice missing: add it now or note “to follow”" },
+    { t: "Budget with invoices or quotes", ok: false, note: `${/travel/i.test(`${o.title} ${o.purpose}`) ? "Travel quotes" : /equipment/i.test(`${o.title} ${o.purpose}`) ? "Equipment quotes" : "Coaching-fee invoice"} missing: add it now or note “to follow”` },
   ];
   const draftWithAI = () => {
     setAi(true);
@@ -797,13 +797,13 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
     else setStatement(draft);
     if (!other) setOther(ath.currentSupport.length ? ath.currentSupport.map((s) => `${s.label}, ${fmt(s.amount)}`).join("; ") : "None");
   };
-  const appId = existing?.id ?? `app-${ath.id}-${oppId}`;
+  const appId = existing?.id ?? `app-${refOf(w, ath.id)}-${oppId}`;
   return (
     <div className="max-w-3xl pb-10">
       <PageHead eyebrow={`Apply · ${o.title}`} title={isCoach ? `Is ${ath.name.split(" ")[0]}'s application ready?` : "Is your application ready?"} lead={isCoach ? `You are preparing this for ${ath.name}. ${ath.minor ? "Their guardian submits it." : "They submit it."}` : "Your profile fills most of it. Nothing is sent until you submit."} />
       <ol className="space-y-8">
         <li>
-          <Label>1 · From your profile</Label>
+          <Label>{persona.role === "athlete" ? "1 · From your profile" : `1 · From ${ath.name.split(" ")[0]}’s profile`}</Label>
           <p className="mt-2 text-muted">
             {ath.name} · {ath.age} · {ath.sport} ({ath.discipline}) · {ath.region} · {ath.club ?? "no club"}
           </p>
@@ -812,6 +812,13 @@ export function Apply({ persona, oppId }: { persona: Person; oppId: string }) {
         <li>
           <Label>{isCoach ? `2 · Does ${ath.name.split(" ")[0]} qualify?` : "2 · Do I qualify?"}</Label>
           <p className="mt-2 font-medium">{e.summary}</p>
+          {e.criteria.some((c) => c.result !== "met") && (
+            <ul className="mt-2 space-y-1 text-small text-muted">
+              {e.criteria.filter((c) => c.result !== "met").map((c) => (
+                <li key={c.label}>· {c.label}: {c.result === "not" ? "not met" : c.result === "check" ? "the panel checks this" : "to add"}{c.detail ? ` (${c.detail})` : ""}</li>
+              ))}
+            </ul>
+          )}
         </li>
         <li>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -931,7 +938,7 @@ export function SeekerApplications({ persona }: { persona: Person }) {
             {w.funders[w.funds[o.fundId].funderId].name}&rsquo;s offer of {fmt(o.amount)} lapsed because you blocked them. Agreements already accepted continue.
           </p>
         ))}
-        {offers.length === 0 ? <Empty>No offers yet. Funders can make offers on your published requests or after an application.</Empty> : (
+        {offers.length === 0 ? <Empty>{persona.role === "coach" ? `No offers yet. Offers for ${ath?.name.split(" ")[0] ?? "this athlete"} go to ${ath?.minor ? "the guardian" : "the athlete"}, who decides.` : "No offers yet. Funders can make offers on your published requests or after an application."}</Empty> : (
           <ul>
             {offers.map((o) => {
               const fund = w.funds[o.fundId];
@@ -972,11 +979,12 @@ export function SeekerApplications({ persona }: { persona: Person }) {
         )}
       </Section>
       <Section title="Applications">
-        {apps.length === 0 ? <Empty>No applications yet. Discover opportunities and apply with your profile.</Empty> : (
+        {apps.length === 0 ? <Empty>{persona.role === "coach" ? `No applications yet for ${ath?.name.split(" ")[0] ?? "this athlete"}. Open Discover to prepare one; ${ath?.minor ? "the guardian" : "the athlete"} submits it. Use “Athlete:” at the top to see your other athletes.` : "No applications yet. Discover opportunities and apply with your profile."}</Empty> : (
           <ul>
             {apps.map((a) => {
               const o = w.opps[a.oppId];
-              const canSubmit = a.status === "draft" && (persona.role === "guardian" || persona.role === "athlete");
+              // A draft someone else prepared opens in full first, so the person sees the statement and what will be shared.
+              const canSubmit = a.status === "draft" && a.preparedBy === persona.id && (persona.role === "guardian" || persona.role === "athlete");
               return (
                 <Row key={a.id}>
                   <div>
@@ -992,7 +1000,7 @@ export function SeekerApplications({ persona }: { persona: Person }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <AppStatus s={a.status} />
-                    {a.status === "draft" && <a className={btn("quiet", "min-h-11")} href={`#/app/${persona.id}/apply/${a.oppId}${persona.role === "athlete" ? "" : `?for=${a.applicantId}`}`}>Open the draft</a>}
+                    {a.status === "draft" && <a className={btn(a.preparedBy !== persona.id && persona.role !== "coach" ? "primary" : "quiet", "min-h-11")} href={`#/app/${persona.id}/apply/${a.oppId}${persona.role === "athlete" ? "" : `?for=${a.applicantId}`}`}>{a.preparedBy !== persona.id && persona.role !== "coach" ? "Read and submit" : "Open the draft"}</a>}
                     {canSubmit && <ActionButton actor={persona.id} type="submitApplication" args={{ appId: a.id }} success="Submitted.">Submit application</ActionButton>}
                     {a.info?.status === "open" && <ActionButton actor={persona.id} type="answerInfo" args={{ appId: a.id, otherFunding: ath?.currentSupport.map((s) => `${s.label}, ${fmt(s.amount)}`).join("; ") || "None" }} success="Answered.">Upload invoice and declare</ActionButton>}
                   </div>
@@ -1399,6 +1407,23 @@ function PublishForm({ persona }: { persona: Person }) {
   const nVerified = ath?.facts.filter((f) => f.state === "verified" || f.state === "confirmed").length ?? 0;
   const verifiedLabel = isOrg ? "Organisation verified" : nVerified ? `${nVerified} ${nVerified === 1 ? "fact" : "facts"} verified or confirmed` : "No facts verified yet";
   const sport = isOrg ? w.orgs[persona.orgId!].sport : ath?.sport ?? "";
+  // Checked as the guardian types: the card must never carry the child's name or club.
+  const typed = `${title} ${lines.map((l) => l.label).join(" ")} ${month}`.toLowerCase();
+  const nameHit = ath?.minor ? [...ath.name.split(" "), ...(ath.club ? [ath.club] : [])].filter((x) => x.length > 2).find((x) => typed.includes(x.toLowerCase())) : undefined;
+  if (preview && !preview.ok && ath)
+    return (
+      <div className="max-w-3xl pb-10">
+        <PageHead eyebrow="Publish a funding request" title={`A request for ${ath.name.split(" ")[0]} can’t be published yet`} lead={`Only ${preview.n} registered ${preview.n === 1 ? "athlete shares" : "athletes share"} ${ath.name.split(" ")[0]}’s sport and age group, so even an anonymised card could identify ${ath.minor ? "a child" : "them"}. Cards are published only when at least 10 share them.`} />
+        <p className="font-medium">What you can do instead</p>
+        <ul className="mt-2 space-y-2 text-muted">
+          <li>· Apply to an open opportunity for {ath.name.split(" ")[0]}: applications are seen only by that funder.</li>
+          <li>· Ask {ath.club ?? "the club"} or a federation to nominate {ath.name.split(" ")[0]}.</li>
+        </ul>
+        <a className={btn("primary", "mt-6")} href={`#/app/${persona.id}/discover`}>
+          Find opportunities for {ath.name.split(" ")[0]} <ArrowRight className="size-4" aria-hidden="true" />
+        </a>
+      </div>
+    );
   return (
     <div className="max-w-3xl pb-10">
       <PageHead eyebrow="Publish a funding request" title="What do you need funding for?" lead="Funders who support your sport can find it in Discover and offer full or part funding, line by line." />
@@ -1446,8 +1471,11 @@ function PublishForm({ persona }: { persona: Person }) {
           <p className="text-muted">
             {preview.region} · {title || "Support"} · {fmt(total)} · needed in {month} · {verifiedLabel.toLowerCase()}
           </p>
+          {nameHit && (
+            <p role="alert" className="mt-3 text-small text-amber">Remove {nameHit}: funders never see a young athlete&rsquo;s name or club.</p>
+          )}
           <p className="mt-3 flex gap-2 text-small text-subtle">
-            <CircleCheck className="mt-0.5 size-4 shrink-0 text-signal" aria-hidden="true" /> Identifiability check: {preview.ok ? preview.widened ? `${preview.n} registered athletes share this sport and age group across all regions (10 or more needed), so the card shows “Any region”.` : `${preview.n} registered athletes share this sport, age group and region (10 or more needed).` : `only ${preview.n} share this sport and age group, so this card could identify the athlete and cannot be published.`} No name, club, school, photo or exact date is ever shown. Offers come to you, never to {ath.name.split(" ")[0]}.
+            {preview.ok ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-signal" aria-hidden="true" /> : <CircleHelp className="mt-0.5 size-4 shrink-0 text-amber" aria-hidden="true" />} Identifiability check: {preview.ok ? preview.widened ? `${preview.n} registered athletes share this sport and age group across all regions (10 or more needed), so the card shows “Any region”.` : `${preview.n} registered athletes share this sport, age group and region (10 or more needed).` : `only ${preview.n} share this sport and age group, so this card could identify the athlete and cannot be published.`} No name, club, school, photo or exact date is ever shown. Offers come to you, never to {ath.name.split(" ")[0]}.
           </p>
         </div>
       )}
@@ -1456,7 +1484,7 @@ function PublishForm({ persona }: { persona: Person }) {
         arrow
         onClick={() => {
           if (!ownerId) return;
-          const ok = act.run("publishRequest", { requestId: storyId(w.requests, `rq-${ownerId}`, `rq-${ownerId}-${Date.now()}`), ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: verifiedLabel, tags: [] }, "Published. Funders can now find it.");
+          const ok = act.run("publishRequest", { requestId: storyId(w.requests, `rq-${refOf(w, ownerId)}`, `rq-${refOf(w, ownerId)}-${Date.now()}`), ownerKind: isOrg ? "org" : "athlete", ownerId, title, sport, lines: lines.filter((l) => l.label && l.amount), visibility: "Public", neededBy: month, neededMonth: month, verifiedLabel: verifiedLabel, tags: [] }, "Published. Funders can now find it.");
           if (ok) {
             setNotice(`Published: “${title}”, needed by ${month}. Sponsors and funders can now find it. Next: ask a sponsor who accepts direct requests (Discover → Sponsors & funders).`);
             go(`app/${persona.id}/funding`);

@@ -63,7 +63,7 @@ describe("reconciled figures (docs/05 §9.4)", () => {
   it("Nadia: 5,200 requested, 3,200 pledged and received, 2,000 still needed; Tiago 0 open (900 held)", () => {
     const w = at("jun30");
     expect(requestTotals(w, "rq-nadia")).toMatchObject({ requested: 5200, pledged: 3200, received: 3200, remaining: 2000 });
-    expect(requestTotals(w, "rq-tiago")).toMatchObject({ requested: 2400, pledged: 1500, heldApp: 900, remaining: 0 });
+    expect(requestTotals(w, "rq-m1604")).toMatchObject({ requested: 2400, pledged: 1500, heldApp: 900, remaining: 0 });
     expect(requestTotals(w, "rq-highland")).toMatchObject({ pledged: 2500, remaining: 2500 });
   });
 });
@@ -78,7 +78,7 @@ describe("rules", () => {
   it("cap (I4): an offer above what is still needed is blocked", () => {
     const w = may();
     for (const e of stepEvents(JOURNEYS[4].steps[2])) apply(w, e);
-    expect(tryCmd(w, { at: "may06", actor: "kenji", type: "makeOffer", args: { offerId: "x", fundId: "oas", recipientKind: "athlete", recipientId: "tiago", requestId: "rq-tiago", lineId: "l1", amount: 2600, reason: "Competition travel to a verified qualification." } })).toMatch(/exceeds the \$2,400 still needed by \$200/);
+    expect(tryCmd(w, { at: "may06", actor: "kenji", type: "makeOffer", args: { offerId: "x", fundId: "oas", recipientKind: "athlete", recipientId: "tiago", requestId: "rq-m1604", lineId: "l1", amount: 2600, reason: "Competition travel to a verified qualification." } })).toMatch(/exceeds the \$2,400 still needed by \$200/);
   });
   it("delegated limit: above $2,000 goes to a second approver", () => {
     const w = may();
@@ -135,12 +135,12 @@ describe("verifier regressions", () => {
   it("an offer from a decision keeps the link to the funding request, so the hold is not freed (no double funding)", () => {
     const w = mayAll();
     w.people.second = { ...w.people.farid, id: "second", perms: ["Approve"] };
-    apply(w, { n: 0, at: "may06", actor: "farid", type: "scoreApplication", args: { appId: "app-tiago", total: 13 } });
-    expect(tryCmd(w, { at: "may06", actor: "farid", type: "shortlist", args: { appId: "app-tiago", tier: 1500 } })).toMatch(/cannot be more than/);
-    apply(w, { n: 0, at: "may06", actor: "farid", type: "shortlist", args: { appId: "app-tiago", tier: 900 } });
+    apply(w, { n: 0, at: "may06", actor: "farid", type: "scoreApplication", args: { appId: "app-m1604", total: 13 } });
+    expect(tryCmd(w, { at: "may06", actor: "farid", type: "shortlist", args: { appId: "app-m1604", tier: 1500 } })).toMatch(/cannot be more than/);
+    apply(w, { n: 0, at: "may06", actor: "farid", type: "shortlist", args: { appId: "app-m1604", tier: 900 } });
     apply(w, { n: 0, at: "may06", actor: "second", type: "sendDecisions", args: { oppId: "ostral-ctg" } });
-    expect(w.offers["of-app-tiago"].requestId).toBe("rq-tiago");
-    expect(requestTotals(w, "rq-tiago").remaining).toBe(0);
+    expect(w.offers["of-app-m1604"].requestId).toBe("rq-m1604");
+    expect(requestTotals(w, "rq-m1604").remaining).toBe(0);
   });
   it("only verified organisations reach minors; the recipient is always the request's owner", () => {
     const w = may();
@@ -177,7 +177,7 @@ describe("verifier regressions", () => {
     expect(tryCmd(w, { at: "may06", actor: "kenji", type: "recordRelease", args: { agreementId: "ag-oriel-nadia", amount: -2250, ref: "neg", entryId: "neg" } })).toMatch(/above zero/);
     expect(offer(w, "kenji", { fundId: "oas", recipientKind: "athlete", recipientId: "nadia", requestId: "rq-nadia", lineId: "l1", amount: -500 })).toMatch(/above zero/);
     expect(tryCmd(w, { at: "may06", actor: "nadia", type: "coverOtherSources", args: { requestId: "rq-nadia", lineId: "l2", amount: -5000 } })).toMatch(/zero or more/);
-    expect(tryCmd(w, { at: "may06", actor: "nadia", type: "publishRequest", args: { requestId: "rq-tiago", ownerKind: "athlete", ownerId: "nadia", title: "x", sport: "Wheelchair racing", lines: [{ label: "x", amount: 100 }], visibility: "Public", neededBy: "June", neededMonth: "June", verifiedLabel: "", tags: [] } })).toMatch(/already exists/);
+    expect(tryCmd(w, { at: "may06", actor: "nadia", type: "publishRequest", args: { requestId: "rq-m1604", ownerKind: "athlete", ownerId: "nadia", title: "x", sport: "Wheelchair racing", lines: [{ label: "x", amount: 100 }], visibility: "Public", neededBy: "June", neededMonth: "June", verifiedLabel: "", tags: [] } })).toMatch(/already exists/);
     const held = Object.values(w.offers).find((o) => o.status === "held" && o.recipientId === "jonah") ?? Object.values(w.offers).find((o) => o.status === "held" && !o.light);
     if (held) expect(tryCmd(w, { at: "may06", actor: held.recipientId, type: "acceptOffer", args: { offerId: held.id, agreementId: "ag-oriel-nadia" } })).toMatch(/already exists|guardian|accept/);
     expect(tryCmd(w, { at: "may06", actor: "nadia", type: "acceptOffer", args: { offerId: "nope", agreementId: "x" } })).toMatch(/does not exist/);
@@ -326,13 +326,13 @@ describe("P3 verifier regressions", () => {
     const w = full();
     expect(at(w, "amira", "sendProgress", { progressId: "x1", agreementId: "ag-pe1", athleteId: "amira", kind: "result", text: "Won a medal", proof: true })).toMatch(/funding record of the athlete or organisation/);
     expect(at(w, "rosa", "sendProgress", { progressId: "x2", agreementId: "ag-amira", athleteId: "tiago", kind: "result", text: "Won", proof: true })).toMatch(/funding record of the athlete or organisation/);
-    expect(at(w, "marcus", "sendProgress", { progressId: "x3", agreementId: "ag-oriel-tiago", kind: "result", text: "Photo", proof: true, photo: true })).toMatch(/who the update is about/);
-    expect(at(w, "jonas", "sendProgress", { progressId: "x4", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "result", text: "Tiago Esteves of Saltmere won", proof: true })).toMatch(/surname, club, coach and school/);
+    expect(at(w, "marcus", "sendProgress", { progressId: "x3", agreementId: "ag-oriel-m1604", kind: "result", text: "Photo", proof: true, photo: true })).toMatch(/who the update is about/);
+    expect(at(w, "jonas", "sendProgress", { progressId: "x4", agreementId: "ag-oriel-m1604", athleteId: "tiago", kind: "result", text: "Tiago Esteves of Saltmere won", proof: true })).toMatch(/surname, club, coach and school/);
   });
   it("withdrawing progress consent pauses updates", () => {
     const w = full();
     apply(w, { n: 0, at: "jun30", actor: "rosa", type: "setConsent", args: { athleteId: "tiago", purpose: "progress", value: false } });
-    expect(at(w, "jonas", "sendProgress", { progressId: "x5", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "training", text: "Training week", proof: false })).toMatch(/Progress sharing is paused/);
+    expect(at(w, "jonas", "sendProgress", { progressId: "x5", agreementId: "ag-oriel-m1604", athleteId: "tiago", kind: "training", text: "Training week", proof: false })).toMatch(/Progress sharing is paused/);
   });
   it("the claims check catches outcome claims and figures that differ from the records", () => {
     const w = full();
@@ -504,7 +504,7 @@ describe("P4 money and safeguarding verifier regressions", async () => {
     const w = full();
     const words = identifyingWords(w, "tiago");
     expect(words.length).toBeGreaterThan(1);
-    expect(tryCmd(w, { at: "jun30", actor: "jonas", type: "sendProgress", args: { progressId: "z1", agreementId: "ag-oriel-tiago", athleteId: "tiago", kind: "training", text: `Trained hard with ${words[0]} this week`, proof: false } })).toMatch(/first name only/);
+    expect(tryCmd(w, { at: "jun30", actor: "jonas", type: "sendProgress", args: { progressId: "z1", agreementId: "ag-oriel-m1604", athleteId: "tiago", kind: "training", text: `Trained hard with ${words[0]} this week`, proof: false } })).toMatch(/first name only/);
   });
 });
 
@@ -614,6 +614,11 @@ describe("recovering from mistakes (P5 review)", () => {
     const w = at("may06");
     w.authorisations = w.authorisations.filter((z) => z.athleteId !== "tiago");
     expect(cmd(w, "jonas", "saveApplication", { appId: "app-x", oppId: "ostral-ctg", athleteId: "tiago", requested: 900, statement: "x", otherFunding: "None" })).not.toBeNull();
+  });
+  it("young athletes are never named in record ids that funders open", () => {
+    const w = at("jun30");
+    const ids = [...Object.keys(w.requests), ...Object.keys(w.offers), ...Object.keys(w.agreements), ...Object.keys(w.applications)];
+    expect(ids.filter((x) => /tiago|ines/i.test(x))).toEqual([]);
   });
   it("a guardian may give the month a young athlete's money is needed with its year", () => {
     const w = at("may06");

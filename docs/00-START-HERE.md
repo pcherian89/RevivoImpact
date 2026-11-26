@@ -1,6 +1,6 @@
 # Revivo Impact — start here
 
-**Status (25 Nov 2026): P1–P4 approved; P5 complete and waiting for the founder's approval gate.** Final build:
+**Status (26 Nov 2026): P1–P4 approved; P5 complete, final clarity review done (`15` §11–§13), waiting for the founder's approval gate.** Final build:
 `prototype/revivo-impact-final.html`; presenter guide: `14-presenter-guide.md`; QA report: `15-p5-qa-report.md`;
 screenshots: `p5-previews/`. Nothing is published, deployed or linked from the website until the founder approves. The founder approved P1's architecture with
 refinements (`07` §"P1 approval and refinements"). P2 turned the shell into a working two-sided prototype on one

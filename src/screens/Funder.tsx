@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, ChevronRight, MessageCircleQuestion, CircleCheck, CircleHelp, FileText, HandHeart, Lock, Megaphone, Search, Star, UsersRound, X } from "lucide-react";
 import { useStore } from "../state/store";
-import { BEHAVIOUR, DATE, REGIONS, type Fund, type Person, type World } from "../domain/model";
+import { BEHAVIOUR, DATE, REGIONS, refOf, type Fund, type Person, type World } from "../domain/model";
 import { agreementTotals, stillInReview, fmtIso, counts, fit, fmt, scheduleOf, fundTotals, mayReachMinors, programmeTotals, oppStatusAt, released, requestTotals, stateLabel, sum } from "../domain/engine";
 import { btn, Button, Chip, cn, seg, FilterPill, HeroBand, Label, PageHead, Panel, PhonePhoto, SeeSource, SimulatedAI, Tabs, toDollars, MoneyHint, type Source } from "../components/ui";
 import { FundBar, NeedBar } from "../components/money";
@@ -59,7 +59,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const dueNow = dueAll.filter((g) => !g.light);
   const dueGrouped = dueAll.length - dueNow.length;
   const dueTotal = sum(dueAll.flatMap((g) => scheduleOf(w, g.id).filter((x) => x.status === "due" || x.status === "part-paid").map((x) => x.amount - x.paid)));
-  if (dueAll.length && persona.perms.includes("Finance")) needs.push({ t: `${dueAll.length === 1 ? "1 payment is" : `${dueAll.length} payments are`} due · ${fmt(dueTotal)}`, d: [...dueNow.map((g) => recipientName(w, g.recipientKind, g.recipientId, persona)), ...(dueGrouped ? [`${dueGrouped} other ${dueGrouped === 1 ? "scholarship" : "scholarships"}`] : [])].join(", "), a: dueAll.length === 1 ? "Record the payment" : `Record the ${dueAll.length} payments`, to: dueNow.length === 1 && !dueGrouped ? `agreement/${dueNow[0].id}` : "portfolio" });
+  if (dueAll.length && persona.perms.includes("Finance")) needs.push({ t: `${dueAll.length === 1 ? "1 payment is" : `${dueAll.length} payments are`} due · ${fmt(dueTotal)}`, d: [...dueNow.map((g) => recipientName(w, g.recipientKind, g.recipientId, persona)), ...(dueGrouped ? [`${dueGrouped} earlier ${dueGrouped === 1 ? "agreement" : "agreements"}`] : [])].join(", "), a: dueAll.length === 1 ? "Record the payment" : `Record the ${dueAll.length} payments`, to: dueNow.length === 1 && !dueGrouped ? `agreement/${dueNow[0].id}` : "portfolio" });
   const toRelease = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && !g.light && released(w, g.id) === 0 && BEHAVIOUR[w.funds[g.fundId].type] !== "inkind");
   if (toRelease.length && persona.perms.includes("Finance")) needs.push({ t: toRelease.length > 1 ? `${toRelease.length} first payments to record` : `First payment to record for ${recipientName(w, toRelease[0].recipientKind, toRelease[0].recipientId, persona)}`, d: "Your finance team pays; you record it here (simulated: no money moves).", a: "Record a payment", to: `agreement/${toRelease[0].id}` });
   const main = funds.find((x) => x.id === "eas") ?? funds[0];
@@ -75,7 +75,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
   const ovSource = (k: "committed" | "paid"): Source => ({
     title: k === "committed" ? "Committed, by fund (development and programme)" : "Paid, by fund (simulated payments)",
     rows: Object.values(w.funds)
-      .filter((fd) => fd.funderId === fid && BEHAVIOUR[fd.type] !== "commercial")
+      .filter((fd) => fd.funderId === fid && BEHAVIOUR[fd.type] !== "commercial" && BEHAVIOUR[fd.type] !== "inkind")
       .map((fd) => {
         const gs = Object.values(w.agreements).filter((g) => g.fundId === fd.id && counts(g));
         return { label: fd.name, value: fmt(sum(gs.map((g) => (k === "committed" ? g.amount : released(w, g.id))))) };
@@ -184,8 +184,17 @@ export function FunderOverview({ persona }: { persona: Person }) {
       <section className="mt-10 grid gap-8 border-t border-line pt-8 md:grid-cols-3">
         <h2 className="label -mb-4 text-subtle md:col-span-3">{solo ? "All your funding" : "All your funding, every fund together"}</h2>
         <Answer q={isFoundation ? "Who has applied?" : solo ? "Who are you supporting?" : "Who are we supporting?"} a={isFoundation ? plural(Object.values(w.applications).filter((a) => w.funds[w.opps[a.oppId].fundId].funderId === fid && a.status !== "draft").length, "application") : plural(pt.count, "agreement")} d={isFoundation ? "Through Discover, your share link and nominations" : "Athletes, teams and clubs"} />
-        <Answer q={solo ? "How much have you committed?" : "How much have we committed?"} a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Plus ${fmt(pt.comCommitted)} commercial, kept apart` : "Development and programme funding"} source={ovSource("committed")} />
-        <Answer q={solo ? "How much have you paid?" : "How much have we paid?"} a={fmt(pt.released)} d={`Payments recorded (simulated); the people ${solo ? "you" : "we"} fund confirm they arrived`} source={ovSource("paid")} />
+        {pt.devCommitted + pt.progCommitted === 0 && pt.comCommitted > 0 ? (
+          <>
+            <Answer q="How much sponsorship have we agreed?" a={fmt(pt.comCommitted)} d="Commercial sponsorship, kept apart from development and programme money" />
+            <Answer q="How much sponsorship have we paid?" a={fmt(pt.comReleased)} d="Payments recorded (simulated); the athlete confirms they arrived" />
+          </>
+        ) : (
+          <>
+            <Answer q={solo ? "How much have you committed?" : "How much have we committed?"} a={fmt(pt.devCommitted + pt.progCommitted)} d={pt.comCommitted ? `Development and programme money. Plus ${fmt(pt.comCommitted)} commercial sponsorship, kept apart` : "Development and programme funding"} source={ovSource("committed")} />
+            <Answer q={solo ? "How much have you paid?" : "How much have we paid?"} a={fmt(pt.released)} d={`Payments recorded (simulated); the people ${solo ? "you" : "we"} fund confirm they arrived${pt.comReleased ? `. Plus ${fmt(pt.comReleased)} commercial, kept apart` : ""}`} source={ovSource("paid")} />
+          </>
+        )}
       </section>
       <p className="mt-8 text-small text-subtle">Delivery and spending records show what was delivered and spent; they do not on their own prove social impact.</p>
     </div>
@@ -195,7 +204,7 @@ export function FunderOverview({ persona }: { persona: Person }) {
 function funderTotals(w: World, fid: string) {
   const ags = Object.values(w.agreements).filter((g) => w.funds[g.fundId].funderId === fid && counts(g));
   const by = (b: string) => sum(ags.filter((g) => BEHAVIOUR[w.funds[g.fundId].type] === b).map((g) => g.amount));
-  return { count: ags.length, devCommitted: by("development"), progCommitted: by("programme"), comCommitted: by("commercial"), released: sum(ags.filter((g) => BEHAVIOUR[w.funds[g.fundId].type] !== "commercial").map((g) => released(w, g.id))) };
+  return { count: ags.length, devCommitted: by("development"), progCommitted: by("programme"), comCommitted: by("commercial"), released: sum(ags.filter((g) => !["commercial", "inkind"].includes(BEHAVIOUR[w.funds[g.fundId].type])).map((g) => released(w, g.id))), comReleased: sum(ags.filter((g) => BEHAVIOUR[w.funds[g.fundId].type] === "commercial").map((g) => released(w, g.id))) };
 }
 
 function Answer({ q, a, d, source }: { q: string; a: string; d: string; source?: Source }) {
@@ -215,7 +224,7 @@ function Answer({ q, a, d, source }: { q: string; a: string; d: string; source?:
 const BRIEFS: Record<string, { text: string; chips: string[] }> = {
   kenji: { text: "para athletes needing equipment, any region", chips: ["Para athletics", "Equipment", "Any region", "Verified evidence"] },
   lucy: { text: "adult sprinters competing nationally, open to a kit partnership", chips: ["Athletics: sprint", "Adults only", "Open to commercial partners", "National level"] },
-  marcus: { text: "clubs and athletes needing equipment or travel", chips: ["Equipment", "Organisation", "Any region", "Verified evidence"] },
+  marcus: { text: "clubs and athletes needing equipment or travel", chips: ["Equipment", "Any region", "Verified evidence"] },
 };
 const SPORTS = ["Archery", "Athletics", "Athletics: sprint", "Badminton", "Boxing", "Canoeing", "Cycling", "Fencing", "Football", "Judo", "Rowing", "Swimming", "Table tennis", "Triathlon", "Wheelchair basketball", "Wheelchair racing"];
 const VOCAB = ["Para athletics", "Equipment", "Travel", "Coaching", "Any region", ...REGIONS, "Verified evidence", "Adults only", "National level", "Organisation", "Open to commercial partners", ...SPORTS];
@@ -579,7 +588,7 @@ export function RequestPage({ persona, id }: { persona: Person; id: string }) {
             </button>
           )}
         </Field>
-        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: storyId(w.offers, `of-${({ halvorsen: "hal", corvane: "cv" } as Record<string, string>)[fid] ?? fid}-${r.ownerId}`, `of-${fid}-${Date.now()}`), fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: toDollars(amount), reason }, "Offer sent (simulated).") && setOpen(false)}>
+        <Button className="mt-6" onClick={() => act.run("makeOffer", { offerId: storyId(w.offers, `of-${({ halvorsen: "hal", corvane: "cv" } as Record<string, string>)[fid] ?? fid}-${refOf(w, r.ownerId)}`, `of-${fid}-${Date.now()}`), fundId, recipientKind: r.ownerKind, recipientId: r.ownerId, requestId: id, lineId, amount: toDollars(amount), reason }, "Offer sent (simulated).") && setOpen(false)}>
           Send offer
         </Button>
         <Message error={act.error} />
@@ -1165,7 +1174,7 @@ export function SelectionPage({ persona, id }: { persona: Person; id: string }) 
       <PageHead eyebrow={`Selection & decisions · ${o.title}`} title="Who should we fund?" lead={`${apps.length} applications · minimum score ${o.minScore ?? "—"} of 16 · ${policyText(fund.policy).toLowerCase()}`} />
       <Section title="How much is left to offer?">
         <div className="mt-4">
-          <FundBar announced={t.announced} committed={t.committed} reserved={t.held + (o.status === "decided" ? 0 : proposed)} />
+          <FundBar announced={t.announced} committed={t.committed} reserved={t.held} />
         </div>
         {o.status !== "decided" && <p className="mt-3 text-small text-muted">If you send these decisions: {offerable.length} offers ({byTier.map((b) => `${b.n} × ${fmt(b.tier)}`).join(" + ")} = {fmt(proposed)}) would be set aside until each person accepts, and {fmt(t.available - proposed)} would still be available.</p>}
       </Section>

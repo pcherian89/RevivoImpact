@@ -183,9 +183,7 @@ export function Admin({ persona }: { persona: Person }) {
                       </p>
                       <p className="text-small text-subtle">Enhanced safeguarding check on file (simulated) · contact only through the guardian · reason: &ldquo;{o.reason}&rdquo;</p>
                     </div>
-                    <ActionButton actor={persona.id} type="clearSafeguarding" args={{ offerId: o.id }} success="Safeguarding check passed. Sent to the guardian.">
-                      Check passed: send to the guardian
-                    </ActionButton>
+                    <SafeguardingDecision persona={persona} offerId={o.id} />
                   </Row>
                 ))}
               </ul>
@@ -271,6 +269,36 @@ export function Admin({ persona }: { persona: Person }) {
           <p className="mt-2 flex gap-2 text-small text-subtle"><CircleCheck className="size-4" aria-hidden="true" /> Every action in the prototype writes one row, with the reason wherever one was given. Most recent 80 shown first; use Find for older rows.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A safeguarding review can pass an offer to the guardian, or stop it with a reason that is kept in the record. */
+function SafeguardingDecision({ persona, offerId }: { persona: Person; offerId: string }) {
+  const [stopping, setStopping] = useState(false);
+  const [reason, setReason] = useState("");
+  if (!stopping)
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ActionButton actor={persona.id} type="clearSafeguarding" args={{ offerId }} success="Safeguarding check passed. Sent to the guardian.">
+          Check passed: send to the guardian
+        </ActionButton>
+        <button type="button" className={btn("secondary")} onClick={() => setStopping(true)}>
+          Don&rsquo;t send it
+        </button>
+      </div>
+    );
+  return (
+    <div className="w-full max-w-md">
+      <label htmlFor={`sg-${offerId}`} className="block font-medium">Why is it not being sent?</label>
+      <p className="text-small text-subtle">Kept in the record. The guardian never sees this offer; the sponsor is told it was not sent.</p>
+      <textarea id={`sg-${offerId}`} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} className="mt-2 w-full rounded-[6px] border border-control bg-surface-2 p-3 text-ink" placeholder="For example: the enhanced check is not complete" />
+      <div className="mt-2 flex flex-wrap gap-2">
+        <ActionButton actor={persona.id} type="stopSafeguarding" args={{ offerId, reason }} success="The offer was stopped and not sent to the guardian.">
+          Stop the offer
+        </ActionButton>
+        <button type="button" className={btn("quiet")} onClick={() => setStopping(false)}>Back</button>
+      </div>
     </div>
   );
 }

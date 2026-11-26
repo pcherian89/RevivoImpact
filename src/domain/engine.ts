@@ -1046,6 +1046,15 @@ export const commands = {
     audit(c, "Safeguarding check passed; offer sent to the guardian", offerRecord(c.w, o));
   },
 
+  stopSafeguarding(c: Ctx, a: { offerId: string; reason: string }) {
+    need(c.w.people[c.actor]?.role === "admin", "Only the platform administrator completes a safeguarding review (simulated).");
+    const o = c.w.offers[a.offerId] ?? fail("That offer does not exist.");
+    need(o.status === "safeguarding", "This offer is not waiting for a safeguarding review.");
+    need(!!a.reason?.trim(), "Give a reason: it is kept in the record and the sponsor is told the offer was not sent.");
+    o.status = "withdrawn";
+    audit(c, `Safeguarding review stopped the offer; it was not sent to the guardian. Reason: “${a.reason.trim()}”`, offerRecord(c.w, o));
+  },
+
   acceptOffer(c: Ctx, a: { offerId: string; agreementId: string }) {
     const o = c.w.offers[a.offerId] ?? fail("That offer does not exist.");
     fresh(c.w.agreements, a.agreementId);

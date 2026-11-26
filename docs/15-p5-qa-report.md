@@ -1,6 +1,7 @@
 # 15 · P5 quality report: the finished prototype
 
-**Status (25 Nov 2026): P5 complete and ready for the founder's approval gate (`06` §8).** The final build is
+**Status (26 Nov 2026): P5 complete, plus the final end-to-end clarity review (§11–§13). Ready for the founder's
+approval gate (`06` §8).** The final build is
 `prototype/revivo-impact-final.html`. The presenter guide is `14-presenter-guide.md`. Screenshots are in
 `docs/p5-previews/`.
 
@@ -150,7 +151,6 @@ nothing is found it says: "It can't tell whether every sentence is true, so read
 | Issue | Why it remains |
 |---|---|
 | On a fresh 30 June there is no receipt waiting to be checked until spending is added (by the guide or a person) | The story adds spending as a guided step; seeding a second copy would break the reconciled figures |
-| Funding Line figures at the top of a record don't open their sources (the bar and table just below do) | Low impact; the same figures open their sources one line lower |
 | Content widths differ slightly between some screens on very wide screens | Cosmetic |
 | 132 of 143 scholarship applications are summaries | Representative records cover every outcome; the rest keep real scores and statuses |
 | A funding request can be withdrawn but not edited once published | Withdraw and publish again; editing is a production feature |
@@ -198,5 +198,83 @@ These are **not** in the prototype and are not promised. They are what a real pr
 | A. Final prototype | `prototype/revivo-impact-final.html` (also in the project files, `impact-p5/`) |
 | B. Presenter guide | `docs/14-presenter-guide.md` |
 | C. This QA report | `docs/15-p5-qa-report.md` |
-| D. Screenshots | `docs/p5-previews/`: every key screen at 375, 768 and 1440px in Dark, and 10 key screens at 375 and 1440px in Daylight |
+| D. Screenshots | `docs/p5-previews/`: every key screen at 375, 768 and 1440px in Dark, and 10 key screens at 375 and 1440px in Daylight (taken before the clarity review). Before and after the clarity review: `docs/clarity-previews/` |
+| F. Clarity review matrices (internal) | `docs/16-clarity-review-screens.md` (102 screen rows) and `docs/17-clarity-review-journeys.md` (39 guided steps) |
 | E. Updated documents | `README.md`, `CLAUDE.md`, `docs/00-START-HERE.md` |
+
+## 11. Final end-to-end clarity review (26 Nov 2026)
+
+**How it was done, honestly stated.** Seven independent **AI reviewers** (not people) opened the rendered prototype
+with no documentation, as untrained first-time users and as specialists: UX research, UX writing, product design,
+HCI, sports funding and scholarships, sponsorship, athlete, coach and organisation experience, foundation and
+corporate funders, financial reporting, creative direction, accessibility, demonstration storytelling, software QA,
+and child safeguarding and privacy. They covered every role, every main screen at three dates, and every step of
+journeys A–E. After the changes, four more AI reviewers checked the changed build as first-time users. **No human
+testing has been done.** The full matrices are internal documents (`16`, `17`) and are never shown in the prototype.
+
+### 11.1 What changed, with before and after
+
+| Area | Before | After |
+|---|---|---|
+| Who am I looking at? | "Viewing as Amira · Change" in the header; on phones just a name | A line under the menu on every screen and width: "Viewing as Ingrid Solberg · Funding approver · Tallwater Sports Foundation"; coaches and guardians also see "acting for Tiago (16)". Role titles are plain jobs taken from the records ("Finance officer", "Parent and guardian of Tiago (16) and Inês (13)") |
+| Page headings | "What needs you, Ingrid?", "Hello Amira. Here's what needs you." | "Funding overview", "Your sports funding", "Tiago's sports funding", "Highland Cycling Club: funding"; sections "Needs your action (1)"; larger section headings |
+| Task wording | "Daniel's draft is waiting for approval · you did not prepare it, so you can publish it" | "Approve and publish a new sports scholarship · Daniel Osei (programme officer) prepared it. Check it before it opens for applications." → "Review scholarship" |
+| Money tasks | "12 payments due now" / "47 recommendations are ready for decision" | "12 payments are due · $19,000" → "Record the 12 payments"; "Decide the scholarship offers · 47 shortlisted · $250,000 budget" |
+| Selection | "Budget meter"; a warning in amber; no button while reviews were open; "Not this time" on rows still in review | "How much is left to offer?" showing only real money; "Send decisions" shown disabled with the reason in plain text; rows still in review can't be turned down |
+| Funding Line | Stage figures did not open their sources | Agreed, Paid, Spent and Checked open their records; the next step is shown correctly (spending until paid money is accounted for; agreed tasks for sponsorship) |
+| Sponsorship | "How is the money for Jonah Reyes being used?"; "deliverables" | "Is Jonah Reyes delivering what we agreed?"; "agreed tasks" everywhere |
+| Discover on a phone | The header photo pushed the first result below the fold | Results first, the same approved photo after them; sponsor reasons corrected; brands no longer hidden by a default filter |
+| Guided journeys | Tabs "A B C D E"; "You are now: …"; "I'll do it" often not marked done; D2 dead end; "August 2027" refused | Tabs "A · Scholarship … E · Young athletes"; each step names whose screen it opens and who takes part; a step is done when its outcome exists however it was done; Show me lands on the screen that proves it; "Next: journey B" loads B's start; the phone has a guide button when the guide is closed |
+| Mistakes and safety | One-tap withdraw; reset and date change without asking | Withdraw asks first and keeps "Withdrawn by you"; asks show "Cancelled (request withdrawn)"; reset and date changes ask first |
+
+### 11.2 Safeguarding and control fixes found by the reviews
+
+- A coach without the family's authorisation now gets a plain refusal before any application form opens (the rule
+  engine already refused to save it).
+- "Help me write this" never replaces what a guardian typed; each child gets a fresh request form.
+- Young athletes are **never named in links or record ids** that funders open (Tiago's request, offer, application
+  and agreement use a neutral reference). A unit test checks every id.
+- A guardian reads a coach's draft in full (statement and what will be shared) before submitting it; there is no
+  one-tap submit from the list.
+- A request that could identify a child (too few athletes share the card) is explained before the form, with what
+  to do instead; a name or club typed into the card is flagged as it is typed.
+- The safeguarding reviewer can now **stop** an individual sponsor's offer to a minor, with a reason kept in the record.
+- A company's committed total no longer lists donated kits in its source (in-kind stays apart from cash).
+- A sponsor whose only agreement is commercial sees its sponsorship totals, labelled as kept apart.
+- A submitted application opens read-only; a wrong email code at sign-up is refused.
+
+## 12. Final verification (26 Nov 2026, changed build)
+
+| Check | Result |
+|---|---|
+| Type check, copy check, single-file offline build (about 3.9 MB) | Pass |
+| Unit tests (rules, invariants, reconciliation, access, safeguarding, new tests for withdrawn requests, coach authorisation, the month rule and child-free ids) | **73 of 73 pass** |
+| Journeys clicked end to end (including the new date-change confirmation) | **85 of 85 pass** |
+| Every guided step | **35 of 35 pass** |
+| Every role's pages at 1440px | **364 pages, 0 problems** |
+| Accessibility (axe-core, both themes) | **0 serious or critical issues** |
+| Plain-language check | **213 screens pass** |
+| Photo and layout audit at 375, 768, 1024 and 1440px | **88 screens, 0 issues** (no overlap, no faded photo, no horizontal scroll) |
+| Reconciliation | $211,000 agreed + $3,500 set aside + $35,500 available = $250,000; Amira's $4,500 agrees everywhere |
+| Final AI first-time-user review | 4 AI reviewers; 2 blockers and the main majors fixed (§11.2); the rest are listed in §13 |
+
+The approved photographs are unchanged. All five journeys, both themes and offline use still work.
+
+## 13. Remaining limitations after the clarity review
+
+Accepted limitations from the brief still apply (11 detailed applications; simulated sign-in, verification,
+payments, documents and AI; browser storage; a request is withdrawn and published again, not edited). Also known:
+
+| Issue | Why it remains |
+|---|---|
+| After "Next step", the page still shows the previous person until Show me, I'll do it or See the screen is pressed | The step card now says "Opens the screen of …", so it no longer contradicts the page; switching automatically would move the page under a presenter |
+| "What changed" is missing after some multi-person steps | Each step still says Done and Show me lands on the screen that proves it |
+| "I'll do it" for steps where several people act needs Change person for each | The card says so; Show me does it in one go |
+| Look-only steps are not marked done | They have nothing to record |
+| Sending one decision at a time on a phone moves the row out of view | The decision appears in the list below; the bulk "Send decisions" is the main path |
+| After one spending line the athlete lands on the funding record, not back in the update | The record shows what was added and what is still due |
+| "Help me organise this" also suggests the other-funding line | The applicant can edit it before sending; the reviewer is told AI helped |
+| Some fund-card figures (Total fund, Still available) don't open sources | The same figures open their sources on the fund's Funding page rows |
+| An over-limit offer at Oriel waits for a second approver who is not a demo persona | Only reached by offering more than $2,000; the offer can be withdrawn |
+| Dates in request lists use mixed formats ("September 2027", "Thu 15 Jul") | Cosmetic |
+| On 30 June there is no receipt waiting to be checked until the guide adds spending | Seeding a second copy would break the reconciled figures; the funder's empty state now names the updates due that day |

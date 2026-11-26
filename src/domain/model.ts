@@ -122,6 +122,8 @@ export type Fact = {
 export type Commercial = { social: string[]; audience: string; partnerships: string[]; activities: string[] };
 export type Athlete = {
   id: string;
+  /** Neutral reference used in record ids and addresses, so a young athlete is never named in a link. */
+  ref?: string;
   name: string;
   age: number;
   minor: boolean;
@@ -330,7 +332,7 @@ const PEOPLE: Person[] = [
   P({ id: "kenji", name: "Kenji Arakawa", role: "sponsor", title: "Community investment manager", orgId: "oriel", funderId: "oriel", perms: ["Approve", "Review", "Finance"], group: "Providing funding", journeys: "B, E", tasks: ["Search with a plain-language brief", "See the most you can offer", "Offer to a young athlete through a guardian"] }),
   P({ id: "lucy", name: "Lucy Adeyemi", role: "sponsor", title: "Sponsorship manager", orgId: "corvane", funderId: "corvane", perms: ["Approve", "Review", "Finance"], group: "Providing funding", journeys: "B", tasks: ["Find an adult sprinter open to partners", "Express interest, then offer a sponsorship agreement"] }),
   P({ id: "marcus", name: "Marcus Halvorsen", role: "individual", title: "Individual sponsor", funderId: "halvorsen", perms: ["Approve", "Review", "Finance"], group: "Providing funding", journeys: "B, C", tasks: ["Answer Nadia's ask (journey B sends it)", "Fund a club you did not know", "Offer to a young athlete through her guardian"], enhancedCheck: true }),
-  P({ id: "farid", name: "Farid Rahimi", role: "funder", title: "Development manager", orgId: "ostral", funderId: "ostral", perms: ["Admin", "Approve", "Finance", "Review"], group: "Providing funding", journeys: "D", tasks: ["See nominations you made", "See your Competition Travel Grant"] }),
+  P({ id: "farid", name: "Farid Rahimi", role: "funder", title: "Development manager", orgId: "ostral", funderId: "ostral", perms: ["Admin", "Approve", "Finance", "Review"], group: "Providing funding", journeys: "D", tasks: ["Confirm the existing funding Tallwater added (30 Jun)", "See your Competition Travel Grant"] }),
   P({ id: "alex", name: "Alex Moreau", role: "admin", title: "Platform administrator", perms: ["Admin"], group: "Platform", journeys: "E", tasks: ["Review an offer to a minor", "Check an anonymised card", "See who did what"] }),
   // Non-persona people (appear in records and the audit)
   P({ id: "reviewer2", name: "Second reviewer", role: "funder", title: "Reviewer · Tallwater", orgId: "tallwater", funderId: "tallwater", perms: ["Review"], group: "Providing funding", journeys: "", tasks: [], persona: false }),
@@ -483,10 +485,10 @@ export function baseWorld(): World {
     fact("elif-r1", "Result", "National single scull, 4th 2026", "result", "verified", "discoverable", "Results list", "12 Jul 2026"),
     fact("elif-r2", "Result", "Regional champion 2026", "result", "verified", "discoverable", "Results list", "6 Jun 2026"),
   ] });
-  A({ id: "tiago", name: "Tiago Esteves", age: 16, minor: true, gender: "man", guardianId: "rosa", sport: "Swimming", discipline: "200m freestyle", level: "National qualifier", levelRank: 3, region: "Coastal Region", club: "Saltmere Sports Academy", discoverable: false, currentSupport: [], tags: ["Swimming", "Travel", "Coastal Region", "Verified evidence", "swimming"], createdAt: "apr12", facts: [
+  A({ id: "tiago", ref: "m1604", name: "Tiago Esteves", age: 16, minor: true, gender: "man", guardianId: "rosa", sport: "Swimming", discipline: "200m freestyle", level: "National qualifier", levelRank: 3, region: "Coastal Region", club: "Saltmere Sports Academy", discoverable: false, currentSupport: [], tags: ["Swimming", "Travel", "Coastal Region", "Verified evidence", "swimming"], createdAt: "apr12", facts: [
     fact("tiago-q", "Qualification", "Qualified for the Ostral National Age-Group Championships", "result", "verified", "application", "Ostral Swimming Federation (document)", "28 Mar"),
   ] });
-  A({ id: "ines", name: "Inês Esteves", age: 13, minor: true, gender: "woman", guardianId: "rosa", sport: "Football", discipline: "Midfield", level: "Club", levelRank: 1, region: "Coastal Region", club: "Saltmere Sports Academy", discoverable: false, currentSupport: [], tags: ["football"], createdAt: "apr12", facts: [] });
+  A({ id: "ines", ref: "m1311", name: "Inês Esteves", age: 13, minor: true, gender: "woman", guardianId: "rosa", sport: "Football", discipline: "Midfield", level: "Club", levelRank: 1, region: "Coastal Region", club: "Saltmere Sports Academy", discoverable: false, currentSupport: [], tags: ["football"], createdAt: "apr12", facts: [] });
   // Jonas's other authorised athletes (light)
   ["Kofi Mensah", "Lena Haugen", "Ilyas Rahman", "Mei Nakamura", "Freya Nilsen"].forEach((n, i) =>
     A({ id: `sw${i + 1}`, name: n, age: 15 + (i % 3), minor: true, gender: i % 2 ? "woman" : "man", sport: "Swimming", discipline: "Freestyle", level: "Regional", levelRank: 2, region: "Coastal Region", club: "Saltmere Sports Academy", discoverable: false, currentSupport: [], tags: ["swimming"], createdAt: "apr12", facts: [], light: true }),
@@ -644,3 +646,6 @@ export function seedSessions(w: World, from: number, to: number, skip: (site: st
       w.sessions[id] = { id, programmeId: pe.id, siteId: site.id, slot, date: sessionDate(slot), status: reason ? "missed" : "delivered", attendance: reason ? undefined : Math.round(site.participants * (0.7 + ((slot * 7 + site.name.length) % 20) / 100)), reason, by: "system", at: slot <= 1 ? "apr12" : slot <= 9 ? "may06" : "jun30", checked: !reason };
     }
 }
+
+/** The reference used in ids and links: a young athlete's neutral reference, otherwise the record id. */
+export const refOf = (w: { athletes: Record<string, Athlete> }, id: string) => w.athletes[id]?.ref ?? id;

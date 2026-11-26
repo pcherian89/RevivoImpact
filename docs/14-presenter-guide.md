@@ -28,14 +28,19 @@ Use Daylight on a projector in a bright room. Printing always uses Daylight.
 | **Prototype** (top left) | Back to the start page. |
 | **Guided journeys** | Opens the guide beside the page (on phones: inside the "Demo" menu). |
 | **Explore by role** | Lists every person in the story. Pick one to see the product through their eyes (on phones: inside the "Demo" menu). |
-| **Demo date** | Moves the story to one of three dates: Mon 12 Apr, Thu 6 May or Wed 30 Jun 2027. It also holds **Reset the demonstration**. |
-| **Viewing as …** | Shows whose screen you are looking at. Press it to change person. |
+| **Demo date** | Moves the story to one of three dates: Mon 12 Apr, Thu 6 May or Wed 30 Jun 2027. It also holds **Reset the demonstration**, which asks once before clearing anything. |
 | Sun button | Dark or Daylight. |
+
+**Whose screen is this?** Under the menu of every screen, one line says who you are looking at: their name, their
+role and their organisation, for example "Viewing as Ingrid Solberg · Funding approver · Tallwater Sports Foundation"
+or "Viewing as Jonas Becker · Swimming coach · Saltmere Sports Academy · acting for Tiago (16)". **Change person**
+on the same line switches to someone else.
 
 ## 3. The guided journey (the main demonstration)
 
 Press **"Start the guided journey"** on the start page. The guide opens beside the page (on a laptop) or at the
-bottom (on a phone or tablet).
+bottom (on a phone or tablet). Its tabs say what each journey is about: **A · Scholarship**, **B · Sponsors**,
+**C · Programmes**, **D · Existing funding**, **E · Young athletes**.
 
 **Journey A: Find and secure a sports scholarship.** 14 steps, about 10 minutes. Follow Amira, 19, a judo athlete who
 has never heard of Tallwater Sports Foundation:
@@ -56,15 +61,19 @@ has never heard of Tallwater Sports Foundation:
 | 13 | Meanwhile, a company finds an athlete it has never met (two-way discovery). |
 | 14 | A foundation watches a whole programme, site by site. |
 
-**How each step works.** Each step says who you are now and what happens.
+**How each step works.** Each step says whose screen you will see ("You see the screen of Priya Nair · Finance
+officer · Tallwater Sports Foundation"), who takes part when more than one person acts, and what happens.
 - **Show me**: the prototype does the step for you, through the same rules as a click.
-- **I'll do it**: the screen opens and you click through it yourself. The step is marked done when the record exists.
+- **I'll do it**: the screen opens and you click through it yourself. The step is marked done as soon as what it
+  describes has happened, however you did it. A done step says so, and there is nothing to repeat.
 - **Move to … and continue**: appears when a step is on a later date. It moves the story forward and fills in the
   earlier steps for you.
 - Each finished step lists **What changed**: the records it created, and who did what.
 
 **The ending.** After the last step, **What you just saw** sums up the value in a few lines. Then choose:
-**Next: journey B**, **Start again** (clears everything and starts journey A again) or **Back to the start page**.
+**Next: journey B** (sets the story to where journey B begins), **Start again** (clears everything and starts journey A
+again) or **Back to the start page**. Every journey can also be started on its own from its tab: "Move to … and
+continue" fills in anything it depends on.
 
 ## 4. The supporting journeys (B to E)
 
@@ -81,12 +90,12 @@ Use the A–E tabs at the top of the guide.
 
 Press **Explore by role**. Every person in the story is listed by group (seeking funding, delivering programmes,
 providing funding, platform), with two or three things to try. Pick one to see their screens. Each person has at most
-five menu items, and their first screen shows **what needs them** (at most three things).
+five menu items, and their first screen starts with **Needs your action** (at most three things).
 
 Good people to show:
 - **Amira** (athlete): Home, Discover, My Funding.
 - **Rosa** (guardian of Tiago, 16, and Inês, 13): Consent & safety.
-- **Ingrid** (Tallwater, approves funding): Overview, Selection, the funder report.
+- **Ingrid** (Funding approver, Tallwater): Funding overview, Selection, the funder report.
 - **Priya** (Tallwater finance): payments coming up, record a payment.
 - **Kenji** (Oriel, a company): Discover with a plain-words brief.
 - **Sam** (programme coach): recording a session on a phone.
@@ -160,7 +169,6 @@ The prototype remembers your clicks in this browser until you reset. Nothing lea
 - Of the 143 scholarship applications, 11 open in full; the others show their scores and status only.
 - On a fresh 30 June there is no waiting receipt to check until the guide (or a person) adds spending.
 - Some screens use slightly different content widths on very wide screens.
-- Funding Line figures at the top of a record don't open their sources; the bar and table figures just below do.
 - This is a prototype: it has not been tested with real users. A plan for short human sessions is in the QA report
   (`15-p5-qa-report.md` §9).
 
